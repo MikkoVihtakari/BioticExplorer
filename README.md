@@ -1,8 +1,3 @@
----
-output: 
-  html_document: 
-    keep_md: yes
----
 # Biotic Explorer 
 **Shiny app to open, examine and manipulate NMD Biotic xml files used by the Institute of Marine Research Norway**
 
