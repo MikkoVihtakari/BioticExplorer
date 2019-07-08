@@ -1,5 +1,5 @@
 # Biotic Explorer 
-**Shiny app to open, examine and manipulate NMD Biotic xml files used by the Institute of Marine Research Norway**
+**A Shiny app to open, examine and manipulate NMD Biotic xml files used by the Institute of Marine Research Norway**
 
 This is a prototype of the **Biotic Explorer** [Shiny](https://shiny.rstudio.com/) app allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used within the Institute of Marine Research database. While the application is developed by the Institute of Marine Research, **this is not the official version** of the application and is bound to contain bugs and other errors. 
 
@@ -33,12 +33,12 @@ Click "Clone or download" -> "Download ZIP". Find the zip file (typically in you
 
 ## Usage
 
-- 1) **Upload data:** Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant.
-- 2) **Filter data:** Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected.
-- 3) You can examine the station and catch data by clicking the 'Stations & catches' tab. Use the 'Overview' sub-tab for a graphical overview or the 'Examine' tab for a tabular overview, which you can filter and search as you wish, but note that filtering here does not influence the returned data.
-- 4) Similarly, an overview of individual measured fish is given under 'Individuals & ages' tab.
-- 5) 'Mission data' through 'Age data' tabs give a tabular overview of each data type in the NMD xml Biotic file.
-- 6) **Download** filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types (station vs individual), note that the csv format will be returned as a zip file.
+1. **Upload data:** Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant.
+2. **Filter data:** Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected.
+3. You can examine the station and catch data by clicking the 'Stations & catches' tab. Use the 'Overview' sub-tab for a graphical overview or the 'Examine' tab for a tabular overview, which you can filter and search as you wish, but note that filtering here does not influence the returned data.
+4. Similarly, an overview of individual measured fish is given under 'Individuals & ages' tab.
+5. 'Mission data' through 'Age data' tabs give a tabular overview of each data type in the NMD xml Biotic file.
+6. **Download** filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types, note that the csv format will be returned as a zip file.
 
 ## Contributions and contact information
 
@@ -59,4 +59,4 @@ Running the app automatically installs following packages:
 
 ## News
 
-2019-07-08 Uploaded the first alpha version. The app works, but does not contain all features yet. 
+2019-07-08 Uploaded the first alpha version. The app works, but does not contain all features yet. This version is meant for internal testing. 
