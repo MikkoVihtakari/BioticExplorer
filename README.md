@@ -24,7 +24,8 @@ Write:
 
 
 ```r
-runGitHub("BioticExplorer", "MikkoVihtakari")
+library(shiny)
+shiny::runGitHub("BioticExplorer", "MikkoVihtakari")
 ```
 
 ### Running the app from your hard drive
