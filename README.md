@@ -9,7 +9,7 @@ Running the app for the first time **automatically installs** packages used by t
 
 ### First time installation
 
-The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
+The app requires [R](https://www.r-project.org/), [RStudio](https://www.rstudio.com/) and [Rtools](https://cran.r-project.org/bin/windows/Rtools/) (Windows only). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
 
 
 
@@ -31,6 +31,10 @@ shiny::runGitHub("BioticExplorer", "MikkoVihtakari")
 ### Running the app from your hard drive
 
 Click "Clone or download" -> "Download ZIP". Find the zip file (typically in your Downloads folder) and extract it to a desired location. Open the app.R file in RStudio and [click "Run app"](https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/).
+
+### Troubles getting R/RStudio/devtools to recognize Rtools on Windows?
+
+This is a common problem on IMR Windows computers. When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows (see [here](https://github.com/r-lib/devtools/issues/1772). If the above mentioned solution does not solve the problem, this is likely the case. You can try installing an older version of R or use a Unix computer to test the app. These developmental problems on Windows will disappear once the [`RNMDAPI`](https://github.com/REDUS-IMR/RNMDAPI) package is uploaded to CRAN. 
 
 ## Usage
 

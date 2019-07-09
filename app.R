@@ -85,14 +85,14 @@ body <-
             p("3) You can examine the station and catch data by clicking the 'Stations & catches' tab. Use the 'Overview' sub-tab for a graphical overview or the 'Examine' tab for a tabular overview, which you can filter and search as you wish, but note that filtering here does not influence the returned data."),
             p("4) Similarly, an overview of individual measured fish is given under 'Individuals & ages' tab."),
             p("5) 'Mission data' through 'Age data' tabs give a tabular overview of each data type in the NMD xml Biotic file."),
-            p("6)", strong("Download"), "filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types (station vs individual), note that the csv format will be returned as a zip file."),
+            p("6)", strong("Download"), "filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types, note that the csv format will be returned as a zip file. Downloading zip files might not work if you run the app in RStudio window. Try again using the 'Run External' option (i.e. run the app in web-browser."),
             br(),
             br(),
             h5("Author and contact person: Mikko Vihtakari (mikko.vihtakari@hi.no)", align = "left"),
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1 (alpha), 2019-07-08", align = "right")
+            h5("Version 0.1 (alpha), 2019-07-09", align = "right")
           )
         )
       ),
