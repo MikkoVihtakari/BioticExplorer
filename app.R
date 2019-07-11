@@ -2,7 +2,7 @@
 
 require(shiny)
 
-required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx")
+required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr")
 
 new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages) > 0) install.packages(new.packages)
@@ -16,14 +16,9 @@ if(!"RstoxData" %in% installed.packages()[,"Package"]) {
   require(RstoxData)
 }
 
-# require(PlotSvalbard)
-
-## Options
-
-
 ## Source functions used by the app
 
-source("functions.R")
+source("functions.R", encoding = "utf-8")
 
 ######################
 ## User interface ####
@@ -92,7 +87,7 @@ body <-
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1.2 (alpha), 2019-07-11", align = "right")
+            h5("Version 0.1.3 (alpha), 2019-07-11", align = "right")
           )
         )
       ),
@@ -349,7 +344,7 @@ server <- shinyServer(function(input, output, session) {
     }
     
     tmp <- rv$inputData$stnall
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       startyear %in% rv$sub$year, 
       commonname %in% rv$sub$species,
       platformname %in% rv$sub$platform,
@@ -359,7 +354,7 @@ server <- shinyServer(function(input, output, session) {
     rv$stnall <- tmp
     
     tmp <- rv$inputData$indall
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       startyear %in% rv$sub$year, 
       commonname %in% rv$sub$species,
       platformname %in% rv$sub$platform,
@@ -369,14 +364,14 @@ server <- shinyServer(function(input, output, session) {
     rv$indall <- tmp
     
     tmp <- rv$inputData$mission
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       missionid %in% unique(rv$stnall$missionid)
     )
     
     rv$mission <- tmp
     
     tmp <- rv$inputData$fishstation
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       startyear %in% unique(rv$stnall$startyear),
       serialnumber %in% unique(rv$stnall$serialnumber)
     )
@@ -384,7 +379,7 @@ server <- shinyServer(function(input, output, session) {
     rv$fishstation <- tmp
     
     tmp <- rv$inputData$catchsample
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       startyear %in% unique(rv$stnall$startyear),
       serialnumber %in% unique(rv$stnall$serialnumber),
       catchsampleid %in% unique(rv$stnall$catchsampleid),
@@ -395,7 +390,7 @@ server <- shinyServer(function(input, output, session) {
     rv$catchsample <- tmp
     
     tmp <- rv$inputData$individual
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       missiontype %in% unique(rv$stnall$missiontype),
       startyear %in% unique(rv$stnall$startyear),
       platform %in% unique(rv$stnall$platform),
@@ -408,7 +403,7 @@ server <- shinyServer(function(input, output, session) {
     rv$individual <- tmp
     
     tmp <- rv$inputData$agedetermination
-    tmp <- tmp %>% filter(
+    tmp <- tmp %>% dplyr::filter(
       missiontype %in% unique(rv$stnall$missiontype),
       startyear %in% unique(rv$stnall$startyear),
       platform %in% unique(rv$stnall$platform),
@@ -630,7 +625,7 @@ server <- shinyServer(function(input, output, session) {
     if(!input$performanceMode) {
       output$stationMap <- renderLeaflet({
         
-        leaflet(rv$stnall) %>% 
+        leaflet::leaflet(rv$stnall) %>% 
           setView(lng = 12, lat = 75, zoom = 2) %>% 
           addTiles() %>% 
           addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
@@ -651,7 +646,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(c(req(input$file1), input$Subset), {
     
-    tmp <- rv$stnall %>% group_by(commonname) %>% summarise(n = length(startyear))
+    tmp <- rv$stnall %>% dplyr::group_by(commonname) %>% dplyr::summarise(n = length(startyear))
     tmp <- tmp[order(-tmp$n),]
     tmp$commonname <- factor(tmp$commonname, tmp$commonname)
     
@@ -671,7 +666,7 @@ server <- shinyServer(function(input, output, session) {
     
     tmp <- rv$stnall[!is.na(rv$stnall$catchweight),]
     
-    tmp2 <- tmp %>% group_by(commonname) %>% summarise(mean = mean(catchweight), se = se(catchweight), max = max(catchweight), min = min(catchweight))
+    tmp2 <- tmp %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight), se = se(catchweight), max = max(catchweight), min = min(catchweight))
     tmp2 <- tmp2[order(-tmp2$mean),]
     tmp2$commonname <- factor(tmp2$commonname, tmp2$commonname)
     tmp$commonname <- factor(tmp$commonname, tmp2$commonname)

@@ -5,11 +5,7 @@ This is a prototype of the **Biotic Explorer** [Shiny](https://shiny.rstudio.com
 
 ## Installation
 
-Running the app for the first time **automatically installs** packages used by the app.
-
-### First time installation
-
-The app requires [R](https://www.r-project.org/), [RStudio](https://www.rstudio.com/) and [Rtools](https://cran.r-project.org/bin/windows/Rtools/) (Windows only). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
+Running the app for the first time **automatically installs** packages used by the app. The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
 
 
 
@@ -18,9 +14,15 @@ The app requires [R](https://www.r-project.org/), [RStudio](https://www.rstudio.
 install.packages("shiny")
 ```
 
+### First time installation
+
+Biotic Explorer uses the new RstoxData package, which currently is only available on [GitHub](https://github.com/StoXProject/RstoxData/releases). On Unix computers and on Windows machines with a working R++ compiler, you can install the package directly from GitHub using the devtools package (`devtools::install_github("StoXProject/RstoxData")`). On computers that return errors when trying to run the R++ compiler through RStudio (most institutional Windows machines), **install the binary directly from [here](https://github.com/StoXProject/RstoxData/releases)**. 
+
+Download the newest RstoxData zip file, click the "Packages" tab -> "Install" -> "Install from:" "Package Archive File" -> "Install". If the installer does not complain, the package is installed correctly.
+
 ### Running the app directly from GitHub
 
-Write:
+Once you have the RstoxData package installed, you can run the app. Write:
 
 
 ```r
@@ -34,7 +36,7 @@ Click "Clone or download" -> "Download ZIP". Find the zip file (typically in you
 
 ### Troubles getting R/RStudio/devtools to recognize Rtools on Windows?
 
-This is a common problem on IMR Windows computers. When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows (see [here](https://github.com/r-lib/devtools/issues/1772)). If the above mentioned solution does not solve the problem, this is likely the case. You can try installing an older version of R or use a Unix computer to test the app. These developmental problems on Windows will disappear once the [`RNMDAPI`](https://github.com/REDUS-IMR/RNMDAPI) package is uploaded to CRAN. 
+This is a common problem on IMR Windows computers and can now be avoided by installing binary version of the package (see above). If you want to get the R++ compiler to run on your machine, you need to install Rtools (only under Windows - the compiler is installed on Unix machines). When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows (see [here](https://github.com/r-lib/devtools/issues/1772)). 
 
 ## Usage
 

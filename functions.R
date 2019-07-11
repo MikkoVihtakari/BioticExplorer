@@ -236,11 +236,11 @@ correctNorwegianLetters <- function(x) {
     FAC  <- FALSE
   }
   
-  x <- gsub("Ã¦", "æ", gsub("Ã¥", "å", gsub("Ã¸", "ø", gsub("\xed", "i", gsub("\xc5", "Å", gsub("\xd8", "Ø", gsub("\xe6", "ø", gsub("\xe5", "å", gsub("\xf8", "ø", x)))))))))
+  x <- gsub("Ã¦", "æ", gsub("Ã¥|\xe5", "å", gsub("Ã¸|xe6|\xf8", "ø", gsub("\xed", "i", gsub("\xc5", "Å", gsub("\xd8", "Ø", x))))))
   x[x == ""] <- NA
   
   if(FAC) {
-    levs <- gsub("Ã¦", "æ", gsub("Ã¥", "å", gsub("Ã¸", "ø", gsub("\xed", "i", gsub("\xc5", "Å", gsub("\xd8", "Ø", gsub("\xe6", "ø", gsub("\xe5", "å", gsub("\xf8", "ø", levs)))))))))
+    levs <- gsub("Ã¦", "æ", gsub("Ã¥|\xe5", "å", gsub("Ã¸|xe6|\xf8", "ø", gsub("\xed", "i", gsub("\xc5", "Å", gsub("\xd8", "Ø", levs))))))
     factor(x, levels = levs)
   } else {
     x
