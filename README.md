@@ -5,7 +5,7 @@ This is a prototype of the **Biotic Explorer** [Shiny](https://shiny.rstudio.com
 
 ## Installation
 
-Running the app for the first time **automatically installs** packages used by the app. The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
+The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
 
 
 
@@ -14,11 +14,11 @@ Running the app for the first time **automatically installs** packages used by t
 install.packages("shiny")
 ```
 
-### First time installation
+Biotic Explorer uses the new RstoxData package, which currently is only available on [GitHub](https://github.com/StoXProject/RstoxData/releases). On Unix computers and on Windows machines with a working R++ compiler, you can install the package directly from GitHub using the devtools package (`devtools::install_github("StoXProject/RstoxData")`). 
 
-Biotic Explorer uses the new RstoxData package, which currently is only available on [GitHub](https://github.com/StoXProject/RstoxData/releases). On Unix computers and on Windows machines with a working R++ compiler, you can install the package directly from GitHub using the devtools package (`devtools::install_github("StoXProject/RstoxData")`). On computers that return errors when trying to run the R++ compiler through RStudio (most institutional Windows machines), **install the binary directly from [here](https://github.com/StoXProject/RstoxData/releases)**. 
+On computers that return errors when trying to run the R++ compiler through RStudio (most institutional Windows machines), **install the binary directly from [here](https://github.com/StoXProject/RstoxData/releases)**. Download the newest RstoxData zip file, click the "Packages" tab -> "Install" -> "Install from:" "Package Archive File" -> "Install". If the installer does not complain, the package is installed correctly.
 
-Download the newest RstoxData zip file, click the "Packages" tab -> "Install" -> "Install from:" "Package Archive File" -> "Install". If the installer does not complain, the package is installed correctly.
+As long as your R++ compiler or the RstoxData package work, running the app for the first time **automatically installs and loads** packages used by the app. 
 
 ### Running the app directly from GitHub
 
@@ -36,7 +36,7 @@ Click "Clone or download" -> "Download ZIP". Find the zip file (typically in you
 
 ### Troubles getting R/RStudio/devtools to recognize Rtools on Windows?
 
-This is a common problem on IMR Windows computers and can now be avoided by installing binary version of the package (see above). If you want to get the R++ compiler to run on your machine, you need to install Rtools (only under Windows - the compiler is installed on Unix machines). When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows (see [here](https://github.com/r-lib/devtools/issues/1772)). 
+This is a common problem on IMR Windows computers and can now be avoided by installing a binary version of the RstoxData package (see above). If you want to get the R++ compiler to run on your machine, you need to install Rtools (only under Windows - the compiler is already installed on Unix machines). When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). There are numerous reported issues when trying to get the compiler to work. These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows. See [here](https://github.com/r-lib/devtools/issues/1772), [here](https://stackoverflow.com/questions/51830648/rstudio-not-finding-rtools), and [here](https://stackoverflow.com/questions/33103203/rtools-is-not-being-detected-from-rstudio). Also setting `options(buildtools.check = NULL)` in RStudio sometimes works. 
 
 ## Usage
 
@@ -65,5 +65,7 @@ Running the app automatically installs following packages:
 - [openxlsx](https://cran.r-project.org/web/packages/openxlsx/index.html). Used to write MS Excel files. 
 
 ## News
+
+2019-07-11 Fixed a number of Windows related problems. The app should (hopefully) work now on most institutional machines. 
 
 2019-07-08 Uploaded the first alpha version. The app works, but does not contain all features yet. This version is meant for internal testing. 
