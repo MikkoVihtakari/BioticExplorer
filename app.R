@@ -87,7 +87,7 @@ body <-
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1.3 (alpha), 2019-07-11", align = "right")
+            h5("Version 0.1.4 (alpha), 2019-07-11", align = "right")
           )
         )
       ),
@@ -168,6 +168,7 @@ body <-
               sliderInput(inputId = "subLon", label = "Longitude:", min = -180, max = 180, value = c(-180, 180)),
               sliderInput(inputId = "subLat", label = "Latitude:", min = -90, max = 90, value = c(-90, 90)),
               actionButton(inputId = "Subset", label = "Subset")
+              #verbatimTextOutput("test")
             ),
             
             box(title = "Station locations", status = "primary", width = NULL,
@@ -308,6 +309,14 @@ server <- shinyServer(function(input, output, session) {
     updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
     updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
     updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
+    
+    min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
+    max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
+    updateSliderInput(session, "subLon", min = min.lon, max = max.lon, value = c(min.lon, max.lon), step = 0.1)
+    
+    min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
+    max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
+    updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
   })
   
   
@@ -343,13 +352,30 @@ server <- shinyServer(function(input, output, session) {
       input$subGear
     }
     
+    rv$sub$lon <- if(is.null(input$subLon)) {
+      NULL
+    } else {
+      input$subLon
+    }
+    
+    rv$sub$lat <- if(is.null(input$subLat)) {
+      NULL
+    } else {
+      input$subLat
+    }
+    
     tmp <- rv$inputData$stnall
     tmp <- tmp %>% dplyr::filter(
       startyear %in% rv$sub$year, 
       commonname %in% rv$sub$species,
       platformname %in% rv$sub$platform,
       serialnumber %in% rv$sub$serialnumber,
-      gear %in% rv$sub$gear)
+      gear %in% rv$sub$gear,
+      longitudestart >= rv$sub$lon[1],
+      longitudestart <= rv$sub$lon[2], 
+      latitudestart >= rv$sub$lat[1],
+      latitudestart <= rv$sub$lat[2]
+    )
     
     rv$stnall <- tmp
     
@@ -359,7 +385,12 @@ server <- shinyServer(function(input, output, session) {
       commonname %in% rv$sub$species,
       platformname %in% rv$sub$platform,
       serialnumber %in% rv$sub$serialnumber,
-      gear %in% rv$sub$gear)
+      gear %in% rv$sub$gear,
+      longitudestart >= rv$sub$lon[1],
+      longitudestart <= rv$sub$lon[2], 
+      latitudestart >= rv$sub$lat[1],
+      latitudestart <= rv$sub$lat[2]
+    )
     
     rv$indall <- tmp
     
@@ -420,9 +451,9 @@ server <- shinyServer(function(input, output, session) {
   ## Download ####
   
   
-  # output$test <- renderText({
-  #   paste(input$downloadDataType, collapse = ", ")
-  # })
+  output$test <- renderText({
+    paste(input$subLon, collapse = ", ")
+  })
   
   output$downloadData <- downloadHandler(
     
@@ -628,6 +659,9 @@ server <- shinyServer(function(input, output, session) {
         leaflet::leaflet(rv$stnall) %>% 
           setView(lng = 12, lat = 75, zoom = 2) %>% 
           addTiles() %>% 
+          addRectangles(
+            lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
+            fillColor = "transparent") %>% 
           addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
             weight = 1, radius = 2, 
             popup = ~as.character(platformname), 
