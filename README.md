@@ -34,7 +34,7 @@ Click "Clone or download" -> "Download ZIP". Find the zip file (typically in you
 
 ### Troubles getting R/RStudio/devtools to recognize Rtools on Windows?
 
-This is a common problem on IMR Windows computers. When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows (see [here](https://github.com/r-lib/devtools/issues/1772). If the above mentioned solution does not solve the problem, this is likely the case. You can try installing an older version of R or use a Unix computer to test the app. These developmental problems on Windows will disappear once the [`RNMDAPI`](https://github.com/REDUS-IMR/RNMDAPI) package is uploaded to CRAN. 
+This is a common problem on IMR Windows computers. When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows (see [here](https://github.com/r-lib/devtools/issues/1772)). If the above mentioned solution does not solve the problem, this is likely the case. You can try installing an older version of R or use a Unix computer to test the app. These developmental problems on Windows will disappear once the [`RNMDAPI`](https://github.com/REDUS-IMR/RNMDAPI) package is uploaded to CRAN. 
 
 ## Usage
 
@@ -57,7 +57,7 @@ Running the app automatically installs following packages:
 - [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html). Used for the dashboard.
 - [DT](https://cran.r-project.org/web/packages/DT/index.html). Used for data tables.
 - [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html). Used for data manipulation and plots.
-- [RNMDAPI](https://github.com/REDUS-IMR/RNMDAPI). Used to read NMD .xml files.
+- [RstoxData](https://github.com/StoXProject/RstoxData). Used to read NMD .xml files.
 - [devtools](https://cran.r-project.org/web/packages/devtools/index.html). Used to download the RNMDAPI package.
 - [leaflet](https://cran.r-project.org/web/packages/leaflet/index.html). Used for interactive maps.
 - [openxlsx](https://cran.r-project.org/web/packages/openxlsx/index.html). Used to write MS Excel files. 

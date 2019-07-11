@@ -9,11 +9,11 @@ if(length(new.packages) > 0) install.packages(new.packages)
 
 sapply(required.packages, require, character.only = TRUE)
 
-if(!"RNMDAPI" %in% installed.packages()[,"Package"]) {
-  devtools::install_github("REDUS-IMR/RNMDAPI")
-  require(RNMDAPI)
+if(!"RstoxData" %in% installed.packages()[,"Package"]) {
+  devtools::install_github("StoXProject/RstoxData")
+  require(RstoxData)
 } else {
-  require(RNMDAPI)
+  require(RstoxData)
 }
 
 # require(PlotSvalbard)
@@ -92,7 +92,7 @@ body <-
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1 (alpha), 2019-07-09", align = "right")
+            h5("Version 0.1.2 (alpha), 2019-07-11", align = "right")
           )
         )
       ),

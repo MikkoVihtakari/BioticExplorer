@@ -7,6 +7,7 @@
 #' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
 #' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$individual}, \code{$catchsample} and \code{$agedetermination} data frames. See the help file in the Shiny app for explanations of the data types.
 #' @author Mikko Vihtakari (Institute of Marine Research) 
+#' @import RstoxData
 
 # Debugging parameters
 # file = "/Users/mvi023/Dropbox/Workstuff/Meetings/2019 Data Limited SA course/Vassild SA/Data/biotic_year_1994_species_162064.xml"
@@ -16,7 +17,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
  ## Read the Biotic file ----
   
-  dt <- RNMDAPI::readNMDxmlFile(file)
+  dt <- RstoxData::readXmlFile(file)
   
   dt <- lapply(dt, function(k) {
     k <- as.data.frame(k)
