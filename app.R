@@ -87,7 +87,7 @@ body <-
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1.4 (alpha), 2019-07-11", align = "right")
+            h5("Version 0.1.5 (alpha), 2019-07-12", align = "right")
           )
         )
       ),
@@ -222,9 +222,16 @@ body <-
       ),
       
       tabItem("stnallExamine", DT::dataTableOutput("stnall")),
-      tabItem("indallOverview", "Sub-item 1 tab content"),
-      tabItem("indallExamine", DT::dataTableOutput("indall")),
       
+      tabItem("indallOverview", 
+        fluidRow(
+          box(title = "Individual sample overview", width = 12, status = "info", solidHeader = TRUE,
+            DT::dataTableOutput("individualSummaryTable")
+          )
+        )
+      ),
+      
+      tabItem("indallExamine", DT::dataTableOutput("indall")),
       
       tabItem("missionExamine", DT::dataTableOutput("missionTable")),
       tabItem("fishstationExamine", DT::dataTableOutput("fishstation")),
@@ -785,7 +792,17 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
+  ##########################################
+  ## Individual data figures and tables ####
   
+  observeEvent(c(req(input$file1), input$Subset), {
+    
+    tmp <- rv$indall %>% dplyr::group_by(commonname) %>% dplyr::summarise(Total = length(commonname), Length = sum(!is.na(length)), Weight = sum(!is.na(individualweight)), Sex = sum(!is.na(sex)), Maturationstage = sum(!is.na(maturationstage)), Specialstage = sum(!is.na(specialstage)), Age = sum(!is.na(age)))
+    
+    output$individualSummaryTable <- DT::renderDataTable({
+      DT::datatable(tmp, options = list(searching = FALSE))
+    })
+  })
   #output$species <- unique(inputData()$stnall$commonname)
   
   # output$agePlot <- renderPlot({
