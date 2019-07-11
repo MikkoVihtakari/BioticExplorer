@@ -14,11 +14,11 @@ The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstud
 install.packages("shiny")
 ```
 
-Biotic Explorer uses the new RstoxData package, which currently is only available on [GitHub](https://github.com/StoXProject/RstoxData/releases). On Unix computers and on Windows machines with a working C++ compiler, you can install the package directly from GitHub using the devtools package (`devtools::install_github("StoXProject/RstoxData")`). 
+Biotic Explorer uses the new RstoxData package, which currently is only available on [GitHub](https://github.com/StoXProject/RstoxData/releases). On Unix computers and on Windows machines with a working C++ compiler ([Rtools](https://cran.r-project.org/bin/windows/Rtools/)), you can install the package directly from GitHub using the devtools package (`devtools::install_github("StoXProject/RstoxData")`). 
 
-On computers that return errors when trying to run the C++ compiler ([Rtools](https://cran.r-project.org/bin/windows/Rtools/)) through RStudio (most institutional Windows machines), **install the binary directly from [here](https://github.com/StoXProject/RstoxData/releases)**. Download the newest RstoxData zip file, click the "Packages" tab -> "Install" -> "Install from:" "Package Archive File" -> "Install". If the installer does not complain, the package is installed correctly.
+On computers that return errors when trying to run the Rtools through RStudio (most institutional Windows machines), **install the binary directly from [here](https://github.com/StoXProject/RstoxData/releases)**. Download the newest RstoxData zip file, click the "Packages" tab -> "Install" -> "Install from:" "Package Archive File" -> "Install". If the installer does not complain, the package is installed correctly.
 
-As long as your R++ compiler or the RstoxData package work, running the app for the first time **automatically installs and loads** packages used by the app. 
+As long as your C++ compiler or the RstoxData package work, running the app for the first time **automatically installs and loads** packages used by the app. 
 
 ### Running the app directly from GitHub
 
