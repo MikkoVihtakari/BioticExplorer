@@ -5,125 +5,142 @@
 #' @param weightUnit character string specifying the unit for weigth output. Alternatives: "g" or "kg". 
 #' @param removeEmpty logical indicating whether empty columns should be removed from output. This option also influences "coreData" columns.
 #' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
-#' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$individual}, \code{$catchsample} and \code{$agedetermination} data frames. See the help file in the Shiny app for explanations of the data types.
+#' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
+#' @param dataTable logical indicating whether the output should be returned as \link[data.table]{data.table}s instead of \link{data.frame}s. Setting this to \code{TRUE} speeds up further calculations using the data (but requires the \link[data.table]{data.table} syntax).
+#' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function.
+#' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
 #' @author Mikko Vihtakari (Institute of Marine Research) 
-#' @import RstoxData
+#' @import RstoxData data.table
 
 # Debugging parameters
 # file = "/Users/mvi023/Dropbox/Workstuff/Meetings/2019 Data Limited SA course/Vassild SA/Data/biotic_year_1994_species_162064.xml"
-# lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE
+# lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; convertColumns = FALSE
 # file = "C:\\Users\\a22357\\Dropbox\\Workstuff\\Meetings\\2019 Data Limited SA course\\Vassild SA\\Data\\biotic_year_1989_species_162064.xml"
-processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = FALSE, coreDataOnly = TRUE) {
+processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = FALSE, coreDataOnly = TRUE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE) {
   
- ## Read the Biotic file ----
+  ## Read the Biotic file ----
   
   dt <- RstoxData::readXmlFile(file)
   
-  dt <- lapply(dt, function(k) {
-    k <- as.data.frame(k)
-  })
-  
- ## Mission data ---
+  ## Mission data ---
   
   if(coreDataOnly) {
-      msn <- dt$mission[coreDataList("mission")]
-    } else {
-      msn <- dt$mission
+    msn <- dt$mission[, coreDataList("mission"), with = FALSE]
+  } else {
+    msn <- setDT(dt$mission)
   }
   
-  msn <- convertColumnTypes(msn)
+  if(convertColumns) {
+    msn <- convertColumnTypes(msn)
+  } # add else here to fix the Norwegian letters
+  
   msn$missionid <- rownames(msn)
   
- ## Station data ---
+  ## Station data ---
   
   if(coreDataOnly) {
-     stn <- dt$fishstation[coreDataList("fishstation")]
+    stn <- dt$fishstation[, coreDataList("fishstation"), with = FALSE]
   } else {
-     stn <- dt$fishstation
+    stn <- setDT(dt$fishstation)
   }
- 
-  stn$stationstartdate <- strptime(paste(stn$stationstartdate, stn$stationstarttime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")
-  stn <- stn[!names(stn) %in% "stationstarttime"]
- 
+  
+  stn[is.na(stationstarttime), stationstarttime := "00:00:00.000Z"]
+  
+  stn[, stationstartdate := as.POSIXct(paste(stn$stationstartdate, stn$stationstarttime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")]
+  
+  stn[, stationstarttime := NULL]
+  
   if(!coreDataOnly) {
-    stn$stationstopdate <- strptime(paste(stn$stationstopdate, stn$stationstoptime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")
-    stn <- stn[!names(stn) %in% "stationstoptime"]
+    stn[is.na(stationstoptime), stationstoptime := "00:00:00.000Z"]
+    stn[, stationstopdate := as.POSIXct(paste(stn$stationstopdate, stn$stationstoptime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")]
+    stn[, stationstoptime := NULL]
   }
- 
-  stn <- convertColumnTypes(stn)
- 
+  
+  if(convertColumns) {
+    stn <- convertColumnTypes(stn)  
+  }
+  
+  
+  ##________________
   ## Sample data ---
   
   if(coreDataOnly) {
-     cth <- dt$catchsample[coreDataList("catchsample")]
+    cth <- dt$catchsample[, coreDataList("catchsample"), with = FALSE]
   } else {
-     cth <- dt$catchsample
+    cth <- dt$catchsample
   }
   
-  # Fix weigth and length
+  if(convertColumns) {
+    cth <- convertColumnTypes(cth) 
+  }
   
-  cth <- convertColumnTypes(cth)
-  
+  ##____________________
   ## Individual data ---
   
   if(coreDataOnly) {
-     ind <- dt$individual[coreDataList("individual")]
+    ind <- dt$individual[, coreDataList("individual"), with = FALSE]
   } else {
-     ind <- dt$individual
+    ind <- setDT(dt$individual)
   }
   
-  ind <- convertColumnTypes(ind)
+  if(convertColumns) {
+    ind <- convertColumnTypes(ind)
+  }
   
   ### Length conversion
-  ind$length <- 
-    if (lengthUnit == "cm") {
-    ind$length * 100
+  
+  if (lengthUnit == "cm") {
+    ind[, length := length*100]
   } else if (lengthUnit == "mm") {
-    ind$length * 1000
-  } else {
-    ind$length
-  }
+    ind[, length := length*1000]
+  } 
   
   ### Weigth conversion
   
   if(sum(is.na(ind$individualweight)) != nrow(ind)) {
-    ind$individualweight <- 
-      if (weightUnit == "g") {
-        ind$individualweight * 1000
-      } else {
-        ind$individualweight
-      }  
+    
+    if (weightUnit == "g") {
+      ind[, individualweight := individualweight*1000]
+    }  
   }
-
+  
   ## Age data ---
   
   if(coreDataOnly) {
-     age <- dt$agedetermination[coreDataList("agedetermination")]
+    age <- dt$agedetermination[, coreDataList("agedetermination"), with = FALSE]
   } else {
-     age <- dt$agedetermination
+    age <- setDT(dt$agedetermination)
   }
   
-  age <- convertColumnTypes(age)
+  if(convertColumns) {
+    age <- convertColumnTypes(age)
+  }
   
   ## Compiled datasets ----
   
   tmp <- coreDataList("fishstation")
   tmp <- tmp[!tmp %in% "stationstarttime"]
   
-  coredat <- merge(msn[c("missiontype", "startyear", "platform", "missionnumber", "missionid", "platformname")], stn[tmp], all = TRUE)
+  coredat <- merge(msn[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "platformname")], stn[, tmp, with = FALSE], all = TRUE)
   
-  stndat <- merge(coredat, cth[coreDataList("catchsample")], all.y = TRUE)
-  rownames(stndat) <- 1:nrow(stndat)
+  # Stndat
   
+  stndat <- merge(coredat, cth[, coreDataList("catchsample"), with = FALSE], all.y = TRUE, by = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber"))
   
-  inddat <- merge(stndat[c("missiontype", "startyear", "platform", "missionnumber", "missionid", "serialnumber", "catchsampleid", "platformname", "longitudestart", "latitudestart", "gear", "commonname")], ind[coreDataList("individual")], all.y = TRUE)
-  inddat <- merge(inddat, age[coreDataList("agedetermination")], all = TRUE)
+  # Inddat
   
-  rownames(inddat) <- 1:nrow(inddat)
+  x <- stndat[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "serialnumber", "catchsampleid", "platformname", "longitudestart", "latitudestart", "gear", "commonname")]
+  y <- ind[, coreDataList("individual"), with = FALSE]
+  inddat <- x[y, on = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid")]
+  inddat <- merge(inddat, age[, coreDataList("agedetermination"), with = FALSE], all = TRUE)
   
   ## Return ----
   
-  out <- list(mission = msn, fishstation = stn, catchsample = cth, individual = ind, agedetermination = age, stnall = stndat, indall = inddat)
+  if(returnOriginal) {
+    out <- list(mission = msn, fishstation = stn, catchsample = cth, individual = ind, agedetermination = age, stnall = stndat, indall = inddat)
+  } else {
+    out <- list(stnall = stndat, indall = inddat)
+  }
   
   out <- lapply(out, function(k) {
     if(nrow(k) == 0) {
@@ -133,15 +150,25 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
     }
   })
   
-  if(removeEmpty) {
+  if(!dataTable) {
     out <- lapply(out, function(k) {
-      k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
+      k <- as.data.frame(k)
+    })
+    
+    if(removeEmpty) {
+      out <- lapply(out, function(k) {
+        k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
+      })
+    }
+  } else if(removeEmpty) {
+    out <- lapply(out, function(k) {
+      k[,which(unlist(lapply(k, function(x)!all(is.na(x))))),with = FALSE]
     })
   }
-      
+  
   class(out) <- "bioticProcData"
   out
-
+  
 }
 
 ## Core data columns list ----
@@ -154,25 +181,27 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
 
 coreDataList <- function(type) {
   switch(type,
-         mission = c(c("missiontype", "startyear", "platform", "missionnumber", "missiontypename", "callsignal", "platformname", "cruise", "missionstartdate", "missionstopdate", "purpose")),
-         fishstation = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "station", "stationstartdate", "stationstarttime", "longitudestart", "latitudestart", "bottomdepthstart", "fishingdepthmin", "gear", "distance"),
-         individual = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "sex", "maturationstage", "specialstage", "length", "individualweight"),
-         catchsample = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount"),
-         agedetermination = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "age", "readability"),
-         stop("Undefined type argument"))
+    mission = c(c("missiontype", "startyear", "platform", "missionnumber", "missiontypename", "callsignal", "platformname", "cruise", "missionstartdate", "missionstopdate", "purpose")),
+    fishstation = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "station", "stationstartdate", "stationstarttime", "longitudestart", "latitudestart", "bottomdepthstart", "fishingdepthmin", "gear", "distance"),
+    individual = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "sex", "maturationstage", "specialstage", "length", "individualweight"),
+    catchsample = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount"),
+    agedetermination = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "age", "readability"),
+    stop("Undefined type argument"))
 }
 
 ## Convert column types ----
 
 #' @title Converts column types in a data frame to (hopefully) correct types
 #' @description Converts column types in a data frame to (hopefully) correct types
-#' @param df a data.frame
-#' @return Returns a data.frame with corrected column types. Also corrects misinterpreted Norwegian letters and dates.
+#' @param k a data.table
+#' @return Returns a data.table with corrected column types. Also corrects misinterpreted Norwegian letters and dates.
 #' @author Mikko Vihtakari (Institute of Marine Research)
 
 convertColumnTypes <- function(df) {
   
-  out <- lapply(df, function(k) {
+  ## Conversion function
+  
+  convertFun <- function(k) {
     
     if (all(is.na(k))) { # no conversion if all NA
       k
@@ -189,31 +218,35 @@ convertColumnTypes <- function(df) {
     } else {
       stop("column type conversion failed.")
     }
-    
-  })
+  }
   
-  as.data.frame(out, stringsAsFactors = FALSE)
+  ## Conversion
+  
+  df[, lapply(.SD, convertFun)]
+  
 }
+
+
 
 ## Warning/Error catcher ----
 
 #' @title tryCatch both warnings (with value) and errors
 #' @param expr an \R expression to evaluate
-#' @return List of logical indicating whether the \code{expr} produces a warning or error.
+#' @return List of logicals indicating whether the \code{expr} produces a warning or error.
 #' @author Martin Maechler; Copyright (C) 2010-2012 The R Core Team, Mikko Vihtakari (Institute of Marine Research)
 
 tryCatchWE <- function(expr) {
-    W <- NULL
-    
-    w.handler <- function(w){ # warning handler
-      W <<- w
-      invokeRestart("muffleWarning")
-    }
-    
-    er <- withCallingHandlers(tryCatch(expr, error = function(e) e), warning = w.handler)
-    
-    list(error = "error" %in% class(er), warning = !is.null(W))
-    
+  W <- NULL
+  
+  w.handler <- function(w){ # warning handler
+    W <<- w
+    invokeRestart("muffleWarning")
+  }
+  
+  er <- withCallingHandlers(tryCatch(expr, error = function(e) e), warning = w.handler)
+  
+  list(error = "error" %in% class(er), warning = !is.null(W))
+  
 }
 
 ## Correct Norwegian letters ----
@@ -258,7 +291,7 @@ correctNorwegianLetters <- function(x) {
 #' @seealso \code{\link{processBioticFile}} \code{\link{processBioticData}}
 
 print.bioticProcData <- function(x, ...) {
-
+  
   cat("Processed Biotic Data object")
   cat(paste(" of class", class(x)), sep = "\n")
   cat(NULL, sep = "\n")

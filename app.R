@@ -1,4 +1,4 @@
-## Libraries required to run the app
+## Libraries required to run the app ####
 
 require(shiny)
 
@@ -20,14 +20,14 @@ if(!"RstoxData" %in% installed.packages()[,"Package"]) {
 
 source("functions.R", encoding = "utf-8")
 
-######################
+##____________________
 ## User interface ####
 
 ## Header
 
 header <- dashboardHeader(title = "Biotic Explorer")
 
-###############
+##_____________
 ## Sidebar ####
 
 sidebar <- 
@@ -61,7 +61,7 @@ sidebar <-
     textOutput("res")
   )
 
-############
+##..........
 ## Body ####
 
 body <- 
@@ -87,7 +87,7 @@ body <-
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1.5 (alpha), 2019-07-12", align = "right")
+            h5("Version 0.1.6 (alpha), 2019-07-12", align = "right")
           )
         )
       ),
@@ -107,7 +107,7 @@ body <-
               
               fileInput("file1",
                 label = "Choose xml input file",
-                #multiple = TRUE,
+                multiple = TRUE,
                 accept = c(
                   ".xml"
                 )
@@ -268,7 +268,7 @@ body <-
 
 ui <- dashboardPage(header, sidebar, body)
 
-##############
+##............
 ## Server ####
 
 server <- shinyServer(function(input, output, session) {
@@ -283,12 +283,10 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(req(input$file1), {
     
-    tryCatch(
-      {
-        dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly)
-      },
+    tryCatch({
+      dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = FALSE)
+    },
       error = function(e) {
-        # return a safeError if a parsing error occurs
         stop(safeError(e))
       }
     )
@@ -306,7 +304,14 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  ##################
+  ##..............
+  ## Test output
+  
+  # output$test <- renderText({
+  #   paste(input$file1[1], collapse = ", ")
+  # })
+  
+  ##................
   ## Subsetting ####
   
   observeEvent(req(input$file1), {
@@ -456,11 +461,6 @@ server <- shinyServer(function(input, output, session) {
   
   ################
   ## Download ####
-  
-  
-  output$test <- renderText({
-    paste(input$subLon, collapse = ", ")
-  })
   
   output$downloadData <- downloadHandler(
     
@@ -655,7 +655,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   
-  ###################
+  #..................
   ## Station map ####
   
   observeEvent(req(input$file1), {
@@ -663,7 +663,8 @@ server <- shinyServer(function(input, output, session) {
     if(!input$performanceMode) {
       output$stationMap <- renderLeaflet({
         
-        leaflet::leaflet(rv$stnall) %>% 
+        leaflet::leaflet(
+          rv$stnall[!is.na(rv$stnall$longitudestart) & !is.na(rv$stnall$latitudestart),]) %>% 
           setView(lng = 12, lat = 75, zoom = 2) %>% 
           addTiles() %>% 
           addRectangles(
