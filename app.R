@@ -284,7 +284,7 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(req(input$file1), {
     
     tryCatch({
-      dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = FALSE)
+      dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
     },
       error = function(e) {
         stop(safeError(e))
