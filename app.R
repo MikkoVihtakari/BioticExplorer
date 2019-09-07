@@ -102,7 +102,7 @@ body <-
                        h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
                        br(),
                        br(),
-                       h5("Version 0.1.9 (alpha), 2019-09-06", align = "right")
+                       h5("Version 0.1.10 (alpha), 2019-09-07", align = "right")
                 )
               )
       ),
@@ -211,6 +211,10 @@ body <-
                     plotOutput("speciesCompositionPlot")
                 ),
                 
+                box(title = "Total catch weight", width = 12, status = "info", solidHeader = TRUE,
+                    plotOutput("catchweightSumPlot")
+                ),
+                
                 box(title = "Catch weight mean and standard error", width = 12, status = "info", solidHeader = TRUE,
                     plotOutput("catchweightMeanPlot")
                 ),
@@ -233,10 +237,10 @@ body <-
                 ),
                 
                 box(title = "Map of catches (in kg)", width = 12, status = "info", 
-                    solidHeader = TRUE,
+                    solidHeader = TRUE, height = 850,
                     selectInput("catchMapSpecies", "Species", 
                                 choices = NULL),
-                    leafletOutput(outputId = "catchMap")
+                    leafletOutput(outputId = "catchMap", height = 700)
                 )
               )
       ),
@@ -341,7 +345,7 @@ server <- shinyServer(function(input, output, session) {
     updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
     updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
     updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
-    updateSelectInput(session, "catchMapSpecies", choices = c("All", unique(rv$stnall$commonname)))
+    updateSelectInput(session, "catchMapSpecies", choices = c("All", sort(unique(rv$stnall$commonname))))
     
     min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
     max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
@@ -350,7 +354,7 @@ server <- shinyServer(function(input, output, session) {
     min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
     max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
     updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
-  
+    
   })
   
   
@@ -691,7 +695,8 @@ server <- shinyServer(function(input, output, session) {
                     lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
                     lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
                     lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
-          addTiles() %>% 
+          addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                   attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
           addRectangles(
             lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
             fillColor = "transparent") %>% 
@@ -733,10 +738,23 @@ server <- shinyServer(function(input, output, session) {
     
     tmp <- rv$stnall[!is.na(rv$stnall$catchweight),]
     
-    tmp2 <- tmp %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight), se = se(catchweight), max = max(catchweight), min = min(catchweight))
-    tmp2 <- tmp2[order(-tmp2$mean),]
+    tmp2 <- tmp %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight, na.rm = TRUE), se = se(catchweight), max = max(catchweight, na.rm = TRUE), min = min(catchweight, na.rm = TRUE), sum = sum(catchweight, na.rm = TRUE))
+    tmp2 <- tmp2[order(-tmp2$sum),]
     tmp2$commonname <- factor(tmp2$commonname, tmp2$commonname)
     tmp$commonname <- factor(tmp$commonname, tmp2$commonname)
+    
+    output$catchweightSumPlot <- renderPlot({
+      ggplot(tmp2, aes(x = commonname, y = sum)) + 
+        geom_col() + 
+        scale_y_log10("Summed catch weight [log10(kg)]") +
+        xlab("Species database name") +
+        coord_cartesian() + 
+        theme_classic(base_size = 14) +
+        annotate("text", x = Inf, y = Inf, label = paste("Total catch\n all species\n", round(sum(tmp2$sum), 0), "kg"), vjust = 1, hjust = 1) + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      
+    })
+    
     
     output$catchweightMeanPlot <- renderPlot({
       ggplot(tmp2, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) + 
@@ -830,28 +848,53 @@ server <- shinyServer(function(input, output, session) {
         tmp <- rv$stnall %>% 
           filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
           group_by(startyear, serialnumber, longitudestart, 
-                   latitudestart, gear, bottomdepthstart) %>% 
-          summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 1))
+                   latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
+          summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
         
+        tmp2 <- rv$stnall %>% filter(!is.na(longitudestart) & !is.na(latitudestart))
+        
+        tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
+        
+        if (nrow(tmp2) > 0) tmp2$catchsum <- 0
         
         output$catchMap <- renderLeaflet({
           
-          leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
-            fitBounds(lng1 = min(tmp$longitudestart, na.rm = TRUE),
-                      lng2 = max(tmp$longitudestart, na.rm = TRUE),
-                      lat1 = min(tmp$latitudestart, na.rm = TRUE),
-                      lat2 = max(tmp$latitudestart, na.rm = TRUE)) %>% 
-            addTiles() %>%
+          p <- leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
+            fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
+                      lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
+                      lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
+                      lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
+            addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                     attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
             addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
-                       weight = 2, radius = ~ catchsum*100, 
-                       label = ~as.character(catchsum), 
+                       weight = 4, radius = ~ catchsum*100, 
+                       label = paste0(tmp$serialnumber, "; ", tmp$catchsum, " kg"), 
                        popup = paste("Serial number:", tmp$serialnumber, "<br>",
+                                     "Date:", tmp$stationstartdate, "<br>",
                                      "Gear code:", tmp$gear, "<br>",
                                      "Bottom depth:", round(tmp$bottomdepthstart, 0), "m",
                                      "<br>", input$catchMapSpecies, "catch:", tmp$catchsum, 
                                      "kg"), 
                        color = "red", fill = NA
             ) 
+          
+          if (nrow(tmp2) > 0) {
+            p %>% 
+              addCircles(lat = tmp2$latitudestart, lng = tmp2$longitudestart, 
+                         weight = 4, radius = 1, 
+                         label = paste0(tmp2$serialnumber, "; ", tmp2$catchsum, " kg"), 
+                         popup = paste("Serial number:", tmp2$serialnumber, "<br>",
+                                       "Date:", tmp2$stationstartdate, "<br>",
+                                       "Gear code:", tmp2$gear, "<br>",
+                                       "Bottom depth:", round(tmp2$bottomdepthstart, 0), "m",
+                                       "<br>", input$catchMapSpecies, "catch:", tmp2$catchsum, 
+                                       "kg"), 
+                         color = "black"
+              )
+          } else {
+            p
+          }
+          
         })
         
       }) 
