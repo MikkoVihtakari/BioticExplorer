@@ -107,7 +107,7 @@ body <-
                        h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
                        br(),
                        br(),
-                       h5("Version 0.1.11 (alpha), 2019-09-07", align = "right")
+                       h5("Version 0.1.12 (alpha), 2019-09-07", align = "right")
                 )
               )
       ),
@@ -208,7 +208,7 @@ body <-
                          sliderInput(inputId = "subLat", label = "Latitude:", min = -90, 
                                      max = 90, value = c(-90, 90)),
                          actionButton(inputId = "Subset", label = "Subset")
-                         #verbatimTextOutput("test")
+                         # , verbatimTextOutput("test")
                          
                        ),
                        
@@ -334,7 +334,12 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(req(input$file1), {
     
     tryCatch({
-      dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+      
+      if (length(input$file1[[1]]) > 1) {
+        dat <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+      } else {
+        dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+      }
     },
     error = function(e) {
       stop(safeError(e))
@@ -358,9 +363,10 @@ server <- shinyServer(function(input, output, session) {
   ## Test output
   
   # output$test <- renderText({
-  #   paste(input$file1[1], collapse = ", ")
+  #   length(input$file1[[1]])
+  #   # paste(input$file1[[1]], collapse = "; ")
   # })
-  
+
   ##................
   ## Subsetting ####
   
@@ -903,7 +909,7 @@ server <- shinyServer(function(input, output, session) {
             addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                      attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
             addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
-                       weight = 4, radius = ~ catchsum*100, 
+                       weight = 4, radius = 5e4*(tmp$catchsum/max(tmp$catchsum)), 
                        label = paste0(tmp$serialnumber, "; ", tmp$catchsum, " kg"), 
                        popup = paste("Serial number:", tmp$serialnumber, "<br>",
                                      "Date:", tmp$stationstartdate, "<br>",

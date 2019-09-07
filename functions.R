@@ -213,7 +213,7 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
   
   # Convert column classes
   
-  if(convertColumns) {
+  if (convertColumns) {
     out <- lapply(out, function(k) {
       convertColumnTypes(k)
     })
@@ -221,17 +221,17 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
   
   # Convert to data.frames and/or remove empty columns
   
-  if(!dataTable) {
+  if (!dataTable) {
     out <- lapply(out, function(k) {
       k <- as.data.frame(k)
     })
   
-    if(removeEmpty) {
+    if (removeEmpty) {
       out <- lapply(out, function(k) {
         k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
       })
     }
-  } else if(removeEmpty) {
+  } else if (removeEmpty) {
     out <- lapply(out, function(k) {
       k[,which(unlist(lapply(k, function(x)!all(is.na(x))))),with = FALSE]
     })
