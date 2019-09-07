@@ -102,7 +102,7 @@ body <-
                        h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
                        br(),
                        br(),
-                       h5("Version 0.1.8 (alpha), 2019-09-06", align = "right")
+                       h5("Version 0.1.9 (alpha), 2019-09-06", align = "right")
                 )
               )
       ),
@@ -235,7 +235,7 @@ body <-
                 box(title = "Map of catches (in kg)", width = 12, status = "info", 
                     solidHeader = TRUE,
                     selectInput("catchMapSpecies", "Species", 
-                                c("All", unique(rv$stnall$commonname))),
+                                choices = NULL),
                     leafletOutput(outputId = "catchMap")
                 )
               )
@@ -341,6 +341,7 @@ server <- shinyServer(function(input, output, session) {
     updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
     updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
     updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
+    updateSelectInput(session, "catchMapSpecies", choices = c("All", unique(rv$stnall$commonname)))
     
     min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
     max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
@@ -349,6 +350,7 @@ server <- shinyServer(function(input, output, session) {
     min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
     max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
     updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
+  
   })
   
   
