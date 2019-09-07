@@ -130,7 +130,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   tmp <- coreDataList("fishstation")
   tmp <- tmp[!tmp %in% "stationstarttime"]
   
-  coredat <- merge(msn[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "platformname")], stn[, tmp, with = FALSE], all = TRUE)
+  coredat <- merge(msn[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "platformname", "cruise")], stn[, tmp, with = FALSE], all = TRUE)
   
   # Stndat
   
@@ -138,7 +138,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   # Inddat
   
-  x <- stndat[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "serialnumber", "catchsampleid", "platformname", "longitudestart", "latitudestart", "gear", "commonname")]
+  x <- stndat[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "serialnumber", "catchsampleid", "platformname", "cruise", "longitudestart", "latitudestart", "gear", "commonname")]
   y <- ind[, coreDataList("individual"), with = FALSE]
   inddat <- x[y, on = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid")]
   inddat <- age[, coreDataList("agedetermination"), with = FALSE][inddat, on = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid")]

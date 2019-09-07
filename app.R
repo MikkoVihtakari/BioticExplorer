@@ -12,12 +12,17 @@ if (Sys.info()["sysname"] == "Windows") {
   os <- "Linux"
 }
 
-if (os == "Linux") {
+### OS specific exceptions
+
+if (!capabilities()["X11"] & os == "Linux") {
+  options(bitmapType = "cairo")
+  
   required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "Cairo", "scales")
-  options(shiny.usecairo = T)
 } else {
   required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "scales")
 }
+
+### Install missing packages
 
 new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
 if (length(new.packages) > 0) install.packages(new.packages)
@@ -102,7 +107,7 @@ body <-
                        h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
                        br(),
                        br(),
-                       h5("Version 0.1.10 (alpha), 2019-09-07", align = "right")
+                       h5("Version 0.1.11 (alpha), 2019-09-07", align = "right")
                 )
               )
       ),
@@ -174,16 +179,37 @@ body <-
                          title = "2. Filter data by", status = "primary", solidHeader = TRUE,
                          collapsible = TRUE, width = NULL, 
                          
-                         selectInput(inputId = "subYear", label = "Year:", choices = NULL, multiple = TRUE),
-                         selectInput(inputId = "subSpecies", label = "Species:", choices = NULL, multiple = TRUE),
-                         #selectInput(inputId = "subCruise", label = "Cruise number:", choices = NULL, multiple = TRUE),
-                         selectInput(inputId = "subPlatform", label = "Platform name:", choices = NULL, multiple = TRUE),
-                         selectInput(inputId = "subSerialnumber", label = "Serial number:", choices = NULL, multiple = TRUE),
-                         selectInput(inputId = "subGear", label = "Gear code:", choices = NULL, multiple = TRUE),
-                         sliderInput(inputId = "subLon", label = "Longitude:", min = -180, max = 180, value = c(-180, 180)),
-                         sliderInput(inputId = "subLat", label = "Latitude:", min = -90, max = 90, value = c(-90, 90)),
+                         fluidRow(
+                           column(6, 
+                                  selectInput(inputId = "subYear", label = "Year:",
+                                              choices = NULL, multiple = TRUE),
+                                  selectInput(inputId = "subSurveySeries", 
+                                              label = "Survey series:",
+                                              choices = "Not implemented yet", multiple = TRUE),
+                                  selectInput(inputId = "subCruise", label = "Cruise number:",
+                                              choices = NULL, multiple = TRUE),
+                                  selectInput(inputId = "subPlatform", label = "Platform name:",
+                                              choices = NULL, multiple = TRUE)
+                           ),
+                           
+                           column(6,
+                                  selectInput(inputId = "subSpecies", label = "Species:", 
+                                              choices = NULL, multiple = TRUE),
+                                  selectInput(inputId = "subSerialnumber", 
+                                              label = "Serial number:",
+                                              choices = NULL, multiple = TRUE),
+                                  selectInput(inputId = "subGear", label = "Gear code:",
+                                              choices = NULL, multiple = TRUE)
+                           )),
+                         
+                         
+                         sliderInput(inputId = "subLon", label = "Longitude:", min = -180, 
+                                     max = 180, value = c(-180, 180)),
+                         sliderInput(inputId = "subLat", label = "Latitude:", min = -90, 
+                                     max = 90, value = c(-90, 90)),
                          actionButton(inputId = "Subset", label = "Subset")
                          #verbatimTextOutput("test")
+                         
                        ),
                        
                        box(title = "Station locations", status = "primary", width = NULL,
@@ -338,10 +364,10 @@ server <- shinyServer(function(input, output, session) {
   ##................
   ## Subsetting ####
   
-  observeEvent(req(input$file1), {
+  observeEvent(c(req(input$file1), input$Subset), {
     updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
     updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
-    #updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
+    updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
     updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
     updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
     updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
@@ -370,6 +396,12 @@ server <- shinyServer(function(input, output, session) {
       unique(rv$inputData$stnall$commonname)
     } else {
       input$subSpecies
+    }
+    
+    rv$sub$cruise <- if (is.null(input$subCruise)) {
+      unique(rv$inputData$stnall$cruise)
+    } else {
+      input$subCruise
     }
     
     rv$sub$platform <- if (is.null(input$subPlatform)) {
@@ -406,6 +438,7 @@ server <- shinyServer(function(input, output, session) {
     tmp <- tmp %>% dplyr::filter(
       startyear %in% rv$sub$year, 
       commonname %in% rv$sub$species,
+      cruise %in% rv$sub$cruise,
       platformname %in% rv$sub$platform,
       serialnumber %in% rv$sub$serialnumber,
       gear %in% rv$sub$gear,
@@ -421,6 +454,7 @@ server <- shinyServer(function(input, output, session) {
     tmp <- tmp %>% dplyr::filter(
       startyear %in% rv$sub$year, 
       commonname %in% rv$sub$species,
+      cruise %in% rv$sub$cruise,
       platformname %in% rv$sub$platform,
       serialnumber %in% rv$sub$serialnumber,
       gear %in% rv$sub$gear,
@@ -741,6 +775,7 @@ server <- shinyServer(function(input, output, session) {
     tmp2 <- tmp %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight, na.rm = TRUE), se = se(catchweight), max = max(catchweight, na.rm = TRUE), min = min(catchweight, na.rm = TRUE), sum = sum(catchweight, na.rm = TRUE))
     tmp2 <- tmp2[order(-tmp2$sum),]
     tmp2$commonname <- factor(tmp2$commonname, tmp2$commonname)
+    tmp2$se[is.na(tmp2$se)] <- 0
     tmp$commonname <- factor(tmp$commonname, tmp2$commonname)
     
     output$catchweightSumPlot <- renderPlot({
@@ -789,6 +824,7 @@ server <- shinyServer(function(input, output, session) {
     
     tmp2 <- tmp %>% group_by(commonname) %>% summarise(mean = mean(catchcount), se = se(catchcount), max = max(catchcount), min = min(catchcount))
     tmp2 <- tmp2[order(-tmp2$mean),]
+    tmp2$se[is.na(tmp2$se)] <- 0
     tmp2$commonname <- factor(tmp2$commonname, tmp2$commonname)
     tmp$commonname <- factor(tmp$commonname, tmp2$commonname)
     
