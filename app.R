@@ -54,12 +54,12 @@ sidebar <-
       menuItem("Information", tabName = "info", icon = icon("info-circle")),
       menuItem("Upload & filter", tabName = "upload", icon = icon("arrow-circle-up")),
       menuItem("Stations & catches", icon = icon("ship"),
-        menuSubItem("Overview", tabName = "stnallOverview"),
-        menuSubItem("Examine data", tabName = "stnallExamine")
+               menuSubItem("Overview", tabName = "stnallOverview"),
+               menuSubItem("Examine data", tabName = "stnallExamine")
       ),
       menuItem("Individuals & ages", icon = icon("fish"),
-        menuSubItem("Overview", tabName = "indallOverview"),
-        menuSubItem("Examine data", tabName = "indallExamine")
+               menuSubItem("Overview", tabName = "indallOverview"),
+               menuSubItem("Examine data", tabName = "indallExamine")
       ),
       menuItem("Mission data", icon = icon("bar-chart-o"), tabName = "missionExamine"
       ),
@@ -83,167 +83,172 @@ body <-
   dashboardBody(
     tabItems(
       tabItem("info", 
-        
-        fluidRow(
-          column(width = 12,
-            h1("Welcome to the Biotic Explorer", align = "center"),
-            br(),
-            p("This is a", a("Shiny app", href = "http://shiny.rstudio.com"), "allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used within the Institute of Marine Research database. To start with the app, click the", strong("'Upload & filter'"), "tab on the side panel."),
-            h4("Work-flow"),
-            p("1)", strong("Upload data:"), "Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant."),
-            p("2)", strong("Filter data:"), "Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected."),
-            p("3) You can examine the station and catch data by clicking the 'Stations & catches' tab. Use the 'Overview' sub-tab for a graphical overview or the 'Examine' tab for a tabular overview, which you can filter and search as you wish, but note that filtering here does not influence the returned data."),
-            p("4) Similarly, an overview of individual measured fish is given under 'Individuals & ages' tab."),
-            p("5) 'Mission data' through 'Age data' tabs give a tabular overview of each data type in the NMD xml Biotic file."),
-            p("6)", strong("Download"), "filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types, note that the csv format will be returned as a zip file. Downloading zip files might not work if you run the app in RStudio window. Try again using the 'Run External' option (i.e. run the app in web-browser."),
-            br(),
-            br(),
-            h5("Author and contact person: Mikko Vihtakari (mikko.vihtakari@hi.no)", align = "left"),
-            h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
-            br(),
-            br(),
-            h5("Version 0.1.7 (alpha), 2019-09-06", align = "right")
-          )
-        )
+              
+              fluidRow(
+                column(width = 12,
+                       h1("Welcome to the Biotic Explorer", align = "center"),
+                       br(),
+                       p("This is a", a("Shiny app", href = "http://shiny.rstudio.com"), "allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used within the Institute of Marine Research database. To start with the app, click the", strong("'Upload & filter'"), "tab on the side panel."),
+                       h4("Work-flow"),
+                       p("1)", strong("Upload data:"), "Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant."),
+                       p("2)", strong("Filter data:"), "Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected."),
+                       p("3) You can examine the station and catch data by clicking the 'Stations & catches' tab. Use the 'Overview' sub-tab for a graphical overview or the 'Examine' tab for a tabular overview, which you can filter and search as you wish, but note that filtering here does not influence the returned data."),
+                       p("4) Similarly, an overview of individual measured fish is given under 'Individuals & ages' tab."),
+                       p("5) 'Mission data' through 'Age data' tabs give a tabular overview of each data type in the NMD xml Biotic file."),
+                       p("6)", strong("Download"), "filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types, note that the csv format will be returned as a zip file. Downloading zip files might not work if you run the app in RStudio window. Try again using the 'Run External' option (i.e. run the app in web-browser."),
+                       br(),
+                       br(),
+                       h5("Author and contact person: Mikko Vihtakari (mikko.vihtakari@hi.no)", align = "left"),
+                       h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
+                       br(),
+                       br(),
+                       h5("Version 0.1.8 (alpha), 2019-09-06", align = "right")
+                )
+              )
       ),
       tabItem("upload",
-        
-        fluidRow(
-          
-          ## Column 1 ###
-          column(width = 6,
-            
-            box(
-              title = "1. Upload NMD Biotic xml files", status = "primary", solidHeader = TRUE,
-              width = NULL, collapsible = TRUE, 
               
-              strong("Performance mode:"),
-              checkboxInput("performanceMode", "For large (>200 Mb) files. Disables features that burden memory.", FALSE),
-              
-              fileInput("file1",
-                label = "Choose xml input file",
-                multiple = TRUE,
-                accept = c(
-                  ".xml"
+              fluidRow(
+                
+                ## Column 1 ###
+                column(width = 6,
+                       
+                       box(
+                         title = "1. Upload NMD Biotic xml files", status = "primary", solidHeader = TRUE,
+                         width = NULL, collapsible = TRUE, 
+                         
+                         strong("Performance mode:"),
+                         checkboxInput("performanceMode", "For large (>200 Mb) files. Disables features that burden memory.", FALSE),
+                         
+                         fileInput("file1",
+                                   label = "Choose xml input file",
+                                   multiple = TRUE,
+                                   accept = c(
+                                     ".xml"
+                                   )
+                         ),
+                         "Note that processing takes some time for large files even after 'Upload complete' shows up. Be patient.",
+                         hr(),
+                         
+                         strong("Drop excess data:"),
+                         checkboxInput("removeEmpty", "Remove empty columns", FALSE),
+                         checkboxInput("coreDataOnly", "Keep only important columns", TRUE),
+                         
+                         radioButtons("lenghtUnit", "Fish length unit:",
+                                      c("Millimeter" = "mm",
+                                        "Centimeter" = "cm",
+                                        "Meter" = "m"),
+                                      selected = "cm",
+                                      inline = TRUE),
+                         
+                         radioButtons("weigthUnit", "Fish weight unit:",
+                                      c("Grams" = "g",
+                                        "Kilograms" = "kg"),
+                                      selected = "kg",
+                                      inline = TRUE),
+                         
+                         strong("Remove outliers based on:"),
+                         checkboxInput("weightOutliers", "Individual weight", FALSE),
+                         checkboxInput("lengthOutliers", "Individual length", FALSE)
+                         
+                       ), 
+                       
+                       box(
+                         title = "Quick overview", width = NULL, status = "primary",
+                         valueBoxOutput("nCruisesBox"),
+                         valueBoxOutput("nStationsBox"),
+                         valueBoxOutput("nYearsBox"),
+                         valueBoxOutput("nGearsBox"),
+                         valueBoxOutput("nSpeciesBox"),
+                         valueBoxOutput("nMeasuredBox"),
+                         valueBoxOutput("DateStartBox", width = 6),
+                         valueBoxOutput("DateEndBox", width = 6)
+                       )
+                ),
+                
+                ## Column 2 ###
+                
+                column(width = 6,
+                       
+                       box(
+                         title = "2. Filter data by", status = "primary", solidHeader = TRUE,
+                         collapsible = TRUE, width = NULL, 
+                         
+                         selectInput(inputId = "subYear", label = "Year:", choices = NULL, multiple = TRUE),
+                         selectInput(inputId = "subSpecies", label = "Species:", choices = NULL, multiple = TRUE),
+                         #selectInput(inputId = "subCruise", label = "Cruise number:", choices = NULL, multiple = TRUE),
+                         selectInput(inputId = "subPlatform", label = "Platform name:", choices = NULL, multiple = TRUE),
+                         selectInput(inputId = "subSerialnumber", label = "Serial number:", choices = NULL, multiple = TRUE),
+                         selectInput(inputId = "subGear", label = "Gear code:", choices = NULL, multiple = TRUE),
+                         sliderInput(inputId = "subLon", label = "Longitude:", min = -180, max = 180, value = c(-180, 180)),
+                         sliderInput(inputId = "subLat", label = "Latitude:", min = -90, max = 90, value = c(-90, 90)),
+                         actionButton(inputId = "Subset", label = "Subset")
+                         #verbatimTextOutput("test")
+                       ),
+                       
+                       box(title = "Station locations", status = "primary", width = NULL,
+                           conditionalPanel(
+                             condition = "input.performanceMode == false",
+                             leafletOutput(outputId = "stationMap")
+                           ),
+                           
+                           conditionalPanel(
+                             condition = "input.performanceMode == true",
+                             p("Performance mode. No map. Subset data and use 'Stations & catches' -> 'Overview' to examine station locations.", align = "center")
+                           )       
+                       )
                 )
-              ),
-              "Note that processing takes some time for large files even after 'Upload complete' shows up. Be patient.",
-              hr(),
-              
-              strong("Drop excess data:"),
-              checkboxInput("removeEmpty", "Remove empty columns", FALSE),
-              checkboxInput("coreDataOnly", "Keep only important columns", TRUE),
-              
-              radioButtons("lenghtUnit", "Fish length unit:",
-                c("Millimeter" = "mm",
-                  "Centimeter" = "cm",
-                  "Meter" = "m"),
-                selected = "cm",
-                inline = TRUE),
-              
-              radioButtons("weigthUnit", "Fish weight unit:",
-                c("Grams" = "g",
-                  "Kilograms" = "kg"),
-                selected = "kg",
-                inline = TRUE),
-              
-              strong("Remove outliers based on:"),
-              checkboxInput("weightOutliers", "Individual weight", FALSE),
-              checkboxInput("lengthOutliers", "Individual length", FALSE)
-              
-            ), 
-            
-            box(
-              title = "Quick overview", width = NULL, status = "primary",
-              valueBoxOutput("nCruisesBox"),
-              valueBoxOutput("nStationsBox"),
-              valueBoxOutput("nYearsBox"),
-              valueBoxOutput("nGearsBox"),
-              valueBoxOutput("nSpeciesBox"),
-              valueBoxOutput("nMeasuredBox"),
-              valueBoxOutput("DateStartBox", width = 6),
-              valueBoxOutput("DateEndBox", width = 6)
-            )
-          ),
-          
-          ## Column 2 ###
-          
-          column(width = 6,
-            
-            box(
-              title = "2. Filter data by", status = "primary", solidHeader = TRUE,
-              collapsible = TRUE, width = NULL, 
-              
-              selectInput(inputId = "subYear", label = "Year:", choices = NULL, multiple = TRUE),
-              selectInput(inputId = "subSpecies", label = "Species:", choices = NULL, multiple = TRUE),
-              #selectInput(inputId = "subCruise", label = "Cruise number:", choices = NULL, multiple = TRUE),
-              selectInput(inputId = "subPlatform", label = "Platform name:", choices = NULL, multiple = TRUE),
-              selectInput(inputId = "subSerialnumber", label = "Serial number:", choices = NULL, multiple = TRUE),
-              selectInput(inputId = "subGear", label = "Gear code:", choices = NULL, multiple = TRUE),
-              sliderInput(inputId = "subLon", label = "Longitude:", min = -180, max = 180, value = c(-180, 180)),
-              sliderInput(inputId = "subLat", label = "Latitude:", min = -90, max = 90, value = c(-90, 90)),
-              actionButton(inputId = "Subset", label = "Subset")
-              #verbatimTextOutput("test")
-            ),
-            
-            box(title = "Station locations", status = "primary", width = NULL,
-              conditionalPanel(
-                condition = "input.performanceMode == false",
-                leafletOutput(outputId = "stationMap")
-              ),
-              
-              conditionalPanel(
-                condition = "input.performanceMode == true",
-                p("Performance mode. No map. Subset data and use 'Stations & catches' -> 'Overview' to examine station locations.", align = "center")
-              )       
-            )
-          )
-          
-          ## End columns ###
-          
-        )
+                
+                ## End columns ###
+                
+              )
       ),
       
       
       tabItem("stnallOverview",
-        fluidRow(
-          box(title = "Species composition", width = 12, status = "info", solidHeader = TRUE,
-            plotOutput("speciesCompositionPlot")
-          ),
-          
-          box(title = "Catch weight mean and standard error", width = 12, status = "info", solidHeader = TRUE,
-            plotOutput("catchweightMeanPlot")
-          ),
-          
-          box(title = "Catch weight range", width = 12, status = "info", solidHeader = TRUE,
-            plotOutput("catchweightRangePlot")
-          ),
-          
-          box(title = "Mean number in catch and standard error", width = 12, status = "info", solidHeader = TRUE,
-            plotOutput("catchcountMeanPlot")
-          ),
-          
-          box(title = "Range of number in catch", width = 12, status = "info", solidHeader = TRUE,
-            plotOutput("catchcountRangePlot")
-          ),
-          
-          box(title = "Total (summed) catch by gear type", width = 12, status = "info", 
-            solidHeader = TRUE,
-            plotOutput("gearcatchPlot", height = "600px")
-          )
-          
-          # Add and map
-        )
+              fluidRow(
+                box(title = "Species composition", width = 12, status = "info", solidHeader = TRUE,
+                    plotOutput("speciesCompositionPlot")
+                ),
+                
+                box(title = "Catch weight mean and standard error", width = 12, status = "info", solidHeader = TRUE,
+                    plotOutput("catchweightMeanPlot")
+                ),
+                
+                box(title = "Catch weight range", width = 12, status = "info", solidHeader = TRUE,
+                    plotOutput("catchweightRangePlot")
+                ),
+                
+                box(title = "Mean number in catch and standard error", width = 12, status = "info", solidHeader = TRUE,
+                    plotOutput("catchcountMeanPlot")
+                ),
+                
+                box(title = "Range of number in catch", width = 12, status = "info", solidHeader = TRUE,
+                    plotOutput("catchcountRangePlot")
+                ),
+                
+                box(title = "Total (summed) catch by gear type", width = 12, status = "info", 
+                    solidHeader = TRUE,
+                    plotOutput("gearcatchPlot", height = "600px")
+                ),
+                
+                box(title = "Map of catches (in kg)", width = 12, status = "info", 
+                    solidHeader = TRUE,
+                    selectInput("catchMapSpecies", "Species", 
+                                c("All", unique(rv$stnall$commonname))),
+                    leafletOutput(outputId = "catchMap")
+                )
+              )
       ),
       
       tabItem("stnallExamine", DT::dataTableOutput("stnall")),
       
       tabItem("indallOverview", 
-        fluidRow(
-          box(title = "Individual sample overview", width = 12, status = "info", solidHeader = TRUE,
-            DT::dataTableOutput("individualSummaryTable")
-          )
-        )
+              fluidRow(
+                box(title = "Individual sample overview", width = 12, status = "info", solidHeader = TRUE,
+                    DT::dataTableOutput("individualSummaryTable")
+                )
+              )
       ),
       
       tabItem("indallExamine", DT::dataTableOutput("indall")),
@@ -255,26 +260,26 @@ body <-
       tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
       
       tabItem("downloadDatasets", 
-        fluidRow(
-          box(
-            title = "Download data", width = 12, status = "primary", solidHeader = TRUE,
-            radioButtons("downloadFileType", "Download file type:",
-              c("R" = ".rda",
-                "csv" = ".csv",
-                "Excel" = ".xlsx"),
-              selected = ".rda"
-            ),
-            checkboxGroupInput("downloadDataType", "Data to download:",
-              c("Stations & catches" = "stnall",
-                "Individuals & ages" = "indall"
-                #"Original format" = "original"
-              ),
-              selected = c("stnall", "indall")
-            ),
-            downloadButton(outputId = "downloadData")
-            #verbatimTextOutput("test")
-          ) 
-        )
+              fluidRow(
+                box(
+                  title = "Download data", width = 12, status = "primary", solidHeader = TRUE,
+                  radioButtons("downloadFileType", "Download file type:",
+                               c("R" = ".rda",
+                                 "csv" = ".csv",
+                                 "Excel" = ".xlsx"),
+                               selected = ".rda"
+                  ),
+                  checkboxGroupInput("downloadDataType", "Data to download:",
+                                     c("Stations & catches" = "stnall",
+                                       "Individuals & ages" = "indall"
+                                       #"Original format" = "original"
+                                     ),
+                                     selected = c("stnall", "indall")
+                  ),
+                  downloadButton(outputId = "downloadData")
+                  #verbatimTextOutput("test")
+                ) 
+              )
       )
     )
   )
@@ -301,9 +306,9 @@ server <- shinyServer(function(input, output, session) {
     tryCatch({
       dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
     },
-      error = function(e) {
-        stop(safeError(e))
-      }
+    error = function(e) {
+      stop(safeError(e))
+    }
     )
     
     rv$stnall <- dat$stnall
@@ -528,15 +533,15 @@ server <- shinyServer(function(input, output, session) {
         for (i in 1:length(input$downloadDataType)) {
           addWorksheet(wb, paste(input$downloadDataType[i]))
           writeData(wb, paste(input$downloadDataType[i]), 
-            eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
+                    eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
         }
         
         saveWorkbook(wb, file)
         
       } else {
         tmp <- switch(input$downloadDataType,
-          "stnall" = rv$stnall,
-          "indall" = rv$indall)
+                      "stnall" = rv$stnall,
+                      "indall" = rv$indall)
         
         write.csv(tmp, file, row.names = FALSE) 
       }
@@ -573,7 +578,7 @@ server <- shinyServer(function(input, output, session) {
     output$DateStartBox <- renderValueBox({
       valueBox(
         value = tags$p(as.Date(min(rv$stnall$stationstartdate, na.rm = TRUE)),
-          style = "font-size: 80%;"),
+                       style = "font-size: 80%;"),
         subtitle = "First date"
       )
     })
@@ -581,7 +586,7 @@ server <- shinyServer(function(input, output, session) {
     output$DateEndBox <- renderValueBox({
       valueBox(
         value = tags$p(as.Date(max(rv$stnall$stationstartdate, na.rm = TRUE)),
-          style = "font-size: 80%;"),
+                       style = "font-size: 80%;"),
         subtitle = "Last date"
       )
     })
@@ -614,58 +619,58 @@ server <- shinyServer(function(input, output, session) {
   
   output$stnall <- DT::renderDataTable({
     DT::datatable(rv$stnall, 
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     ) %>% formatRound(c("longitudestart", "latitudestart", "distance", "catchweight", "lengthsampleweight"))
   })
   
   output$indall <- DT::renderDataTable({
     DT::datatable(rv$indall, 
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     ) %>% formatRound(c("longitudestart", "latitudestart", "length", "individualweight"))
   })
   
   
   output$missionTable <- DT::renderDataTable({
     DT::datatable(rv$mission,
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     )# %>% formatRound(c("longitudestart", "latitudestart"))
   })
   
   output$fishstation <- DT::renderDataTable({
     DT::datatable(rv$fishstation, 
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     ) %>% formatRound(c("longitudestart", "latitudestart", "distance"))
   })
   
   output$catchsample <- DT::renderDataTable({
     DT::datatable(rv$catchsample, 
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     ) %>% formatRound(c("catchweight", "lengthsampleweight"))
   })
   
   output$individualTable <- DT::renderDataTable({
     DT::datatable(rv$individual, 
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     ) 
   })
   
   output$agedeterminationTable <- DT::renderDataTable({
     DT::datatable(rv$agedetermination, 
-      options = list(scrollX = TRUE, 
-        pageLength = 20
-      ) 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 20
+                  ) 
     ) 
   })
   
@@ -689,10 +694,10 @@ server <- shinyServer(function(input, output, session) {
             lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
             fillColor = "transparent") %>% 
           addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
-            weight = 1, radius = 2, 
-            popup = ~as.character(platformname), 
-            label = ~as.character(serialnumber), 
-            color = "red", fillOpacity = 0.5
+                     weight = 1, radius = 2, 
+                     popup = ~as.character(platformname), 
+                     label = ~as.character(serialnumber), 
+                     color = "red", fillOpacity = 0.5
           )
       })
     } else {
@@ -797,20 +802,57 @@ server <- shinyServer(function(input, output, session) {
       
       output$gearcatchPlot <- renderPlot({
         ggplot(tmp2, aes(x = commonname, y = as.factor(gear), 
-          size = sum, color = sum)) +
+                         size = sum, color = sum)) +
           geom_point() + 
           scale_color_distiller(name = "Total catch [log10(kg)]", 
                                 palette = "Spectral", trans = "log10", 
                                 breaks = c(1 %o% 10^(-4:4))
-                                ) +
+          ) +
           scale_size(name = "Total catch [log10(kg)]", trans = "log10", 
-                          breaks = c(1 %o% 10^(-4:4))
-                          ) +
+                     breaks = c(1 %o% 10^(-4:4))
+          ) +
           ylab("Gear code") +
           xlab("Species database name") +
           theme_bw(base_size = 14) + 
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       })
+      
+      observeEvent(c(req(input$file1), input$Subset, input$catchMapSpecies), {
+        
+        if (input$catchMapSpecies == "All") {
+          sps <- unique(rv$stnall$commonname)
+        } else {
+          sps <- input$catchMapSpecies
+        }
+        
+        tmp <- rv$stnall %>% 
+          filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
+          group_by(startyear, serialnumber, longitudestart, 
+                   latitudestart, gear, bottomdepthstart) %>% 
+          summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 1))
+        
+        
+        output$catchMap <- renderLeaflet({
+          
+          leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
+            fitBounds(lng1 = min(tmp$longitudestart, na.rm = TRUE),
+                      lng2 = max(tmp$longitudestart, na.rm = TRUE),
+                      lat1 = min(tmp$latitudestart, na.rm = TRUE),
+                      lat2 = max(tmp$latitudestart, na.rm = TRUE)) %>% 
+            addTiles() %>%
+            addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
+                       weight = 2, radius = ~ catchsum*100, 
+                       label = ~as.character(catchsum), 
+                       popup = paste("Serial number:", tmp$serialnumber, "<br>",
+                                     "Gear code:", tmp$gear, "<br>",
+                                     "Bottom depth:", round(tmp$bottomdepthstart, 0), "m",
+                                     "<br>", input$catchMapSpecies, "catch:", tmp$catchsum, 
+                                     "kg"), 
+                       color = "red", fill = NA
+            ) 
+        })
+        
+      }) 
       
     })
     
