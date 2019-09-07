@@ -2,14 +2,29 @@
 
 require(shiny)
 
-required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table")
+### Define operating system
+
+if (Sys.info()["sysname"] == "Windows") {
+  os <- "Win"
+} else if (Sys.info()["sysname"] == "Darwin") {
+  os <- "Mac"
+} else if (Sys.info()["sysname"] == "Linux") {
+  os <- "Linux"
+}
+
+if (os == "Linux") {
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "Cairo", "scales")
+  options(shiny.usecairo = T)
+} else {
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "scales")
+}
 
 new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages) > 0) install.packages(new.packages)
+if (length(new.packages) > 0) install.packages(new.packages)
 
 sapply(required.packages, require, character.only = TRUE)
 
-if(!"RstoxData" %in% installed.packages()[,"Package"]) {
+if (!"RstoxData" %in% installed.packages()[,"Package"]) {
   devtools::install_github("StoXProject/RstoxData")
   require(RstoxData)
 } else {
@@ -87,7 +102,7 @@ body <-
             h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
             br(),
             br(),
-            h5("Version 0.1.6 (alpha), 2019-07-12", align = "right")
+            h5("Version 0.1.7 (alpha), 2019-09-06", align = "right")
           )
         )
       ),
@@ -275,7 +290,7 @@ server <- shinyServer(function(input, output, session) {
   
   ## Options
   
-  options(shiny.maxRequestSize=1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
+  options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
   
   ## Read data
   
@@ -334,43 +349,43 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$Subset, {
     
-    rv$sub$year <- if(is.null(input$subYear)) {
+    rv$sub$year <- if (is.null(input$subYear)) {
       unique(rv$inputData$stnall$startyear)
     } else {
       input$subYear
     }
     
-    rv$sub$species <- if(is.null(input$subSpecies)) {
+    rv$sub$species <- if (is.null(input$subSpecies)) {
       unique(rv$inputData$stnall$commonname)
     } else {
       input$subSpecies
     }
     
-    rv$sub$platform <- if(is.null(input$subPlatform)) {
+    rv$sub$platform <- if (is.null(input$subPlatform)) {
       unique(rv$inputData$stnall$platformname)
     } else {
       input$subPlatform
     }
     
-    rv$sub$serialnumber <- if(is.null(input$subSerialnumber)) {
+    rv$sub$serialnumber <- if (is.null(input$subSerialnumber)) {
       unique(rv$inputData$stnall$serialnumber)
     } else {
       input$subSerialnumber
     }
     
-    rv$sub$gear <- if(is.null(input$subGear)) {
+    rv$sub$gear <- if (is.null(input$subGear)) {
       unique(rv$inputData$stnall$gear)
     } else {
       input$subGear
     }
     
-    rv$sub$lon <- if(is.null(input$subLon)) {
+    rv$sub$lon <- if (is.null(input$subLon)) {
       NULL
     } else {
       input$subLon
     }
     
-    rv$sub$lat <- if(is.null(input$subLat)) {
+    rv$sub$lat <- if (is.null(input$subLat)) {
       NULL
     } else {
       input$subLat
@@ -466,11 +481,11 @@ server <- shinyServer(function(input, output, session) {
     
     filename = function() {
       
-      if(length(input$downloadDataType) == 1 & !"original" %in% input$downloadDataType) {
+      if (length(input$downloadDataType) == 1 & !"original" %in% input$downloadDataType) {
         paste0(input$downloadDataType, input$downloadFileType)
-      } else if(input$downloadFileType == ".rda") {
+      } else if (input$downloadFileType == ".rda") {
         "BioticExplorer_data.rda"
-      } else if(input$downloadFileType == ".xlsx" & !"original" %in% input$downloadDataType) {
+      } else if (input$downloadFileType == ".xlsx" & !"original" %in% input$downloadDataType) {
         "BioticExplorer_data.xlsx"
       } else {
         "BioticExplorer_data.zip"
@@ -479,14 +494,14 @@ server <- shinyServer(function(input, output, session) {
     
     content = function(file) {
       
-      if(sapply(strsplit(file, "\\."), "[", 2) == "zip") {
+      if (sapply(strsplit(file, "\\."), "[", 2) == "zip") {
         
         owd <- setwd(tempdir())
         on.exit(setwd(owd))
         files <- NULL
         
         #loop through the sheets
-        for (i in 1:length(input$downloadDataType)){
+        for (i in 1:length(input$downloadDataType)) {
           
           fileName <- paste0(input$downloadDataType[i], ".csv")
           write.csv(
@@ -497,7 +512,7 @@ server <- shinyServer(function(input, output, session) {
         #create the zip file
         zip(file,files)
         
-      } else if(sapply(strsplit(file, "\\."), "[", 2) == "rda") {
+      } else if (sapply(strsplit(file, "\\."), "[", 2) == "rda") {
         
         biotic <- lapply(input$downloadDataType, function(k) {
           eval(parse(text = paste("rv", k, sep = "$")))
@@ -507,10 +522,10 @@ server <- shinyServer(function(input, output, session) {
         
         save(biotic, file = file)
         
-      } else if(sapply(strsplit(file, "\\."), "[", 2) == "xlsx") {
+      } else if (sapply(strsplit(file, "\\."), "[", 2) == "xlsx") {
         wb <- createWorkbook()
         
-        for(i in 1:length(input$downloadDataType)) {
+        for (i in 1:length(input$downloadDataType)) {
           addWorksheet(wb, paste(input$downloadDataType[i]))
           writeData(wb, paste(input$downloadDataType[i]), 
             eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
@@ -627,7 +642,7 @@ server <- shinyServer(function(input, output, session) {
       options = list(scrollX = TRUE, 
         pageLength = 20
       ) 
-    ) %>% formatRound(c("longitudestart", "latitudestart"))
+    ) %>% formatRound(c("longitudestart", "latitudestart", "distance"))
   })
   
   output$catchsample <- DT::renderDataTable({
@@ -660,12 +675,15 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(req(input$file1), {
     
-    if(!input$performanceMode) {
+    if (!input$performanceMode) {
       output$stationMap <- renderLeaflet({
         
         leaflet::leaflet(
           rv$stnall[!is.na(rv$stnall$longitudestart) & !is.na(rv$stnall$latitudestart),]) %>% 
-          setView(lng = 12, lat = 75, zoom = 2) %>% 
+          fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
+                    lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
+                    lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
+                    lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
           addTiles() %>% 
           addRectangles(
             lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
@@ -688,7 +706,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(c(req(input$file1), input$Subset), {
     
-    tmp <- rv$stnall %>% dplyr::group_by(commonname) %>% dplyr::summarise(n = length(startyear))
+    tmp <- rv$stnall %>% dplyr::group_by(commonname) %>% dplyr::summarise(n = length(unique(paste(startyear, serialnumber))))
     tmp <- tmp[order(-tmp$n),]
     tmp$commonname <- factor(tmp$commonname, tmp$commonname)
     
@@ -699,7 +717,7 @@ server <- shinyServer(function(input, output, session) {
         xlab("Species database name") +
         coord_cartesian(expand = FALSE, ylim = range(pretty(tmp$n))) + 
         theme_classic(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
     })
     
   })
@@ -721,7 +739,7 @@ server <- shinyServer(function(input, output, session) {
         xlab("Species database name") +
         coord_cartesian() + 
         theme_classic(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
@@ -733,7 +751,7 @@ server <- shinyServer(function(input, output, session) {
         xlab("Species database name") +
         coord_cartesian() + 
         theme_classic(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
@@ -757,7 +775,7 @@ server <- shinyServer(function(input, output, session) {
         xlab("Species database name") +
         coord_cartesian() + 
         theme_classic(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
@@ -769,7 +787,7 @@ server <- shinyServer(function(input, output, session) {
         xlab("Species database name") +
         coord_cartesian() + 
         theme_classic(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
@@ -779,14 +797,19 @@ server <- shinyServer(function(input, output, session) {
       
       output$gearcatchPlot <- renderPlot({
         ggplot(tmp2, aes(x = commonname, y = as.factor(gear), 
-          size = log10(sum), color = log10(sum))) +
+          size = sum, color = sum)) +
           geom_point() + 
-          scale_color_distiller(name = "Total catch [log10(kg)]", palette = "Spectral") +
-          scale_size_area(name = "Total catch [log10(kg)]") +
+          scale_color_distiller(name = "Total catch [log10(kg)]", 
+                                palette = "Spectral", trans = "log10", 
+                                breaks = c(1 %o% 10^(-4:4))
+                                ) +
+          scale_size(name = "Total catch [log10(kg)]", trans = "log10", 
+                          breaks = c(1 %o% 10^(-4:4))
+                          ) +
           ylab("Gear code") +
           xlab("Species database name") +
           theme_bw(base_size = 14) + 
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       })
       
     })

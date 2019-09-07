@@ -121,6 +121,10 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
     age <- convertColumnTypes(age)
   }
   
+  if (nrow(age) == 0) {
+    age <- rapply(age, as.integer, how = "replace")
+  }
+  
   ## Compiled datasets ----
   
   tmp <- coreDataList("fishstation")
