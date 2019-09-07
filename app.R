@@ -40,12 +40,54 @@ if (!"RstoxData" %in% installed.packages()[,"Package"]) {
 
 source("functions.R", encoding = "utf-8")
 
+## Logo, from https://stackoverflow.com/a/32854387/1082004
+
+loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt = NULL) {
+  tagList(
+    tags$head(
+      tags$script(
+        "setInterval(function(){
+                     if ($('html').attr('class')=='shiny-busy') {
+                     $('div.busy').show();
+                     $('div.notbusy').hide();
+                     } else {
+                     $('div.busy').hide();
+                     $('div.notbusy').show();
+           }
+         },100)")
+    ),
+    tags$a(href = href,
+           div(class = "busy",  
+               img(src = loadingsrc, height = height, width = width, alt = alt)),
+           div(class = 'notbusy',
+               img(src = src, height = height, width = width, alt = alt))
+    )
+  )
+}
+
+
+
 ##____________________
 ## User interface ####
 
 ## Header
 
-header <- dashboardHeader(title = "Biotic Explorer")
+header <- dashboardHeader(
+  title = div(
+    fluidRow(
+      column(width = 1, 
+             loadingLogo("https://www.hi.no", "logo.png", "logo_bw.png", 
+                         height = "40px")), 
+      column(width = 10, p("Biotic Explorer", align = "center"))
+    )
+  ),
+  dropdownMenu(type = "notifications", headerText = "Version 0.1.13 (alpha), 2019-09-07",
+               icon = icon("cog"), badgeStatus = NULL,
+               notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
+    notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
+    notificationItem("Data policy", icon = icon("creative-commons"), status = "info", href = "http://www.imr.no/filarkiv/2013/03/datapolitikk_nmd.pdf/nb-no")
+  )
+)
 
 ##_____________
 ## Sidebar ####
@@ -93,7 +135,7 @@ body <-
                 column(width = 12,
                        h1("Welcome to the Biotic Explorer", align = "center"),
                        br(),
-                       p("This is a", a("Shiny app", href = "http://shiny.rstudio.com"), "allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used within the Institute of Marine Research database. To start with the app, click the", strong("'Upload & filter'"), "tab on the side panel."),
+                       p("This is a", a("Shiny app", href = "http://shiny.rstudio.com"), "allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used by the Institute of Marine Research. To start with the app, click the", strong("'Upload & filter'"), "tab on the side panel."),
                        h4("Work-flow"),
                        p("1)", strong("Upload data:"), "Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant."),
                        p("2)", strong("Filter data:"), "Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected."),
@@ -104,10 +146,7 @@ body <-
                        br(),
                        br(),
                        h5("Author and contact person: Mikko Vihtakari (mikko.vihtakari@hi.no)", align = "left"),
-                       h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left"),
-                       br(),
-                       br(),
-                       h5("Version 0.1.12 (alpha), 2019-09-07", align = "right")
+                       h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left")
                 )
               )
       ),
@@ -366,7 +405,7 @@ server <- shinyServer(function(input, output, session) {
   #   length(input$file1[[1]])
   #   # paste(input$file1[[1]], collapse = "; ")
   # })
-
+  
   ##................
   ## Subsetting ####
   
