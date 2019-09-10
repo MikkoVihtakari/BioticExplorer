@@ -430,3 +430,7 @@ loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt 
     )
   )
 }
+
+## Custom colour palette
+
+ColorPalette <- c("#449BCF", "#82C893", "#D696C8", "#FF5F68", "#FF9252", "#FFC95B", "#056A89")

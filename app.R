@@ -14,12 +14,16 @@ if (Sys.info()["sysname"] == "Windows") {
 
 ### OS specific exceptions
 
-if (!capabilities()["X11"] & os == "Linux") {
-  options(bitmapType = "cairo")
+if (os == "Linux") {
   
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "scales", "plotly", "Cairo")
+  if (!capabilities()["X11"]) {
+    options(bitmapType = "cairo")
+    
+    required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "Cairo") 
+  }
+  
 } else {
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "plotly", "scales")
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales")
 }
 
 ### Install missing packages
@@ -267,17 +271,23 @@ body <-
                 
                 box(title = "Total (summed) catch by gear type", width = 12, status = "info", solidHeader = TRUE, plotOutput("gearcatchPlot", height = "600px")),
                 
-                box(title = "Station depth", width = 12, status = "info", solidHeader = TRUE, plotOutput("stationDepthPlot"))
+                box(title = "Station depth", width = 12, status = "info", solidHeader = TRUE, plotOutput("stationDepthPlot")),
+                box(title = "Fishing depth of six most dominant species", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchSpeciesWeightPlot"))
               )
       ),
       
       tabItem("stnallMap", 
               fluidRow(
                 box(title = "Map of catches (in kg)", width = 12, status = "info", 
-                    solidHeader = TRUE, height = 850,
+                    solidHeader = TRUE, height = 840,
                     selectInput("catchMapSpecies", "Select species:", 
                                 choices = NULL),
                     leafletOutput(outputId = "catchMap", height = 700)
+                ),
+                
+                box(title = "Catch composition", width = 12, status = "info", 
+                    solidHeader = TRUE, height = 760,
+                    leafletOutput(outputId = "catchCompMap", height = 700)
                 )
               )
       ),
@@ -315,7 +325,7 @@ body <-
                            actionButton("lwPlotExcludeSwitch", "Exclude points"),
                            actionButton("lwPlotResetSwitch", "Reset")),
                     column(12,
-                    verbatimTextOutput("lwPlotText"))
+                           verbatimTextOutput("lwPlotText"))
                 ),
                 
                 box(title = "Length - age relationship", width = 12, status = "info", 
@@ -994,6 +1004,62 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
+  ## Stn data maps ####
+  
+  observeEvent(c(req(input$file1), input$Subset), {
+    
+    compDat <- rv$stnall %>% filter(!is.na(catchweight)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname) %>% summarise(catchweight = sum(catchweight)) 
+    
+    sumCompDat <- compDat %>% group_by(commonname) %>% summarise(sum = sum(catchweight)) %>% arrange(-sum)
+    
+    compDat$commonname <- factor(compDat$commonname, sumCompDat$commonname)
+    
+    if (length(sumCompDat$commonname) > 6) {
+      levels(compDat$commonname)[!levels(compDat$commonname) %in% sumCompDat$commonname[1:6]] <- "Andre arter"
+    }
+    
+    levels(compDat$commonname) <- gsub("(^[[:alpha:]])", "\\U\\1", levels(compDat$commonname), perl = TRUE)    
+    
+    compDat <- compDat %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname) %>% summarise(catchweight = sum(catchweight)) %>% arrange(cruise, startyear, serialnumber, commonname)
+    
+    compDatW <- dcast(compDat, cruise + startyear + longitudestart + latitudestart + fishingdepthmin ~ commonname, value.var = "catchweight", fill = 0)
+    
+    compDatW$total <- rowSums(compDatW[levels(compDat$commonname)]) 
+    
+    ## The map
+    
+    output$catchCompMap <- renderLeaflet({
+      
+      leaflet::leaflet() %>% 
+        fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
+                  lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
+                  lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
+                  lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
+        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+        addMinicharts(
+          compDatW$longitudestart, compDatW$latitudestart,
+          type = "pie", chartdata = compDatW[,levels(compDat$commonname)],
+          colorPalette = ColorPalette,
+          width = 40 * log(compDatW$total) / log(max(compDatW$total)), 
+          transitionTime = 0
+        )
+    })
+    ## Catch - fishing depth plot
+    
+    output$catchSpeciesWeightPlot <- renderPlot({
+      
+      ggplot(compDat[compDat$commonname != "Andre arter",], aes(x = fishingdepthmin, y = catchweight, group = commonname)) +
+        geom_smooth(se = FALSE) +
+        geom_point() +
+        ylab("Catch weight (kg)") + 
+        xlab("Minimum fishing depth (m)") +
+        facet_wrap(~commonname, scales = "free_y") + 
+        theme_bw(base_size = 14)
+    })
+  })
+  
+  
   observeEvent(c(req(input$file1), input$Subset, input$catchMapSpecies), {
     
     if (input$catchMapSpecies == "All") {
@@ -1001,6 +1067,8 @@ server <- shinyServer(function(input, output, session) {
     } else {
       sps <- input$catchMapSpecies
     }
+    
+    ## Overview map ####
     
     tmp <- rv$stnall %>% 
       filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
@@ -1127,7 +1195,7 @@ server <- shinyServer(function(input, output, session) {
             scale_x_log10(paste0("Total length [log10(", input$lengthUnit, ")]")) +
             scale_y_log10(paste0("Weight [log10(", input$weightUnit, ")]")) + 
             geom_smooth(data = lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
-           
+          
         } else {
           p <- p + 
             scale_x_continuous(paste0("Total length (", input$lengthUnit, ")")) +
