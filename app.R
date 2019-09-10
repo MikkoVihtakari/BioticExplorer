@@ -17,9 +17,9 @@ if (Sys.info()["sysname"] == "Windows") {
 if (!capabilities()["X11"] & os == "Linux") {
   options(bitmapType = "cairo")
   
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "Cairo", "scales")
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "scales", "plotly", "Cairo")
 } else {
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "scales")
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "openxlsx", "dplyr", "data.table", "plotly", "scales")
 }
 
 ### Install missing packages
@@ -40,88 +40,61 @@ if (!"RstoxData" %in% installed.packages()[,"Package"]) {
 
 source("functions.R", encoding = "utf-8")
 
-## Logo, from https://stackoverflow.com/a/32854387/1082004
-
-loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt = NULL) {
-  tagList(
-    tags$head(
-      tags$script(
-        "setInterval(function(){
-                     if ($('html').attr('class')=='shiny-busy') {
-                     $('div.busy').show();
-                     $('div.notbusy').hide();
-                     } else {
-                     $('div.busy').hide();
-                     $('div.notbusy').show();
-           }
-         },100)")
-    ),
-    tags$a(href = href,
-           div(class = "busy",  
-               img(src = loadingsrc, height = height, width = width, alt = alt)),
-           div(class = 'notbusy',
-               img(src = src, height = height, width = width, alt = alt))
-    )
-  )
-}
-
-
-
 ##____________________
 ## User interface ####
 
-## Header
+##............
+## Header ####
 
-header <- dashboardHeader(
-  title = div(
-    fluidRow(
-      column(width = 1, 
-             loadingLogo("https://www.hi.no", "logo.png", "logo_bw.png", 
-                         height = "40px")), 
-      column(width = 10, p("Biotic Explorer", align = "center"))
-    )
-  ),
-  dropdownMenu(type = "notifications", headerText = "Version 0.1.13 (alpha), 2019-09-07",
-               icon = icon("cog"), badgeStatus = NULL,
-               notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
-    notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
-    notificationItem("Data policy", icon = icon("creative-commons"), status = "info", href = "http://www.imr.no/filarkiv/2013/03/datapolitikk_nmd.pdf/nb-no")
+header <- dashboardHeader(title = div(
+  fluidRow(
+    column(width = 1, 
+           loadingLogo("https://www.hi.no", "logo.png", "logo_bw.png", 
+                       height = "40px")), 
+    column(width = 10, p("Biotic Explorer", align = "center"))
   )
+),
+dropdownMenu(type = "notifications", headerText = "Version 0.2.0 (alpha), 2019-09-10",
+             icon = icon("cog"), badgeStatus = NULL,
+             notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
+             notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
+             notificationItem("Data policy", icon = icon("creative-commons"), status = "info", href = "http://www.imr.no/filarkiv/2013/03/datapolitikk_nmd.pdf/nb-no")
+)
 )
 
 ##_____________
 ## Sidebar ####
 
-sidebar <- 
-  dashboardSidebar(
-    sidebarMenu(
-      # Setting id makes input$tabs give the tabName of currently-selected tab
-      id = "tabs",
-      
-      menuItem("Information", tabName = "info", icon = icon("info-circle")),
-      menuItem("Upload & filter", tabName = "upload", icon = icon("arrow-circle-up")),
-      menuItem("Stations & catches", icon = icon("ship"),
-               menuSubItem("Overview", tabName = "stnallOverview"),
-               menuSubItem("Examine data", tabName = "stnallExamine")
-      ),
-      menuItem("Individuals & ages", icon = icon("fish"),
-               menuSubItem("Overview", tabName = "indallOverview"),
-               menuSubItem("Examine data", tabName = "indallExamine")
-      ),
-      menuItem("Mission data", icon = icon("bar-chart-o"), tabName = "missionExamine"
-      ),
-      menuItem("Station data", icon = icon("bar-chart-o"), tabName = "fishstationExamine"
-      ),
-      menuItem("Catch data", icon = icon("bar-chart-o"), tabName = "catchsampleExamine"
-      ),
-      menuItem("Individual data", icon = icon("bar-chart-o"), tabName = "individualExamine"
-      ),
-      menuItem("Age data", icon = icon("bar-chart-o"), tabName = "agedeterminationExamine"
-      ),
-      menuItem("Download", tabName = "downloadDatasets", icon = icon("arrow-circle-down"))
-    ),
-    textOutput("res")
-  )
+sidebar <- dashboardSidebar(sidebarMenu(
+  # Setting id makes input$tabs give the tabName of currently-selected tab
+  id = "tabs",
+  
+  menuItem("Information", tabName = "info", icon = icon("info-circle")),
+  menuItem("Upload & filter", tabName = "upload", icon = icon("arrow-circle-up")),
+  menuItem("Stations & catches", icon = icon("ship"),
+           menuSubItem("Overview", tabName = "stnallOverview"),
+           menuSubItem("Map of catches", tabName = "stnallMap"),
+           menuSubItem("Examine data", tabName = "stnallExamine")
+  ),
+  menuItem("Individuals & ages", icon = icon("fish"),
+           menuSubItem("Overview", tabName = "indallOverview"),
+           menuSubItem("Species plots", tabName = "indallSpecies"),
+           menuSubItem("Examine data", tabName = "indallExamine")
+  ),
+  menuItem("Mission data", icon = icon("bar-chart-o"), tabName = "missionExamine"
+  ),
+  menuItem("Station data", icon = icon("bar-chart-o"), tabName = "fishstationExamine"
+  ),
+  menuItem("Catch data", icon = icon("bar-chart-o"), tabName = "catchsampleExamine"
+  ),
+  menuItem("Individual data", icon = icon("bar-chart-o"), tabName = "individualExamine"
+  ),
+  menuItem("Age data", icon = icon("bar-chart-o"), tabName = "agedeterminationExamine"
+  ),
+  menuItem("Download", tabName = "downloadDatasets", icon = icon("arrow-circle-down"))
+),
+textOutput("res")
+)
 
 ##..........
 ## Body ####
@@ -129,6 +102,9 @@ sidebar <-
 body <- 
   dashboardBody(
     tabItems(
+      
+      ## Info tab ####   
+      
       tabItem("info", 
               
               fluidRow(
@@ -150,6 +126,9 @@ body <-
                 )
               )
       ),
+      
+      ## Upload tab ####
+      
       tabItem("upload",
               
               fluidRow(
@@ -178,14 +157,14 @@ body <-
                          checkboxInput("removeEmpty", "Remove empty columns", FALSE),
                          checkboxInput("coreDataOnly", "Keep only important columns", TRUE),
                          
-                         radioButtons("lenghtUnit", "Fish length unit:",
+                         radioButtons("lengthUnit", "Fish length unit:",
                                       c("Millimeter" = "mm",
                                         "Centimeter" = "cm",
                                         "Meter" = "m"),
-                                      selected = "cm",
+                                      selected = "m",
                                       inline = TRUE),
                          
-                         radioButtons("weigthUnit", "Fish weight unit:",
+                         radioButtons("weightUnit", "Fish weight unit:",
                                       c("Grams" = "g",
                                         "Kilograms" = "kg"),
                                       selected = "kg",
@@ -259,7 +238,7 @@ body <-
                            
                            conditionalPanel(
                              condition = "input.performanceMode == true",
-                             p("Performance mode. No map. Subset data and use 'Stations & catches' -> 'Overview' to examine station locations.", align = "center")
+                             p("Performance mode. No map. Subset data and use 'Stations & catches' -> 'Map of catches' to examine station locations.", align = "center")
                            )       
                        )
                 )
@@ -269,41 +248,34 @@ body <-
               )
       ),
       
-      
+      ### Stnall tab ####      
       tabItem("stnallOverview",
               fluidRow(
-                box(title = "Species composition", width = 12, status = "info", solidHeader = TRUE,
-                    plotOutput("speciesCompositionPlot")
-                ),
+                box(title = "Species composition", width = 12, status = "info", solidHeader = TRUE, plotOutput("speciesCompositionPlot")),
                 
-                box(title = "Total catch weight", width = 12, status = "info", solidHeader = TRUE,
-                    plotOutput("catchweightSumPlot")
-                ),
+                box(title = "Total catch weight", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightSumPlot")),
                 
-                box(title = "Catch weight mean and standard error", width = 12, status = "info", solidHeader = TRUE,
-                    plotOutput("catchweightMeanPlot")
-                ),
+                box(title = "Catch weight mean and standard error", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightMeanPlot")),
                 
-                box(title = "Catch weight range", width = 12, status = "info", solidHeader = TRUE,
-                    plotOutput("catchweightRangePlot")
-                ),
+                box(title = "Catch weight range", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightRangePlot")),
                 
-                box(title = "Mean number in catch and standard error", width = 12, status = "info", solidHeader = TRUE,
-                    plotOutput("catchcountMeanPlot")
-                ),
+                box(title = "Mean weight of specimen", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchIndMeanWeightPlot")),
                 
-                box(title = "Range of number in catch", width = 12, status = "info", solidHeader = TRUE,
-                    plotOutput("catchcountRangePlot")
-                ),
+                box(title = "Mean number in catch and standard error", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchcountMeanPlot")),
                 
-                box(title = "Total (summed) catch by gear type", width = 12, status = "info", 
-                    solidHeader = TRUE,
-                    plotOutput("gearcatchPlot", height = "600px")
-                ),
+                box(title = "Range of number in catch", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchcountRangePlot")),
                 
+                box(title = "Total (summed) catch by gear type", width = 12, status = "info", solidHeader = TRUE, plotOutput("gearcatchPlot", height = "600px")),
+                
+                box(title = "Station depth", width = 12, status = "info", solidHeader = TRUE, plotOutput("stationDepthPlot"))
+              )
+      ),
+      
+      tabItem("stnallMap", 
+              fluidRow(
                 box(title = "Map of catches (in kg)", width = 12, status = "info", 
                     solidHeader = TRUE, height = 850,
-                    selectInput("catchMapSpecies", "Species", 
+                    selectInput("catchMapSpecies", "Select species:", 
                                 choices = NULL),
                     leafletOutput(outputId = "catchMap", height = 700)
                 )
@@ -312,11 +284,42 @@ body <-
       
       tabItem("stnallExamine", DT::dataTableOutput("stnall")),
       
+      ### Indall tab ####
+      
       tabItem("indallOverview", 
               fluidRow(
-                box(title = "Individual sample overview", width = 12, status = "info", solidHeader = TRUE,
+                box(title = "Individual sample overview", width = 12, status = "info", 
+                    solidHeader = TRUE,
                     DT::dataTableOutput("individualSummaryTable")
                 )
+                # box(title = "Ricker thing", width = 12, status = "info",
+                #     solidHeader = TRUE,
+                #     # plotOutput("rickerPlot")
+                #     verbatimTextOutput("test")
+                # ),
+                
+              )
+      ),
+      
+      tabItem("indallSpecies", 
+              fluidRow(
+                box(title = "Length - weight relationship", width = 12, status = "info", 
+                    solidHeader = TRUE, 
+                    selectInput("indSpecies", "Select species:", 
+                                choices = NULL),
+                    plotlyOutput("lwPlot"),
+                    br(),
+                    column(4,
+                           checkboxInput("lwPlotLogSwitch", "Logarithmic axes", FALSE)),
+                    column(8,
+                           actionButton("lwPlotExcludeSwitch", "Exclude points"),
+                           actionButton("lwPlotResetSwitch", "Reset")),
+                    column(12,
+                    verbatimTextOutput("lwPlotText"))
+                ),
+                
+                box(title = "Length - age relationship", width = 12, status = "info", 
+                    solidHeader = TRUE, plotOutput("laPlot"))
               )
       ),
       
@@ -327,6 +330,9 @@ body <-
       tabItem("catchsampleExamine", DT::dataTableOutput("catchsample")),
       tabItem("individualExamine", DT::dataTableOutput("individualTable")),
       tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
+      
+      ##...................
+      ## Download tab ####
       
       tabItem("downloadDatasets", 
               fluidRow(
@@ -346,14 +352,15 @@ body <-
                                      selected = c("stnall", "indall")
                   ),
                   downloadButton(outputId = "downloadData")
-                  #verbatimTextOutput("test")
+                  # verbatimTextOutput("test")
                 ) 
               )
       )
     )
   )
 
-## Dashboard page  
+##.................
+## Dashboard page ####
 
 ui <- dashboardPage(header, sidebar, body)
 
@@ -362,11 +369,11 @@ ui <- dashboardPage(header, sidebar, body)
 
 server <- shinyServer(function(input, output, session) {
   
-  ## Options
+  ## Options ####
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
   
-  ## Read data
+  ## Read data ####
   
   rv <- reactiveValues()
   
@@ -375,9 +382,9 @@ server <- shinyServer(function(input, output, session) {
     tryCatch({
       
       if (length(input$file1[[1]]) > 1) {
-        dat <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+        dat <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
       } else {
-        dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lenghtUnit, weightUnit = input$weigthUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+        dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
       }
     },
     error = function(e) {
@@ -399,15 +406,17 @@ server <- shinyServer(function(input, output, session) {
   })
   
   ##..............
-  ## Test output
+  ## Test output ####
   
   # output$test <- renderText({
-  #   length(input$file1[[1]])
+  #   # length(input$file1[[1]])
   #   # paste(input$file1[[1]], collapse = "; ")
+  #   # paste(input$indSpecies, collapse = "; ")
+  #   paste(input$weigthUnit)
   # })
-  
-  ##................
-  ## Subsetting ####
+  # 
+  ##...................
+  ## Update inputs ####
   
   observeEvent(c(req(input$file1), input$Subset), {
     updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
@@ -417,6 +426,12 @@ server <- shinyServer(function(input, output, session) {
     updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
     updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
     updateSelectInput(session, "catchMapSpecies", choices = c("All", sort(unique(rv$stnall$commonname))))
+    updateSelectInput(session, "indSpecies", choices = 
+                        c("Select a species to generate the plots", 
+                          rv$indall %>% 
+                            filter(!is.na(length) & !is.na(individualweight)) %>% 
+                            group_by(commonname) %>% dplyr::select(commonname) %>% 
+                            filter(n() > 1) %>% unique() %>% pull() %>% sort()))
     
     min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
     max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
@@ -428,6 +443,8 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
+  ##................
+  ## Subsetting ####
   
   observeEvent(input$Subset, {
     
@@ -564,7 +581,7 @@ server <- shinyServer(function(input, output, session) {
     rv$agedetermination <- tmp
   })
   
-  ################
+  ##..............
   ## Download ####
   
   output$downloadData <- downloadHandler(
@@ -634,7 +651,7 @@ server <- shinyServer(function(input, output, session) {
   )
   
   
-  ######################
+  ##....................
   ## Overview stats ####
   
   observeEvent(req(input$file1), {
@@ -699,7 +716,7 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  ###################
+  ##.................s
   ## Data tables ####
   
   output$stnall <- DT::renderDataTable({
@@ -792,245 +809,404 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  ############################
-  ## Station data figures ####
+  ##..........................
+  ## Stn data figures ####
   
   observeEvent(c(req(input$file1), input$Subset), {
     
-    tmp <- rv$stnall %>% dplyr::group_by(commonname) %>% dplyr::summarise(n = length(unique(paste(startyear, serialnumber))))
-    tmp <- tmp[order(-tmp$n),]
-    tmp$commonname <- factor(tmp$commonname, tmp$commonname)
+    ## Number of stations containing the species plot
+    
+    nStn <- rv$stnall %>% dplyr::group_by(commonname) %>% dplyr::summarise(n = length(unique(paste(startyear, serialnumber))))
+    nStn <- nStn[order(-nStn$n),]
+    nStn$commonname <- factor(nStn$commonname, nStn$commonname)
     
     output$speciesCompositionPlot <- renderPlot({
-      ggplot(tmp, aes(y = n, x = commonname)) + 
+      
+      ggplot(nStn, aes(y = n, x = commonname)) + 
         geom_col() +
         ylab("Number of stations containing the species") +
         xlab("Species database name") +
-        coord_cartesian(expand = FALSE, ylim = range(pretty(tmp$n))) + 
-        theme_classic(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-    })
-    
-  })
-  
-  observeEvent(c(req(input$file1), input$Subset), {
-    
-    tmp <- rv$stnall[!is.na(rv$stnall$catchweight),]
-    
-    tmp2 <- tmp %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight, na.rm = TRUE), se = se(catchweight), max = max(catchweight, na.rm = TRUE), min = min(catchweight, na.rm = TRUE), sum = sum(catchweight, na.rm = TRUE))
-    tmp2 <- tmp2[order(-tmp2$sum),]
-    tmp2$commonname <- factor(tmp2$commonname, tmp2$commonname)
-    tmp2$se[is.na(tmp2$se)] <- 0
-    tmp$commonname <- factor(tmp$commonname, tmp2$commonname)
-    
-    output$catchweightSumPlot <- renderPlot({
-      ggplot(tmp2, aes(x = commonname, y = sum)) + 
-        geom_col() + 
-        scale_y_log10("Summed catch weight [log10(kg)]") +
-        xlab("Species database name") +
-        coord_cartesian() + 
-        theme_classic(base_size = 14) +
-        annotate("text", x = Inf, y = Inf, label = paste("Total catch\n all species\n", round(sum(tmp2$sum), 0), "kg"), vjust = 1, hjust = 1) + 
+        coord_cartesian(expand = FALSE, ylim = range(pretty(nStn$n))) + 
+        theme_bw(base_size = 14) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
+    ## Summed catch weight plot
+    
+    catchW <- rv$stnall[!is.na(rv$stnall$catchweight),]
+    
+    catchS <- catchW %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight, na.rm = TRUE), se = se(catchweight), max = max(catchweight, na.rm = TRUE), min = min(catchweight, na.rm = TRUE), sum = sum(catchweight, na.rm = TRUE))
+    catchS <- catchS[order(-catchS$sum),]
+    catchS$commonname <- factor(catchS$commonname, catchS$commonname)
+    catchS$se[is.na(catchS$se)] <- 0
+    catchW$commonname <- factor(catchW$commonname, catchS$commonname)
+    
+    output$catchweightSumPlot <- renderPlot({
+      
+      ggplot(catchS, aes(x = commonname, y = sum)) + 
+        geom_col() + 
+        scale_y_log10("Summed catch weight [log10(kg)]") +
+        xlab("Species database name") +
+        coord_cartesian() + 
+        theme_bw(base_size = 14) +
+        annotate("text", x = Inf, y = Inf, label = paste("Total catch\n all species\n", round(sum(catchS$sum), 0), "kg"), vjust = 1, hjust = 1, size = 5) + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      
+    })
+    
+    ## Mean catch weight plot
     
     output$catchweightMeanPlot <- renderPlot({
-      ggplot(tmp2, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) + 
+      
+      ggplot(catchS, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) +
         geom_linerange() +
         geom_point() +
         ylab("Mean catch weight (kg; +/- SE)") +
         xlab("Species database name") +
         coord_cartesian() + 
-        theme_classic(base_size = 14) +
+        theme_bw(base_size = 14) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
+    ## Catch weight range plot
+    
     output$catchweightRangePlot <- renderPlot({
+      
       ggplot() + 
-        geom_linerange(data = tmp2, aes(x = commonname, ymax = max, ymin = min), color = "red") +
-        geom_point(data = tmp, aes(x = commonname, y = catchweight), size = 0.1) +
+        geom_linerange(data = catchS, aes(x = commonname, ymax = max, ymin = min), color = "red") +
+        geom_point(data = catchW, aes(x = commonname, y = catchweight), size = 1, shape = 21) +
         scale_y_log10("Catch weight range [log10(kg)]") +
         xlab("Species database name") +
         coord_cartesian() + 
-        theme_classic(base_size = 14) +
+        theme_bw(base_size = 14) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
-  })
-  
-  
-  observeEvent(c(req(input$file1), input$Subset), {
+    ## Mean weight of fish in catch
     
-    tmp <- rv$stnall[!is.na(rv$stnall$catchcount) & rv$stnall$catchcount > 0,]
+    meanW <- rv$stnall %>% filter(!is.na(catchweight) & catchweight > 0 & !is.na(catchcount) & catchcount > 0) %>% group_by(commonname, cruise, startyear, serialnumber) %>% summarise(weight = sum(catchweight), n = sum(catchcount), indw = weight/n)
+    meanW <- droplevels(meanW)
+    meanW <- meanW %>% group_by(commonname) %>% summarise(mean = mean(indw), min = min(indw), max = max(indw), sd = sd(indw), se = se(indw)) %>% arrange(-mean)
+    meanW$commonname <- factor(meanW$commonname, meanW$commonname)
     
-    tmp2 <- tmp %>% group_by(commonname) %>% summarise(mean = mean(catchcount), se = se(catchcount), max = max(catchcount), min = min(catchcount))
-    tmp2 <- tmp2[order(-tmp2$mean),]
-    tmp2$se[is.na(tmp2$se)] <- 0
-    tmp2$commonname <- factor(tmp2$commonname, tmp2$commonname)
-    tmp$commonname <- factor(tmp$commonname, tmp2$commonname)
+    output$catchIndMeanWeightPlot <- renderPlot({
+      
+      ggplot(meanW, aes(x = commonname, y = mean, ymin = min, ymax = max)) + 
+        geom_pointrange() +
+        scale_y_log10("Mean specimen weight (kg +/- range)", labels = scales::number_format(accuracy = 0.001)) +
+        xlab("Species database name") +
+        theme_bw(base_size = 14) +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      
+    })
+    
+    ## Mean n in catch plot
+    
+    catchN <- rv$stnall[!is.na(rv$stnall$catchcount) & rv$stnall$catchcount > 0,]
+    
+    meanN <- catchN %>% group_by(commonname) %>% summarise(mean = mean(catchcount), se = se(catchcount), max = max(catchcount), min = min(catchcount), Nstn = length(unique(paste(cruise, startyear, serialnumber))))
+    meanN <- meanN[order(-meanN$mean),]
+    meanN$se[is.na(meanN$se)] <- 0
+    meanN$commonname <- factor(meanN$commonname, meanN$commonname)
+    catchN$commonname <- factor(catchN$commonname, meanN$commonname)
     
     output$catchcountMeanPlot <- renderPlot({
-      ggplot(tmp2, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) + 
+      
+      ggplot(meanN, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) + 
         geom_linerange() +
         geom_point() +
         ylab("Mean number in catch (+/- SE)") +
         xlab("Species database name") +
-        coord_cartesian() + 
-        theme_classic(base_size = 14) +
+        theme_bw(base_size = 14) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
+    ## N range in catch plot
+    
     output$catchcountRangePlot <- renderPlot({
+      
       ggplot() + 
-        geom_linerange(data = tmp2, aes(x = commonname, ymax = max, ymin = min), color = "red") +
-        geom_point(data = tmp, aes(x = commonname, y = catchweight), size = 0.1) +
+        geom_linerange(data = meanN, 
+                       aes(x = commonname, ymax = max, ymin = min), color = "red") +
+        geom_point(data = catchN,
+                   aes(x = commonname, y = catchcount), size = 1, shape = 21) +
         scale_y_log10("Range for number in catch (log10)") +
         xlab("Species database name") +
         coord_cartesian() + 
-        theme_classic(base_size = 14) +
+        theme_bw(base_size = 14) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
-    observeEvent(c(req(input$file1), input$Subset), {
-      tmp <- rv$stnall[!is.na(rv$stnall$catchweight),]
-      tmp2 <- tmp %>% group_by(gear, commonname) %>% summarise(sum = sum(catchweight))
+    
+    
+    ## Catch in gear plot
+    
+    catchGBase <- rv$stnall[!is.na(rv$stnall$catchweight),]
+    catchG <- catchGBase %>% group_by(gear, commonname) %>% 
+      summarise(sum = sum(catchweight))
+    catchG$commonname <- factor(catchG$commonname, catchS$commonname)
+    
+    output$gearcatchPlot <- renderPlot({
       
-      output$gearcatchPlot <- renderPlot({
-        ggplot(tmp2, aes(x = commonname, y = as.factor(gear), 
+      ggplot(catchG, aes(x = commonname, y = as.factor(gear), 
                          size = sum, color = sum)) +
-          geom_point() + 
-          scale_color_distiller(name = "Total catch [log10(kg)]", 
-                                palette = "Spectral", trans = "log10", 
-                                breaks = c(1 %o% 10^(-4:4))
-          ) +
-          scale_size(name = "Total catch [log10(kg)]", trans = "log10", 
-                     breaks = c(1 %o% 10^(-4:4))
-          ) +
-          ylab("Gear code") +
-          xlab("Species database name") +
-          theme_bw(base_size = 14) + 
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      })
-      
-      observeEvent(c(req(input$file1), input$Subset, input$catchMapSpecies), {
-        
-        if (input$catchMapSpecies == "All") {
-          sps <- unique(rv$stnall$commonname)
-        } else {
-          sps <- input$catchMapSpecies
-        }
-        
-        tmp <- rv$stnall %>% 
-          filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
-          group_by(startyear, serialnumber, longitudestart, 
-                   latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
-          summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
-        
-        tmp2 <- rv$stnall %>% filter(!is.na(longitudestart) & !is.na(latitudestart))
-        
-        tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
-        
-        if (nrow(tmp2) > 0) tmp2$catchsum <- 0
-        
-        output$catchMap <- renderLeaflet({
-          
-          p <- leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
-            fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
-                      lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
-                      lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
-                      lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
-            addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                     attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
-            addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
-                       weight = 4, radius = 5e4*(tmp$catchsum/max(tmp$catchsum)), 
-                       label = paste0(tmp$serialnumber, "; ", tmp$catchsum, " kg"), 
-                       popup = paste("Serial number:", tmp$serialnumber, "<br>",
-                                     "Date:", tmp$stationstartdate, "<br>",
-                                     "Gear code:", tmp$gear, "<br>",
-                                     "Bottom depth:", round(tmp$bottomdepthstart, 0), "m",
-                                     "<br>", input$catchMapSpecies, "catch:", tmp$catchsum, 
-                                     "kg"), 
-                       color = "red", fill = NA
-            ) 
-          
-          if (nrow(tmp2) > 0) {
-            p %>% 
-              addCircles(lat = tmp2$latitudestart, lng = tmp2$longitudestart, 
-                         weight = 4, radius = 1, 
-                         label = paste0(tmp2$serialnumber, "; ", tmp2$catchsum, " kg"), 
-                         popup = paste("Serial number:", tmp2$serialnumber, "<br>",
-                                       "Date:", tmp2$stationstartdate, "<br>",
-                                       "Gear code:", tmp2$gear, "<br>",
-                                       "Bottom depth:", round(tmp2$bottomdepthstart, 0), "m",
-                                       "<br>", input$catchMapSpecies, "catch:", tmp2$catchsum, 
-                                       "kg"), 
-                         color = "black"
-              )
-          } else {
-            p
-          }
-          
-        })
-        
-      }) 
+        geom_point() + 
+        scale_color_distiller(name = "Total catch [log10(kg)]", 
+                              palette = "Spectral", trans = "log10", 
+                              breaks = c(1 %o% 10^(-4:4))
+        ) +
+        scale_size(name = "Total catch [log10(kg)]", trans = "log10", 
+                   breaks = c(1 %o% 10^(-4:4), range = c(1,8))
+        ) +
+        ylab("Gear code") +
+        xlab("Species database name") +
+        theme_bw(base_size = 14) + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
     })
     
+    ## Station depth plot
+    
+    stnD <- rv$stnall %>% group_by(cruise, startyear, serialnumber) %>% summarise(bdepth = unique(bottomdepthstart), fdepth = unique(fishingdepthmin))
+    stnD <- melt(stnD, id = 1:3)
+    stnD$variable <- recode_factor(stnD$variable, "bdepth" = "Bottom depth (start)", "fdepth" = "Minimum fishing depth")
+    
+    output$stationDepthPlot <- renderPlot({
+      
+      ggplot(stnD, aes(x = value)) +
+        geom_histogram(binwidth = 100, color = "black", fill = "grey") +
+        facet_wrap(~variable) +
+        scale_y_continuous("Count", expand = c(0, 0)) +
+        scale_x_continuous("Depth (m)", expand = c(0,0.05)) +
+        expand_limits(x = 0) +
+        theme_classic(base_size = 14) +
+        theme(strip.background = element_blank())
+      
+    })
+    
+    # stnG <- catchGBase %>% group_by(gear) %>%
+    #   summarise(n = length(unique(paste(cruise, startyear, serialnumber))))
+    
   })
   
-  ##########################################
-  ## Individual data figures and tables ####
+  observeEvent(c(req(input$file1), input$Subset, input$catchMapSpecies), {
+    
+    if (input$catchMapSpecies == "All") {
+      sps <- unique(rv$stnall$commonname)
+    } else {
+      sps <- input$catchMapSpecies
+    }
+    
+    tmp <- rv$stnall %>% 
+      filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
+      group_by(startyear, serialnumber, longitudestart, 
+               latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
+      summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
+    
+    tmp2 <- rv$stnall %>% filter(!is.na(longitudestart) & !is.na(latitudestart))
+    
+    tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
+    
+    if (nrow(tmp2) > 0) tmp2$catchsum <- 0
+    
+    output$catchMap <- renderLeaflet({
+      
+      p <- leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
+        fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
+                  lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
+                  lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
+                  lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
+        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
+        addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
+                   weight = 4, radius = 5e4*(tmp$catchsum/max(tmp$catchsum)), 
+                   label = paste0(tmp$serialnumber, "; ", tmp$catchsum, " kg"), 
+                   popup = paste("Serial number:", tmp$serialnumber, "<br>",
+                                 "Date:", tmp$stationstartdate, "<br>",
+                                 "Gear code:", tmp$gear, "<br>",
+                                 "Bottom depth:", round(tmp$bottomdepthstart, 0), "m",
+                                 "<br>", input$catchMapSpecies, "catch:", tmp$catchsum, 
+                                 "kg"), 
+                   color = "red", fill = NA
+        ) 
+      
+      if (nrow(tmp2) > 0) {
+        p %>% 
+          addCircles(lat = tmp2$latitudestart, lng = tmp2$longitudestart, 
+                     weight = 4, radius = 1, 
+                     label = paste0(tmp2$serialnumber, "; ", tmp2$catchsum, " kg"), 
+                     popup = paste("Serial number:", tmp2$serialnumber, "<br>",
+                                   "Date:", tmp2$stationstartdate, "<br>",
+                                   "Gear code:", tmp2$gear, "<br>",
+                                   "Bottom depth:", round(tmp2$bottomdepthstart, 0), "m",
+                                   "<br>", input$catchMapSpecies, "catch:", tmp2$catchsum, 
+                                   "kg"), 
+                     color = "black"
+          )
+      } else {
+        p
+      }
+      
+    })
+    
+  }) 
+  
+  
+  
+  ##..........................................
+  ## Ind data overview figures and tables ####
   
   observeEvent(c(req(input$file1), input$Subset), {
     
-    tmp <- rv$indall %>% dplyr::group_by(commonname) %>% dplyr::summarise(Total = length(commonname), Length = sum(!is.na(length)), Weight = sum(!is.na(individualweight)), Sex = sum(!is.na(sex)), Maturationstage = sum(!is.na(maturationstage)), Specialstage = sum(!is.na(specialstage)), Age = sum(!is.na(age)))
+    indSumTab <- rv$indall %>% 
+      dplyr::group_by(commonname) %>% 
+      dplyr::summarise(Total = length(commonname), 
+                       Length = sum(!is.na(length)), 
+                       Weight = sum(!is.na(individualweight)), 
+                       Sex = sum(!is.na(sex)), 
+                       Maturationstage = sum(!is.na(maturationstage)), 
+                       Specialstage = sum(!is.na(specialstage)), 
+                       Age = sum(!is.na(age))
+      )
     
     output$individualSummaryTable <- DT::renderDataTable({
-      DT::datatable(tmp, options = list(searching = FALSE))
+      DT::datatable(indSumTab, options = list(searching = FALSE))
     })
+    
+    # tmp <- rv$indall %>% filter(!is.na(length) & !is.na(individualweight)) %>% group_by(commonname) %>% filter(n() > 10) %>% summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n())
+    #
+    # output$rickerPlot <- renderPlot({
+    #   
+    #   ggplot() + 
+    #     geom_hline(yintercept = 3) + 
+    #     geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
+    #     geom_point(data = tmp, aes(x = commonname, y = ricker)) + 
+    #     ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
+    #     xlab("Species database name") +
+    #     theme_classic(base_size = 14) +
+    #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    #   
+    # })
+    
+    
+    
   })
-  #output$species <- unique(inputData()$stnall$commonname)
   
-  # output$agePlot <- renderPlot({
-  # 
-  #   if (is.null(inputData()$age)) {
-  # 
-  #     return(NULL)
-  # 
-  #     } else {
-  # 
-  #       ind <-inputData()$ind
-  #       x <- ind[!is.na(ind$length) & !is.na(ind$weight),]
-  #       mod <- lm(log(weight) ~ log(length), data = x)
-  # 
-  #       p <- ggplot() +
-  #         geom_point(data = x, aes(x = length, y = weight)) +
-  #         stat_function(data = data.frame(x = c(5, 55)), aes(x),
-  #                       fun = function(a, b, x) {a*x^b},
-  #                       args = list(a = exp(coef(mod)[1]), b = coef(mod)[2]),
-  #                       color = "blue", size = 1) +
-  #         xlab("Total length (cm)") +
-  #         ylab("Weigth (g)") +
-  #         annotate("text", x = 1, y = Inf,
-  #                  label = paste0("a = ", round(exp(coef(mod)[1]), 3), "\n",
-  #                                 "b = ", round(coef(mod)[2], 3)),
-  #                  vjust = 1, hjust = 0) +
-  #         theme_classic()
-  # 
-  #       print(p)
-  # 
-  #   }
-  # })
+  ## Ind plots for a selected species ####
+  
+  observeEvent(input$indSpecies, {
+    
+    if (input$tabs == "indallSpecies" & input$indSpecies != "Select a species to generate the plots") {
+      
+      ## Length-weight plot
+      
+      tmpBase <- rv$indall %>% filter(commonname == input$indSpecies)
+      lwDat <- tmpBase %>% filter(!is.na(length) & !is.na(individualweight))
+      
+      tmp <- lwDat
+      if (input$lengthUnit == "mm") tmp$length <- tmp$length/10
+      if (input$lengthUnit == "m") tmp$length <- tmp$length*100
+      if (input$weightUnit == "kg") tmp$individualweight <- tmp$individualweight*1000
+      
+      lwMod <- lm(log(individualweight) ~ log(length), data = lwDat)
+      tmpMod <- lm(log(individualweight) ~ log(length), data = tmp)
+      
+      output$lwPlot <- renderPlotly({
+        
+        p <- ggplot() +
+          geom_point(data = lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\nspecimenid: ", specimenid))) + 
+          theme_classic(base_size = 12) 
+        
+        if (input$lwPlotLogSwitch) {
+          p <- p + 
+            scale_x_log10(paste0("Total length [log10(", input$lengthUnit, ")]")) +
+            scale_y_log10(paste0("Weight [log10(", input$weightUnit, ")]")) + 
+            geom_smooth(data = lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
+           
+        } else {
+          p <- p + 
+            scale_x_continuous(paste0("Total length (", input$lengthUnit, ")")) +
+            scale_y_continuous(paste0("Weight (", input$weightUnit, ")")) + 
+            stat_function(data = 
+                            data.frame(x = range(lwDat$length)), aes(x),
+                          fun = function(a, b, x) {a*x^b},
+                          args = list(a = exp(coef(lwMod)[1]), b = coef(lwMod)[2]),
+                          color = "blue", size = 1)
+          
+          
+        }
+        
+        ggplotly(p) 
+        
+      })
+      
+      output$lwPlotText <- renderText(paste0(" Coefficients (calculated using cm and g): \n a = ", round(exp(coef(tmpMod)[1]), 3), "; b = ", round(coef(tmpMod)[2], 3), "\n Number of included specimens = ", nrow(lwDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(tmpBase$length)), "; weight = ", sum(is.na(tmpBase$individualweight))))
+      # 
+      ## Age - length plot
+      
+      laDat <- tmpBase %>% filter(!is.na(age) & !is.na(length))
+      
+      if (nrow(laDat) > 0) {
+        
+        output$laPlot <- renderPlot({
+          
+          ggplot() +
+            geom_point(data = laDat, aes(x = age, y = length)) +
+            expand_limits(x = 0) +
+            ylab(paste0("Total length (", input$lengthUnit, ")")) +
+            xlab("Age (years)") +
+            theme_classic(base_size = 14)
+          
+        })
+        # Add von bertalanffy
+      }
+      # 
+      # tmp3 <- tmpBase %>% filter(!is.na(length)) %>% replace_na(list(sex = 3)) %>% mutate(sex = factor(sex)) 
+      # tmp3$sex <- recode_factor(tmp3$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
+      # 
+      # ggplot(tmp3, aes(x = length, color = sex)) +
+      #   geom_density(adjust = 0.5) +
+      #   xlab(paste0("Total length (", input$lengthUnit, ")")) +
+      #   ylab("Count density") +
+      #   #facet_wrap(~sex, ncol = 3, scales = "free_y") +
+      #   scale_color_discrete("Sex") +
+      #   theme_classic(base_size = 14)
+      # 
+      # tmp4 <- tmp3 %>% filter(sex != "Unidentified" & !is.na(maturationstage))
+      # 
+      # ggplot(tmp4, aes(x = length, stat(count),color = as.factor(maturationstage))) +
+      #   geom_density(adjust = 0.5) +
+      #   xlab(paste0("Total length (", input$lengthUnit, ")")) +
+      #   ylab("Count density") +
+      #   facet_wrap(~sex, ncol = 2, scales = "free_y") +
+      #   scale_color_discrete("Maturation stage") +
+      #   theme_classic(base_size = 14)
+      # 
+      # ggplot(tmp4, aes(x = length, stat(count), color = as.factor(specialstage))) +
+      #   geom_density(adjust = 0.5) +
+      #   xlab(paste0("Total length (", input$lengthUnit, ")")) +
+      #   ylab("Count density") +
+      #   facet_wrap(~sex, ncol = 2, scales = "free_y") +
+      #   scale_color_discrete("Special stage") +
+      #   theme_classic(base_size = 14)
+      # 
+      # Add stage & special stage
+      
+      # Add depth preference
+      
+      
+    }
+    
+  }) 
   
 })
 
-###########################
-## Compilte to the app ####
+##........................
+## Compile to the app ####
 
 shinyApp(ui, server)

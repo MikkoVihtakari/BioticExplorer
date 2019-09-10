@@ -406,3 +406,27 @@ print.bioticProcData <- function(x, ...) {
 se <- function(x) {
   sd(x, na.rm = T)/sqrt(sum(!is.na(x)))}
 
+## Loading logo, from https://stackoverflow.com/a/32854387/1082004
+
+loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt = NULL) {
+  tagList(
+    tags$head(
+      tags$script(
+        "setInterval(function(){
+                     if ($('html').attr('class')=='shiny-busy') {
+                     $('div.busy').show();
+                     $('div.notbusy').hide();
+                     } else {
+                     $('div.busy').hide();
+                     $('div.notbusy').show();
+           }
+         },100)")
+    ),
+    tags$a(href = href,
+           div(class = "busy",  
+               img(src = loadingsrc, height = height, width = width, alt = alt)),
+           div(class = 'notbusy',
+               img(src = src, height = height, width = width, alt = alt))
+    )
+  )
+}
