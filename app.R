@@ -23,7 +23,7 @@ if (os == "Linux") {
   }
   
 } else {
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales")
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods")
 }
 
 ### Install missing packages
@@ -328,8 +328,22 @@ body <-
                            verbatimTextOutput("lwPlotText"))
                 ),
                 
-                box(title = "Length - age relationship", width = 12, status = "info", 
-                    solidHeader = TRUE, plotOutput("laPlot"))
+                box(title = "Age - length relationship", width = 12, status = "info", 
+                    solidHeader = TRUE, plotlyOutput("laPlot"),
+                    br(),
+                    column(4,
+                           checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE)),
+                    column(8,
+                           actionButton("laPlotExcludeSwitch", "Exclude points"),
+                           actionButton("laPlotResetSwitch", "Reset")),
+                    column(12,
+                           verbatimTextOutput("laPlotText"))
+                ),
+                
+                box(title = "Sex ratio", width = 12, status = "info", 
+                    solidHeader = TRUE, height = 760,
+                    leafletOutput(outputId = "sexRatioMap", height = 700)
+                )
               )
       ),
       
@@ -1022,7 +1036,7 @@ server <- shinyServer(function(input, output, session) {
     
     compDat <- compDat %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname) %>% summarise(catchweight = sum(catchweight)) %>% arrange(cruise, startyear, serialnumber, commonname)
     
-    compDatW <- dcast(compDat, cruise + startyear + longitudestart + latitudestart + fishingdepthmin ~ commonname, value.var = "catchweight", fill = 0)
+    compDatW <- dcast(compDat, cruise + startyear + serialnumber + longitudestart + latitudestart + fishingdepthmin ~ commonname, value.var = "catchweight", fill = 0)
     
     compDatW$total <- rowSums(compDatW[levels(compDat$commonname)]) 
     
@@ -1161,19 +1175,33 @@ server <- shinyServer(function(input, output, session) {
     #   
     # })
     
-    
+    # Mean individual length & sex
+    # Mean length - depth
     
   })
   
-  ## Ind plots for a selected species ####
+  ## Ind plots, selected species ####
   
-  observeEvent(input$indSpecies, {
+  observeEvent(c(input$indSpecies, input$laPlotSexSwitch), {
     
     if (input$tabs == "indallSpecies" & input$indSpecies != "Select a species to generate the plots") {
       
       ## Length-weight plot
       
       tmpBase <- rv$indall %>% filter(commonname == input$indSpecies)
+      
+      if (input$indSpecies == "blåkveite") {
+
+        tmpTab <- data.table::dcast(tmpBase, cruise + startyear + serialnumber + longitudestart + latitudestart ~ catchpartnumber, fun.aggregate = length, value.var = "length")
+        tmpTab$EggaSystem <- tmpTab$`1` > 0 & tmpTab$`2` > 0
+        
+        tmpBase <- left_join(tmpBase, tmpTab[!names(tmpTab) %in% c(1, 2, 3)], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
+          
+        tmpBase$sex <- ifelse(!is.na(tmpBase$sex), tmpBase$sex, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 1, 1, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 2, 2, NA)))
+        
+        tmpBase <- tmpBase[names(tmpBase) != "EggaSystem"]
+      }
+
       lwDat <- tmpBase %>% filter(!is.na(length) & !is.na(individualweight))
       
       tmp <- lwDat
@@ -1187,7 +1215,7 @@ server <- shinyServer(function(input, output, session) {
       output$lwPlot <- renderPlotly({
         
         p <- ggplot() +
-          geom_point(data = lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\nspecimenid: ", specimenid))) + 
+          geom_point(data = lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) + 
           theme_classic(base_size = 12) 
         
         if (input$lwPlotLogSwitch) {
@@ -1205,34 +1233,118 @@ server <- shinyServer(function(input, output, session) {
                           fun = function(a, b, x) {a*x^b},
                           args = list(a = exp(coef(lwMod)[1]), b = coef(lwMod)[2]),
                           color = "blue", size = 1)
-          
-          
         }
         
         ggplotly(p) 
         
       })
       
-      output$lwPlotText <- renderText(paste0(" Coefficients (calculated using cm and g): \n a = ", round(exp(coef(tmpMod)[1]), 3), "; b = ", round(coef(tmpMod)[2], 3), "\n Number of included specimens = ", nrow(lwDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(tmpBase$length)), "; weight = ", sum(is.na(tmpBase$individualweight))))
-      # 
+      output$lwPlotText <- renderText(paste0("Coefficients (calculated using cm and g): \n a = ", round(exp(coef(tmpMod)[1]), 3), "; b = ", round(coef(tmpMod)[2], 3), "\n Number of included specimens = ", nrow(lwDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(tmpBase$length)), "; weight = ", sum(is.na(tmpBase$individualweight))))
+      
       ## Age - length plot
       
       laDat <- tmpBase %>% filter(!is.na(age) & !is.na(length))
       
       if (nrow(laDat) > 0) {
         
-        output$laPlot <- renderPlot({
+        if (input$laPlotSexSwitch) {
           
-          ggplot() +
-            geom_point(data = laDat, aes(x = age, y = length)) +
-            expand_limits(x = 0) +
-            ylab(paste0("Total length (", input$lengthUnit, ")")) +
-            xlab("Age (years)") +
-            theme_classic(base_size = 14)
+          laDat <- laDat %>% filter(!is.na(sex))
+          
+          laModF <- fishmethods::growth(age = laDat[laDat$sex == 1,]$age, size = laDat[laDat$sex == 1,]$length, Sinf = max(laDat[laDat$sex == 1,]$length), K = 0.1, t0 = 0, graph = FALSE)
+          
+          laModM <- fishmethods::growth(age = laDat[laDat$sex == 2,]$age, size = laDat[laDat$sex == 2,]$length, Sinf = max(laDat[laDat$sex == 2,]$length), K = 0.1, t0 = 0, graph = FALSE)
+          
+          laDat$sex <- as.factor(laDat$sex)
+          laDat$sex <- recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
+          
+          output$laPlot <- renderPlotly({
+            
+            p <- ggplot() +
+              geom_point(data = laDat, 
+                         aes(x = age, y = length, color = as.factor(sex))) +
+              expand_limits(x = 0) +
+              scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
+              geom_hline(yintercept = coef(laModF$vout)[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
+              geom_hline(yintercept = coef(laModM$vout)[1], linetype = 2, color = ColorPalette[1], alpha = 0.5) +
+              ylab(paste0("Total length (", input$lengthUnit, ")")) +
+              xlab("Age (years)") +
+              theme_classic(base_size = 14) + 
+              stat_function(data = data.frame(x = range(laDat$age)), aes(x),
+                            fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
+                            args = list(Sinf = coef(laModM$vout)[1], 
+                                        K = coef(laModM$vout)[2], 
+                                        t0 = coef(laModM$vout)[3]),
+                            color = ColorPalette[1], size = 1) +
+              stat_function(data = data.frame(x = range(laDat$age)), aes(x),
+                            fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
+                            args = list(Sinf = coef(laModF$vout)[1], 
+                                        K = coef(laModF$vout)[2], 
+                                        t0 = coef(laModF$vout)[3]),
+                            color = ColorPalette[4], size = 1)
+            
+            ggplotly(p) 
+          })
+          
+          output$laPlotText <- renderText(paste0("von Bertalanffy growth function coefficients\n for females and males, respectively: \n Sinf (size infinity) = ", round(coef(laModF$vout)[1], 3), " and ", round(coef(laModM$vout)[1], 3), " ", input$lengthUnit, "\n K (steepness) = ", round(coef(laModF$vout)[2], 3), " and ", round(coef(laModM$vout)[2], 3), "\n t0 (length at age 0) = ", round(coef(laModF$vout)[3], 3), " and ", round(coef(laModM$vout)[3], 3), " ", input$lengthUnit, "\n Number of included specimens = ", nrow(laDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)), "; sex = ", sum(is.na(tmpBase$sex))))
+          
+        } else {
+          
+          laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
+          
+          
+          output$laPlot <- renderPlotly({
+            
+            p <- ggplot() +
+              geom_point(data = laDat, aes(x = age, y = length)) +
+              expand_limits(x = 0) +
+              geom_hline(yintercept = coef(laMod$vout)[1], linetype = 2, color = "grey") +
+              ylab(paste0("Total length (", input$lengthUnit, ")")) +
+              xlab("Age (years)") +
+              theme_classic(base_size = 14) + 
+              stat_function(data = 
+                              data.frame(x = range(laDat$age)), aes(x),
+                            fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
+                            args = list(Sinf = coef(laMod$vout)[1], 
+                                        K = coef(laMod$vout)[2], 
+                                        t0 = coef(laMod$vout)[3]),
+                            color = "blue", size = 1)
+            
+            ggplotly(p) 
+          })
+          
+          output$laPlotText <- renderText(paste0("von Bertalanffy growth function coefficients: \n Sinf (size infinity) = ", round(coef(laMod$vout)[1], 3), " ", input$lengthUnit, "\n K (steepness) = ", round(coef(laMod$vout)[2], 3), "\n t0 (length at age 0) = ", round(coef(laMod$vout)[3], 3), " ", input$lengthUnit, "\n Number of included specimens = ", nrow(laDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age))))
+        }  
+      }
+      
+      ## Sex ratio map ####
+      
+      srDat <- tmpBase %>% filter(!is.na(sex)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
+      
+      if (nrow(srDat) > 0) {
+        
+        output$sexRatioMap <- renderLeaflet({
+          
+          leaflet::leaflet() %>% 
+            fitBounds(lng1 = min(srDat$longitudestart, na.rm = TRUE),
+                      lng2 = max(srDat$longitudestart, na.rm = TRUE),
+                      lat1 = min(srDat$latitudestart, na.rm = TRUE),
+                      lat2 = max(srDat$latitudestart, na.rm = TRUE)) %>% 
+            addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                     attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+            addMinicharts(
+              srDat$longitudestart, srDat$latitudestart,
+              type = "pie", chartdata = srDat[,c("Female", "Male")],
+              colorPalette = c(ColorPalette[4], ColorPalette[1]),
+              width = 40 * log10(srDat$total) / log10(max(srDat$total)), 
+              transitionTime = 0
+            )
           
         })
-        # Add von bertalanffy
+        
       }
+      
+      
       # 
       # tmp3 <- tmpBase %>% filter(!is.na(length)) %>% replace_na(list(sex = 3)) %>% mutate(sex = factor(sex)) 
       # tmp3$sex <- recode_factor(tmp3$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
