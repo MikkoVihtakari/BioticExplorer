@@ -58,7 +58,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.2.2 (alpha), 2019-09-11",
+dropdownMenu(type = "notifications", headerText = "Version 0.2.3 (alpha), 2019-09-11",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -1034,7 +1034,7 @@ server <- shinyServer(function(input, output, session) {
     
     levels(compDat$commonname) <- gsub("(^[[:alpha:]])", "\\U\\1", levels(compDat$commonname), perl = TRUE)    
     
-    compDat <- compDat %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname) %>% summarise(catchweight = sum(catchweight)) %>% arrange(cruise, startyear, serialnumber, commonname)
+    compDat <- compDat %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname, .drop = FALSE) %>% summarise(catchweight = sum(catchweight)) %>% arrange(cruise, startyear, serialnumber, commonname)
     
     compDatW <- dcast(compDat, cruise + startyear + serialnumber + longitudestart + latitudestart + fishingdepthmin ~ commonname, value.var = "catchweight", fill = 0)
     
@@ -1082,7 +1082,7 @@ server <- shinyServer(function(input, output, session) {
       sps <- input$catchMapSpecies
     }
     
-    ## Overview map ####
+    ## Catch map ####
     
     tmp <- rv$stnall %>% 
       filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
