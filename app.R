@@ -257,9 +257,9 @@ body <-
               fluidRow(
                 box(title = "Species composition", width = 12, status = "info", solidHeader = TRUE, plotOutput("speciesCompositionPlot")),
                 
-                box(title = "Total catch weight", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightSumPlot")),
+                box(title = "Total catch weight", width = 12, status = "info", solidHeader = TRUE, plotlyOutput("catchweightSumPlot")),
                 
-                box(title = "Catch weight mean and standard error", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightMeanPlot")),
+                box(title = "Catch weight mean and standard error (stations containing the species are replicates)", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightMeanPlot")),
                 
                 box(title = "Catch weight range", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightRangePlot")),
                 
@@ -877,16 +877,18 @@ server <- shinyServer(function(input, output, session) {
     catchS$se[is.na(catchS$se)] <- 0
     catchW$commonname <- factor(catchW$commonname, catchS$commonname)
     
-    output$catchweightSumPlot <- renderPlot({
+    output$catchweightSumPlot <- renderPlotly({
       
-      ggplot(catchS, aes(x = commonname, y = sum)) + 
+      p <- ggplot(catchS, aes(x = commonname, y = sum)) + 
         geom_col() + 
         scale_y_log10("Summed catch weight [log10(kg)]") +
         xlab("Species database name") +
         coord_cartesian() + 
-        theme_bw(base_size = 14) +
+        theme_bw(base_size = 12) +
         annotate("text", x = Inf, y = Inf, label = paste("Total catch\n all species\n", round(sum(catchS$sum), 0), "kg"), vjust = 1, hjust = 1, size = 5) + 
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      
+      ggplotly(p) %>% plotly::layout(annotations = list(x = 1, y= 1, xref = "paper", yref = "paper", text = paste("Total catch\n all species\n", round(sum(catchS$sum), 0), "kg"), showarrow = FALSE, font = list(size = 12)))
       
     })
     
@@ -1171,6 +1173,13 @@ server <- shinyServer(function(input, output, session) {
       DT::datatable(indSumTab, options = list(searching = FALSE))
     })
     
+    
+    # meanIndLStn <- rv$indall %>% filter(!is.na(length)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, commonname) %>% summarise(meanLength = mean(length))
+    # 
+    # meanIndL <- meanIndLStn %>% group_by(commonname) %>% summarise(mean = mean(meanLength), sd = sd(meanLength), se = se(meanLength), n = length(meanLength))
+    # 
+    # ggplot(tmp, aes(x = commonname, y = meanLength)) + geom_point()
+    # 
     # tmp <- rv$indall %>% filter(!is.na(length) & !is.na(individualweight)) %>% group_by(commonname) %>% filter(n() > 10) %>% summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n())
     #
     # output$rickerPlot <- renderPlot({
@@ -1296,7 +1305,14 @@ server <- shinyServer(function(input, output, session) {
             ggplotly(p) 
           })
           
-          output$laPlotText <- renderText(paste0("von Bertalanffy growth function coefficients\n for females and males, respectively: \n Sinf (size infinity) = ", round(coef(laModF$vout)[1], 3), " and ", round(coef(laModM$vout)[1], 3), " ", input$lengthUnit, "\n K (steepness) = ", round(coef(laModF$vout)[2], 3), " and ", round(coef(laModM$vout)[2], 3), "\n t0 (length at age 0) = ", round(coef(laModF$vout)[3], 3), " and ", round(coef(laModM$vout)[3], 3), " ", input$lengthUnit, "\n Number of included specimens = ", nrow(laDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)), "; sex = ", sum(is.na(tmpBase$sex))))
+          output$laPlotText <- renderText(
+            paste0("von Bertalanffy growth function coefficients\n for females and males, respectively: \n Linf (asymptotic average length) = ", round(coef(laModF$vout)[1], 3), " and ", round(coef(laModM$vout)[1], 3), " ", input$lengthUnit, 
+                   "\n K (growth rate coefficient) = ", round(coef(laModF$vout)[2], 3), " and ", round(coef(laModM$vout)[2], 3), 
+                   "\n t0 (length at age 0) = ", round(coef(laModF$vout)[3], 3), " and ", round(coef(laModM$vout)[3], 3), " ", input$lengthUnit, 
+                   "\n tmax (life span; t0 + 3/K) = ", round(coef(laModF$vout)[3] + 3 / coef(laModF$vout)[2], 1), " and ", round(coef(laModM$vout)[3] + 3 / coef(laModM$vout)[2], 1), " years",
+                   "\n Number of included specimens = ", nrow(laDat), 
+                   "\n Total number of measured = ", nrow(tmpBase), 
+                   "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)), "; sex = ", sum(is.na(tmpBase$sex))))
           
         } else {
           
@@ -1323,7 +1339,15 @@ server <- shinyServer(function(input, output, session) {
             ggplotly(p) 
           })
           
-          output$laPlotText <- renderText(paste0("von Bertalanffy growth function coefficients: \n Sinf (size infinity) = ", round(coef(laMod$vout)[1], 3), " ", input$lengthUnit, "\n K (steepness) = ", round(coef(laMod$vout)[2], 3), "\n t0 (length at age 0) = ", round(coef(laMod$vout)[3], 3), " ", input$lengthUnit, "\n Number of included specimens = ", nrow(laDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age))))
+          output$laPlotText <- renderText(paste0(
+            "von Bertalanffy growth function coefficients: \n Linf (asymptotic average length) = ", round(coef(laMod$vout)[1], 3), " ", input$lengthUnit, 
+            "\n K (growth rate coefficient) = ", round(coef(laMod$vout)[2], 3), 
+            "\n t0 (length at age 0) = ", round(coef(laMod$vout)[3], 3), " ", input$lengthUnit, 
+            "\n tmax (life span; t0 + 3/K) = ", round(coef(laMod$vout)[3] + 3 / coef(laMod$vout)[2], 1), " years", 
+            "\n Number of included specimens = ", nrow(laDat), 
+            "\n Total number of measured = ", nrow(tmpBase), 
+            "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)))
+            )
         }  
       }
       
