@@ -431,6 +431,20 @@ loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt 
   )
 }
 
+#' @title Back-transform predictor variables from a logit model
+
+unlogit <- function(p, model) { 
+  mean <- unname((log(p/(1 - p)) - coef(model)[1])/coef(model)[2])
+  
+  tmp.cis <- suppressMessages(confint(model))
+  
+  ci.max <- unname((log(p/(1 - p)) - tmp.cis[1])/tmp.cis[2])
+  ci.min <- unname((log(p/(1 - p)) - tmp.cis[3])/tmp.cis[4])
+  
+  data.frame(mean = mean, ci.min = ci.min, ci.max = ci.max)
+}
+
+
 ## Custom colour palette
 
 ColorPalette <- c("#449BCF", "#82C893", "#D696C8", "#FF5F68", "#FF9252", "#FFC95B", "#056A89")

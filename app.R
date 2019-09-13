@@ -19,11 +19,11 @@ if (os == "Linux") {
   if (!capabilities()["X11"]) {
     options(bitmapType = "cairo")
     
-    required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "Cairo") 
+    required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "viridis", "Cairo") 
   }
   
 } else {
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods")
+  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "viridis")
 }
 
 ### Install missing packages
@@ -58,7 +58,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.2.3 (alpha), 2019-09-11",
+dropdownMenu(type = "notifications", headerText = "Version 0.2.4 (alpha), 2019-09-13",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -340,9 +340,20 @@ body <-
                            verbatimTextOutput("laPlotText"))
                 ),
                 
+                box(title = "50% maturity based on length (L50)", width = 12, 
+                    status = "info", solidHeader = TRUE,
+                    plotOutput("l50Plot"),
+                    verbatimTextOutput("l50PlotText")
+                ),
+                
                 box(title = "Sex ratio", width = 12, status = "info", 
                     solidHeader = TRUE, height = 760,
                     leafletOutput(outputId = "sexRatioMap", height = 700)
+                ),
+                
+                box(title = "Size distribution", width = 12, status = "info", 
+                    solidHeader = TRUE, height = 760,
+                    leafletOutput(outputId = "sizeDistributionMap", height = 700)
                 )
               )
       ),
@@ -1191,17 +1202,17 @@ server <- shinyServer(function(input, output, session) {
       tmpBase <- rv$indall %>% filter(commonname == input$indSpecies)
       
       if (input$indSpecies == "blåkveite") {
-
+        
         tmpTab <- data.table::dcast(tmpBase, cruise + startyear + serialnumber + longitudestart + latitudestart ~ catchpartnumber, fun.aggregate = length, value.var = "length")
         tmpTab$EggaSystem <- tmpTab$`1` > 0 & tmpTab$`2` > 0
         
         tmpBase <- left_join(tmpBase, tmpTab[!names(tmpTab) %in% c(1, 2, 3)], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
-          
+        
         tmpBase$sex <- ifelse(!is.na(tmpBase$sex), tmpBase$sex, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 1, 1, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 2, 2, NA)))
         
         tmpBase <- tmpBase[names(tmpBase) != "EggaSystem"]
       }
-
+      
       lwDat <- tmpBase %>% filter(!is.na(length) & !is.na(individualweight))
       
       tmp <- lwDat
@@ -1261,8 +1272,7 @@ server <- shinyServer(function(input, output, session) {
           output$laPlot <- renderPlotly({
             
             p <- ggplot() +
-              geom_point(data = laDat, 
-                         aes(x = age, y = length, color = as.factor(sex))) +
+              geom_point(data = laDat, aes(x = age, y = length, color = as.factor(sex), text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
               expand_limits(x = 0) +
               scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
               geom_hline(yintercept = coef(laModF$vout)[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
@@ -1317,6 +1327,61 @@ server <- shinyServer(function(input, output, session) {
         }  
       }
       
+      ## L50 maturity plot  ####
+      
+      l50Dat <- tmpBase %>% filter(!is.na(sex) & !is.na(maturationstage))
+      
+      if(nrow(l50Dat) > 0) {
+        
+        l50Dat$sex <- factor(l50Dat$sex)
+        l50Dat$sex <- recode_factor(l50Dat$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
+        
+        l50Dat$maturity <- ifelse(l50Dat$maturationstage < 2, 0, ifelse(l50Dat$maturationstage >= 2, 1, NA))
+        
+        modF <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Female",], family = binomial(link = "logit"))
+        modM <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Male",], family = binomial(link = "logit"))
+        
+        Fdat <- unlogit(0.5, modF)
+        Fdat$sex <- "Female"
+        Mdat <- unlogit(0.5, modM)
+        Mdat$sex <- "Male"
+        modDat <- rbind(Fdat, Mdat)
+        
+        output$l50Plot <- renderPlot({
+          
+          ggplot(l50Dat, aes(x = length, y = maturity, shape = sex)) + 
+            geom_point() + 
+            geom_segment(data = modDat, 
+                         aes(x = mean, xend = mean, y = 0, yend = 0.5, color = sex),
+                         linetype = 2) +
+            geom_segment(data = modDat, 
+                         aes(x = -Inf, xend = mean, y = 0.5, yend = 0.5, color = sex),
+                         linetype = 2) +
+            geom_text(data = modDat, 
+                      aes(x = mean, y = -0.03, label = paste(round(mean, 2), input$lengthUnit),
+                          color = sex), size = 3) +
+            stat_smooth(aes(color = sex), method="glm", 
+                        method.args=list(family="binomial")) +
+            ylab(paste0("Total length (", input$lengthUnit, ")")) +
+            ylab("Maturity") + 
+            scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
+            scale_shape("Sex", solid = FALSE) + 
+            theme_bw(base_size = 14) + 
+            guides(color=guide_legend(override.aes=list(fill=NA))) + 
+            theme(legend.position = c(0.9, 0.25), 
+                  legend.background = element_blank(), legend.key = element_blank())
+          
+        })
+        
+        output$l50PlotText <- renderText({
+          paste0("50% maturity at length (L50) based on logit regressions and assuming maturitystage >= 2 as mature:",
+                 "\n\n Females: ", round(modDat[modDat$sex == "Female", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Female", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Female", "ci.max"], 3),
+                 "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Female",]),
+                 "\n\n Males: ", round(modDat[modDat$sex == "Male", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Male", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Male", "ci.max"], 3),
+                 "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Male",]))
+        })
+      }
+      
       ## Sex ratio map ####
       
       srDat <- tmpBase %>% filter(!is.na(sex)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
@@ -1344,6 +1409,35 @@ server <- shinyServer(function(input, output, session) {
         
       }
       
+      ## Size distribution map ####
+      
+      sdDat <- tmpBase %>% filter(!is.na(length)) %>% dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% summarise(count = n())
+      
+      if(nrow(sdDat) > 0) {
+        
+        sdDatW <- dcast(sdDat, cruise + startyear + serialnumber + longitudestart + latitudestart ~ interval, value.var = "count", fill = 0)
+        sdDatW$total <- rowSums(sdDatW[,levels(sdDat$interval)])
+        
+        output$sizeDistributionMap <- renderLeaflet({
+          
+          leaflet::leaflet() %>% 
+            fitBounds(lng1 = min(sdDatW$longitudestart, na.rm = TRUE),
+                      lng2 = max(sdDatW$longitudestart, na.rm = TRUE),
+                      lat1 = min(sdDatW$latitudestart, na.rm = TRUE),
+                      lat2 = max(sdDatW$latitudestart, na.rm = TRUE)) %>% 
+            addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                     attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+            addMinicharts(
+              sdDatW$longitudestart, sdDatW$latitudestart,
+              type = "pie", chartdata = sdDatW[,levels(sdDat$interval)],
+              colorPalette = viridis::viridis(5),
+              width = 40 * log10(sdDatW$total) / log10(max(sdDatW$total)), 
+              transitionTime = 0
+            )
+          
+        })
+        
+      }
       
       # 
       # tmp3 <- tmpBase %>% filter(!is.na(length)) %>% replace_na(list(sex = 3)) %>% mutate(sex = factor(sex)) 
