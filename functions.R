@@ -65,7 +65,6 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
     stn <- convertColumnTypes(stn)  
   }
   
-  
   ##________________
   ## Sample data ---
   
@@ -130,18 +129,16 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   tmp <- coreDataList("fishstation")
   tmp <- tmp[!tmp %in% "stationstarttime"]
   
-  coredat <- merge(msn[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "platformname", "cruise")], stn[, tmp, with = FALSE], all = TRUE)
+  coredat <- merge(msn[, c("missionid", "missiontype", "missionnumber", "startyear", "platform", "platformname", "cruise")], stn[, tmp, with = FALSE], all = TRUE)
   
   # Stndat
   
-  stndat <- merge(coredat, cth[, coreDataList("catchsample"), with = FALSE], all.y = TRUE, by = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber"))
+  stndat <- merge(coredat, cth, all.y = TRUE, by = c("missiontype", "missionnumber", "startyear", "platform", "serialnumber"))
   
   # Inddat
   
-  x <- stndat[, c("missiontype", "startyear", "platform", "missionnumber", "missionid", "serialnumber", "catchsampleid", "catchpartnumber", "platformname", "cruise", "longitudestart", "latitudestart", "gear", "commonname")]
-  y <- ind[, coreDataList("individual"), with = FALSE]
-  inddat <- x[y, on = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid")]
-  inddat <- age[, coreDataList("agedetermination"), with = FALSE][inddat, on = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid")]
+  inddat <- merge(stndat, ind, all.y = TRUE, by = names(stndat)[names(stndat) %in% names(ind)]) 
+  inddat <- merge(inddat, age, all = TRUE, by = names(inddat)[names(inddat) %in% names(age)])
   
   ## Return ----
   
@@ -166,12 +163,21 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
     if (removeEmpty) {
       out <- lapply(out, function(k) {
-        k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
+        if (is.null(k)) {
+          NULL
+        } else {
+          k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
+        }
       })
     }
+    
   } else if (removeEmpty) {
     out <- lapply(out, function(k) {
-      k[,which(unlist(lapply(k, function(x)!all(is.na(x))))),with = FALSE]
+      if (is.null(k)) {
+        NULL
+      } else {
+        k[, which(unlist(lapply(k, function(x) !all(is.na(x))))), with = FALSE]
+      }
     })
   }
   

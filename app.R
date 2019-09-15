@@ -58,7 +58,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.2.4 (alpha), 2019-09-13",
+dropdownMenu(type = "notifications", headerText = "Version 0.2.5 (alpha), 2019-09-15",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -1202,7 +1202,7 @@ server <- shinyServer(function(input, output, session) {
   
   ## Ind plots, selected species ####
   
-  observeEvent(c(input$indSpecies, input$laPlotSexSwitch), {
+  observeEvent(c(req(input$file1), input$Subset, input$indSpecies, input$laPlotSexSwitch), {
     
     if (input$tabs == "indallSpecies" & input$indSpecies != "Select a species to generate the plots") {
       
@@ -1213,13 +1213,17 @@ server <- shinyServer(function(input, output, session) {
       if (input$indSpecies == "blåkveite") {
         
         tmpTab <- data.table::dcast(tmpBase, cruise + startyear + serialnumber + longitudestart + latitudestart ~ catchpartnumber, fun.aggregate = length, value.var = "length")
-        tmpTab$EggaSystem <- tmpTab$`1` > 0 & tmpTab$`2` > 0
         
-        tmpBase <- left_join(tmpBase, tmpTab[!names(tmpTab) %in% c(1, 2, 3)], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
-        
-        tmpBase$sex <- ifelse(!is.na(tmpBase$sex), tmpBase$sex, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 1, 1, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 2, 2, NA)))
-        
-        tmpBase <- tmpBase[names(tmpBase) != "EggaSystem"]
+        if(all(c(1, 2) %in% names(tmpTab))) {
+          
+          tmpTab$EggaSystem <- tmpTab$`1` > 0 & tmpTab$`2` > 0
+          
+          tmpBase <- left_join(tmpBase, tmpTab[!names(tmpTab) %in% 1:10], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
+          
+          tmpBase$sex <- ifelse(!is.na(tmpBase$sex), tmpBase$sex, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 1, 1, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 2, 2, NA)))
+          
+          tmpBase <- tmpBase[names(tmpBase) != "EggaSystem"]
+        }
       }
       
       lwDat <- tmpBase %>% filter(!is.na(length) & !is.na(individualweight))
