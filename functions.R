@@ -3,11 +3,11 @@
 #' @param file character string specifying the file path to the xml file. Accepts only one file at the time.
 #' @param lengthUnit character string specifying the unit for length output. Alternatives: "mm", "cm" or "m".
 #' @param weightUnit character string specifying the unit for weigth output. Alternatives: "g" or "kg". 
-#' @param removeEmpty logical indicating whether empty columns should be removed from output. This option also influences "coreData" columns.
+#' @param removeEmpty logical indicating whether empty columns should be removed from the output. This option also influences "coreData" columns.
 #' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
 #' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
 #' @param dataTable logical indicating whether the output should be returned as \link[data.table]{data.table}s instead of \link{data.frame}s. Setting this to \code{TRUE} speeds up further calculations using the data (but requires the \link[data.table]{data.table} syntax).
-#' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function.
+#' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function, but leads to problems with non-unicode characters.
 #' @param missionidPrefix A prefix for the \code{missionid} identifier, which separates cruises. Used in \code{\link{processBioticFiles}} function when several xml files are put together. \code{NULL} (default) omits the prefix. Not needed in \code{processBioticFile} function.
 #' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
 #' @author Mikko Vihtakari (Institute of Marine Research) 
@@ -126,10 +126,15 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   ## Compiled datasets ----
   
-  tmp <- coreDataList("fishstation")
-  tmp <- tmp[!tmp %in% "stationstarttime"]
-  
-  coredat <- merge(msn[, c("missionid", "missiontype", "missionnumber", "startyear", "platform", "platformname", "cruise")], stn[, tmp, with = FALSE], all = TRUE)
+  if (coreDataOnly) {
+    tmp <- coreDataList("fishstation")
+    tmp <- tmp[!tmp %in% "stationstarttime"]
+    
+    coredat <- merge(msn[, c("missionid", "missiontype", "missionnumber", "startyear", "platform", "platformname", "cruise")], stn[, tmp, with = FALSE], all = TRUE)
+    
+  } else {
+    coredat <- merge(msn, stn, by = names(msn)[names(msn) %in% names(stn)], all = TRUE)
+  }
   
   # Stndat
   
@@ -160,7 +165,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
     out <- lapply(out, function(k) {
       k <- as.data.frame(k)
     })
-  
+    
     if (removeEmpty) {
       out <- lapply(out, function(k) {
         if (is.null(k)) {
@@ -231,7 +236,7 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
     out <- lapply(out, function(k) {
       k <- as.data.frame(k)
     })
-  
+    
     if (removeEmpty) {
       out <- lapply(out, function(k) {
         k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
@@ -263,12 +268,12 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
 
 coreDataList <- function(type) {
   switch(type,
-    mission = c(c("missiontype", "startyear", "platform", "missionnumber", "missiontypename", "callsignal", "platformname", "cruise", "missionstartdate", "missionstopdate", "purpose")),
-    fishstation = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "station", "stationstartdate", "stationstarttime", "longitudestart", "latitudestart", "bottomdepthstart", "fishingdepthmin", "gear", "distance"),
-    individual = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "sex", "maturationstage", "specialstage", "length", "individualweight"),
-    catchsample = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount"),
-    agedetermination = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "age", "readability"),
-    stop("Undefined type argument"))
+         mission = c(c("missiontype", "startyear", "platform", "missionnumber", "missiontypename", "callsignal", "platformname", "cruise", "missionstartdate", "missionstopdate", "purpose")),
+         fishstation = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "station", "stationstartdate", "stationstarttime", "longitudestart", "latitudestart", "bottomdepthstart", "fishingdepthmin", "gear", "distance"),
+         individual = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "sex", "maturationstage", "specialstage", "length", "individualweight"),
+         catchsample = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount"),
+         agedetermination = c("missiontype", "startyear", "platform", "missionnumber", "serialnumber", "catchsampleid", "specimenid", "age", "readability"),
+         stop("Undefined type argument"))
 }
 
 ## Convert column types ----
