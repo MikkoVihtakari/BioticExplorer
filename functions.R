@@ -1,3 +1,10 @@
+##############################
+# File version 2019-09-24 ####
+# Author and contact: mikko.vihtakari@hi.no
+# Load required packages:
+required.packages <- c("tidyverse", "dplyr", "data.table", "scales", "RstoxData")
+sapply(required.packages, require, character.only = TRUE)
+
 #' @title Read and process a NMD Biotic xml file for further use in the BioticExplorer
 #' @description A wrapper for \code{\link[RstoxData]{readXmlFile}} to enable further use in the BioticExplorer
 #' @param file character string specifying the file path to the xml file. Accepts only one file at the time.
@@ -17,7 +24,8 @@
 # file = "/Users/mvi023/Dropbox/Workstuff/Meetings/2019 Data Limited SA course/Vassild SA/Data/biotic_year_1994_species_162064.xml"
 # lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; convertColumns = FALSE; missionidPrefix = NULL
 # file = "C:\\Users\\a22357\\Dropbox\\Workstuff\\Meetings\\2019 Data Limited SA course\\Vassild SA\\Data\\biotic_year_1989_species_162064.xml"
-processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = FALSE, coreDataOnly = TRUE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE, missionidPrefix = NULL) {
+# lengthUnit = "m"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; dataTable = TRUE; convertColumns = FALSE; missionidPrefix = NULL
+processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE, missionidPrefix = NULL) {
   
   ## Read the Biotic file ----
   
@@ -143,7 +151,9 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   # Inddat
   
   inddat <- merge(stndat, ind, all.y = TRUE, by = names(stndat)[names(stndat) %in% names(ind)]) 
-  inddat <- merge(inddat, age, all = TRUE, by = names(inddat)[names(inddat) %in% names(age)])
+  inddat <- rbindlist(list(inddat,age), fill=TRUE, use.names=TRUE)
+  
+  inddat[is.na(inddat$commonname), "commonname"] <- "Merging error due to missing data"
   
   ## Return ----
   
@@ -201,22 +211,59 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
 #' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
 #' @param dataTable logical indicating whether the output should be returned as \link[data.table]{data.table}s instead of \link{data.frame}s. Setting this to \code{TRUE} speeds up further calculations using the data (but requires the \link[data.table]{data.table} syntax).
 #' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function.
+#' @param mcCores integer indicating the number of processors to use for the calculation. If not \code{1L}, swiches on the parallel processing capability (see \link[parallel]{mclapply}). Only for advanced users. Do not play with this argument unless you know what you are doing. Does not work under Windows (see the documention).
 #' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
 #' @author Mikko Vihtakari (Institute of Marine Research) 
-#' @import RstoxData data.table
+#' @import RstoxData data.table parallel
 
 # Debugging parameters
 # files = c("/Users/mvi023/Desktop/biotic_year_1982_species_172930.xml", "/Users/mvi023/Desktop/biotic_year_2016_species_172930.xml")
-# lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; convertColumns = FALSE
-processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", removeEmpty = FALSE, coreDataOnly = TRUE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE) {
+# lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; convertColumns = FALSE; mcCores = 1L
+processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE, mcCores = 1L) {
+  
+  ## Conditions if attempting to use parallel processing
+  
+  if(mcCores != 1L) {
+    if(!is.integer(mcCores)) stop("mcCores has to be an integer")
+    if(mcCores < 1L) stop("mcCores has to be 1 or higher")
+    
+    if(Sys.info()["sysname"] == "Windows") {
+      message("You are working under Windows. Parallel processing in R does not function under the OS. Never mind, mcCores has been set to 1L. Keep on going.")
+      parPros <- FALSE
+    } else {
+      parPros <- TRUE
+    }
+  } else {
+    parPros <- FALSE
+  }
+  
+  if(parPros & !"pbmcapply" %in% installed.packages()[,"Package"]) {
+    message("Installing pbmcapply package. This package is used to show procress bar under parallel processing.")
+    install.packages("pbmcapply")
+  }
+  
+  if(parPros) {
+    require(pbmcapply)
+  }
   
   # Read xml files
   
-  out <- lapply(seq_along(files), function(i, lengthUnit. = lengthUnit, weightUnit. = weightUnit, removeEmpty. = removeEmpty, coreDataOnly. = coreDataOnly, returnOriginal. = returnOriginal) {
-    print(paste("i =", i, "file = ", files[i]))
-    print(paste(round(100*i/length(files), 0), "%"))
-    processBioticFile(files[i], lengthUnit = lengthUnit., weightUnit = weightUnit., removeEmpty = removeEmpty., coreDataOnly = coreDataOnly., returnOriginal = returnOriginal., dataTable = TRUE, convertColumns = FALSE, missionidPrefix = i)
-  })
+  if(parPros) {
+    
+    out <- pbmcapply::pbmclapply(seq_along(files), function(i, lengthUnit. = lengthUnit, weightUnit. = weightUnit, coreDataOnly. = coreDataOnly, returnOriginal. = returnOriginal) {
+      processBioticFile(files[i], lengthUnit = lengthUnit., weightUnit = weightUnit., removeEmpty = FALSE, coreDataOnly = coreDataOnly., returnOriginal = returnOriginal., dataTable = TRUE, convertColumns = FALSE, missionidPrefix = i)
+    }, mc.cores = mcCores)
+    
+  } else {
+    
+    # Debug parameters: lengthUnit. = lengthUnit; weightUnit. = weightUnit; coreDataOnly. = coreDataOnly; returnOriginal. = returnOriginal
+    out <- lapply(seq_along(files), function(i, lengthUnit. = lengthUnit, weightUnit. = weightUnit, coreDataOnly. = coreDataOnly, returnOriginal. = returnOriginal) {
+      print(paste("i =", i, "file = ", files[i]))
+      print(paste(round(100*i/length(files), 0), "%"))
+      processBioticFile(files[i], lengthUnit = lengthUnit., weightUnit = weightUnit., removeEmpty = FALSE, coreDataOnly = coreDataOnly., returnOriginal = returnOriginal., dataTable = TRUE, convertColumns = FALSE, missionidPrefix = i)
+    })
+    
+  }
   
   # Combine
   
@@ -225,9 +272,17 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
   # Convert column classes
   
   if (convertColumns) {
-    out <- lapply(out, function(k) {
-      convertColumnTypes(k)
-    })
+    
+    if(parPros) {
+      out <- pbmcapply::pbmclapply(out, function(k) {
+        convertColumnTypes(k)
+      })
+    } else {
+      out <- lapply(out, function(k) {
+        convertColumnTypes(k)
+      })
+    }
+    
   }
   
   # Convert to data.frames and/or remove empty columns
@@ -239,13 +294,36 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
     
     if (removeEmpty) {
       out <- lapply(out, function(k) {
-        k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
+        if (is.null(k)) {
+          NULL
+        } else {
+          k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
+        }
       })
     }
   } else if (removeEmpty) {
-    out <- lapply(out, function(k) {
-      k[,which(unlist(lapply(k, function(x)!all(is.na(x))))),with = FALSE]
-    })
+    
+    if(parPros) {
+      
+      out <- lapply(out, function(k) {
+        if (is.null(k)) {
+          NULL
+        } else {
+          k[, which(unlist(lapply(k, function(x) !all(is.na(x))))), with = FALSE]
+        }
+      })
+      
+    } else {
+      
+      out <- lapply(out, function(k) {
+        if (is.null(k)) {
+          NULL
+        } else {
+          k[, which(unlist(lapply(k, function(x) !all(is.na(x))))), with = FALSE]
+        }
+      })
+      
+    }
   }
   
   # Define class

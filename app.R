@@ -58,7 +58,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.2.6 (alpha), 2019-09-24",
+dropdownMenu(type = "notifications", headerText = "Version 0.2.7 (alpha), 2019-09-24",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -463,10 +463,18 @@ server <- shinyServer(function(input, output, session) {
     updateSelectInput(session, "catchMapSpecies", choices = c("All", sort(unique(rv$stnall$commonname))))
     updateSelectInput(session, "indSpecies", choices = 
                         c("Select a species to generate the plots", 
-                          rv$indall %>% 
-                            filter(!is.na(length) & !is.na(individualweight)) %>% 
-                            group_by(commonname) %>% dplyr::select(commonname) %>% 
-                            filter(n() > 1) %>% unique() %>% pull() %>% sort()))
+                          
+                          if(any(is.null(rv$indall$length), is.null(rv$indall$commonname), is.null(rv$indall$individualweight))) {
+                            "No species with sufficient data"
+                            
+                          } else {
+                            rv$indall %>% 
+                              filter(!is.na(length) & !is.na(individualweight)) %>% 
+                              group_by(commonname) %>% dplyr::select(commonname) %>% 
+                              filter(n() > 1) %>% unique() %>% pull() %>% sort()
+                          }
+                        )
+    )
     
     min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
     max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
@@ -1204,7 +1212,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(c(req(input$file1), input$Subset, input$indSpecies, input$laPlotSexSwitch), {
     
-    if (input$tabs == "indallSpecies" & input$indSpecies != "Select a species to generate the plots") {
+    if (input$tabs == "indallSpecies" & !input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
       
       ## Length-weight plot
       
@@ -1351,7 +1359,7 @@ server <- shinyServer(function(input, output, session) {
             "\n Number of included specimens = ", nrow(laDat), 
             "\n Total number of measured = ", nrow(tmpBase), 
             "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)))
-            )
+          )
         }  
       }
       
