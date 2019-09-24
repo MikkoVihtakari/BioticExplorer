@@ -158,8 +158,8 @@ body <-
                          hr(),
                          
                          strong("Drop excess data:"),
-                         checkboxInput("removeEmpty", "Remove empty columns", FALSE),
-                         checkboxInput("coreDataOnly", "Keep only important columns", TRUE),
+                         checkboxInput("removeEmpty", "Remove empty columns", TRUE),
+                         checkboxInput("coreDataOnly", "Keep only important columns", FALSE),
                          
                          radioButtons("lengthUnit", "Fish length unit:",
                                       c("Millimeter" = "mm",
@@ -1161,13 +1161,13 @@ server <- shinyServer(function(input, output, session) {
     indSumTab <- rv$indall %>% 
       dplyr::group_by(commonname) %>% 
       dplyr::summarise(Total = length(commonname), 
-                       Length = sum(!is.na(length)), 
-                       Weight = sum(!is.na(individualweight)), 
-                       Sex = sum(!is.na(sex)), 
-                       Maturationstage = sum(!is.na(maturationstage)), 
-                       Specialstage = sum(!is.na(specialstage)), 
-                       Age = sum(!is.na(age))
-      )
+                       Length = {if("length" %in% names(.)) sum(!is.na(length)) else 0},
+                       Weight = {if("individualweight" %in% names(.)) sum(!is.na(individualweight)) else 0}, 
+                       Sex = {if("sex" %in% names(.)) sum(!is.na(sex)) else 0}, 
+                       Maturationstage = {if("maturationstage" %in% names(.)) sum(!is.na(maturationstage)) else 0}, 
+                       Specialstage = {if("specialstage" %in% names(.)) sum(!is.na(specialstage)) else 0}, 
+                       Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0}
+      ) 
     
     output$individualSummaryTable <- DT::renderDataTable({
       DT::datatable(indSumTab, options = list(searching = FALSE))
