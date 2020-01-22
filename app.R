@@ -390,7 +390,7 @@ body <-
                     
                     conditionalPanel(
                       condition = "output.maturityData == false",
-                      h4("Maturity data not available for the species.", align = "center")
+                      h4("Not enough maturity data available for the species.", align = "center")
                     )
                     
                 ),
@@ -1448,7 +1448,7 @@ server <- shinyServer(function(input, output, session) {
         
         # l50Dat <- tmpBase %>% dplyr::filter(!is.na(sex) & !is.na(maturationstage))
         
-        if(nrow(l50Dat) > 0) {
+        if(nrow(l50Dat) > 10) {
           
           output$maturityData <- reactive(TRUE)
           
