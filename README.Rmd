@@ -71,6 +71,8 @@ Running the app automatically installs following packages:
 
 ## News
 
+2020-01-22 An update preparing for beta-release. Many new added features. Unstable, full of bugs and undocumented.
+
 2019-07-11 Fixed a number of Windows related problems. The app should (hopefully) work now on most institutional machines. 
 
 2019-07-08 Uploaded the first alpha version. The app works, but does not contain all features yet. This version is meant for internal testing. 

@@ -37,3 +37,7 @@ rsconnect/
 .Rproj.user
 
 *.Rproj
+
+# README.html
+
+README.html
