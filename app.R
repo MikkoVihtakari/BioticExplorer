@@ -43,6 +43,7 @@ if (!"RstoxData" %in% installed.packages()[,"Package"]) {
 ## Source functions used by the app
 
 source("functions.R", encoding = "utf-8")
+source("processBiotic_functions.R", encoding = "utf-8")
 
 ##____________________
 ## User interface ####
@@ -58,7 +59,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.2.7 (alpha), 2019-09-24",
+dropdownMenu(type = "notifications", headerText = "Version 0.3.0 (alpha), 2020-01-23",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -74,30 +75,38 @@ sidebar <- dashboardSidebar(sidebarMenu(
   id = "tabs",
   
   menuItem("Information", tabName = "info", icon = icon("info-circle")),
-  menuItem("Upload & filter", tabName = "upload", icon = icon("arrow-circle-up")),
+  
+  menuItem("Load data & filter", tabName = "info", icon = icon("arrow-circle-up"),
+           menuSubItem("From file", tabName = "upload", icon = icon("file-code")),
+           menuSubItem("From the database", tabName = "upload", icon = icon("database"))
+  ),
+  
+  menuItem("Cruise overview", icon = icon("bar-chart-o"), tabName = "missionExamine"
+  ),
+  
   menuItem("Stations & catches", icon = icon("ship"),
            menuSubItem("Overview", tabName = "stnallOverview"),
            menuSubItem("Map of catches", tabName = "stnallMap"),
            menuSubItem("Examine data", tabName = "stnallExamine")
   ),
+  
   menuItem("Individuals & ages", icon = icon("fish"),
            menuSubItem("Overview", tabName = "indallOverview"),
            menuSubItem("Species plots", tabName = "indallSpecies"),
            menuSubItem("Examine data", tabName = "indallExamine")
   ),
-  menuItem("Mission data", icon = icon("bar-chart-o"), tabName = "missionExamine"
+  
+  menuItem("Hierarchical data tables", icon = icon("sort-by-attributes", lib = "glyphicon"),
+           menuSubItem("Station data", icon = icon("bar-chart-o"), tabName = "fishstationExamine"),
+           menuSubItem("Catch data", icon = icon("bar-chart-o"), tabName = "catchsampleExamine"),
+           menuSubItem("Individual data", icon = icon("bar-chart-o"), tabName = "individualExamine"),
+           menuSubItem("Age data", icon = icon("bar-chart-o"), tabName = "agedeterminationExamine")    
   ),
-  menuItem("Station data", icon = icon("bar-chart-o"), tabName = "fishstationExamine"
-  ),
-  menuItem("Catch data", icon = icon("bar-chart-o"), tabName = "catchsampleExamine"
-  ),
-  menuItem("Individual data", icon = icon("bar-chart-o"), tabName = "individualExamine"
-  ),
-  menuItem("Age data", icon = icon("bar-chart-o"), tabName = "agedeterminationExamine"
-  ),
-  menuItem("Download", tabName = "downloadDatasets", icon = icon("arrow-circle-down"))
-),
-textOutput("res")
+  
+  menuItem("Export figures", tabName = "exportFigures", icon = icon("file-image")),
+  
+  menuItem("Download data", tabName = "downloadDatasets", icon = icon("arrow-circle-down"))
+)
 )
 
 ##..........
@@ -150,9 +159,7 @@ body <-
                          fileInput("file1",
                                    label = "Choose xml input file",
                                    multiple = TRUE,
-                                   accept = c(
-                                     ".xml"
-                                   )
+                                   accept = c(".xml", ".rds")
                          ),
                          "Note that processing takes some time for large files even after 'Upload complete' shows up. Be patient.",
                          hr(),
@@ -172,11 +179,7 @@ body <-
                                       c("Grams" = "g",
                                         "Kilograms" = "kg"),
                                       selected = "kg",
-                                      inline = TRUE),
-                         
-                         strong("Remove outliers based on:"),
-                         checkboxInput("weightOutliers", "Individual weight", FALSE),
-                         checkboxInput("lengthOutliers", "Individual length", FALSE)
+                                      inline = TRUE)
                          
                        ), 
                        
@@ -205,13 +208,12 @@ body <-
                            column(6, 
                                   selectInput(inputId = "subYear", label = "Year:",
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subSurveySeries", 
-                                              label = "Survey series:",
-                                              choices = "Not implemented yet", multiple = TRUE),
                                   selectInput(inputId = "subCruise", label = "Cruise number:",
                                               choices = NULL, multiple = TRUE),
                                   selectInput(inputId = "subPlatform", label = "Platform name:",
-                                              choices = NULL, multiple = TRUE)
+                                              choices = NULL, multiple = TRUE),
+                                  selectInput(inputId = "subDateFrom", label = "Date from:",
+                                              choices = "Not implemented yet", multiple = TRUE)
                            ),
                            
                            column(6,
@@ -221,7 +223,9 @@ body <-
                                               label = "Serial number:",
                                               choices = NULL, multiple = TRUE),
                                   selectInput(inputId = "subGear", label = "Gear code:",
-                                              choices = NULL, multiple = TRUE)
+                                              choices = NULL, multiple = TRUE),
+                                  selectInput(inputId = "subDateTo", label = "Date to:",
+                                              choices = "Not implemented yet", multiple = TRUE)
                            )),
                          
                          
@@ -229,7 +233,10 @@ body <-
                                      max = 180, value = c(-180, 180)),
                          sliderInput(inputId = "subLat", label = "Latitude:", min = -90, 
                                      max = 90, value = c(-90, 90)),
-                         actionButton(inputId = "Subset", label = "Subset")
+                         
+                         actionButton(inputId = "Subset", label = "Subset"),
+                         actionButton(inputId = "Reset", label = "Reset")
+                         
                          # , verbatimTextOutput("test")
                          
                        ),
@@ -313,47 +320,112 @@ body <-
       
       tabItem("indallSpecies", 
               fluidRow(
-                box(title = "Length - weight relationship", width = 12, status = "info", 
+                box(title = "Select species", width = 12, status = "info", 
                     solidHeader = TRUE, 
-                    selectInput("indSpecies", "Select species:", 
-                                choices = NULL),
-                    plotlyOutput("lwPlot"),
-                    br(),
-                    column(4,
-                           checkboxInput("lwPlotLogSwitch", "Logarithmic axes", FALSE)),
-                    column(8,
-                           actionButton("lwPlotExcludeSwitch", "Exclude points"),
-                           actionButton("lwPlotResetSwitch", "Reset")),
-                    column(12,
-                           verbatimTextOutput("lwPlotText"))
+                    selectInput("indSpecies", "Select species:", choices = NULL)
                 ),
                 
-                box(title = "Age - length relationship", width = 12, status = "info", 
-                    solidHeader = TRUE, plotlyOutput("laPlot"),
-                    br(),
-                    column(4,
-                           checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE)),
-                    column(8,
-                           actionButton("laPlotExcludeSwitch", "Exclude points"),
-                           actionButton("laPlotResetSwitch", "Reset")),
-                    column(12,
-                           verbatimTextOutput("laPlotText"))
+                ### weightData
+                
+                box(title = "Length - weight relationship", width = 12, status = "info", 
+                    solidHeader = TRUE, 
+                    
+                    conditionalPanel(
+                      condition = "output.weightData == true",
+                      
+                      plotlyOutput("lwPlot"),
+                      
+                      br(),
+                      column(4,
+                             checkboxInput("lwPlotLogSwitch", "Logarithmic axes", FALSE)),
+                      column(8,
+                             actionButton("lwPlotExcludeSwitch", "Exclude points"),
+                             actionButton("lwPlotResetSwitch", "Reset")),
+                      column(12,
+                             verbatimTextOutput("lwPlotText"))
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.weightData == false",
+                      h4("Weight data not available for the species.", align = "center")
+                    )
                 ),
+                
+                ### ageData
+                
+                box(title = "Age - length relationship", width = 12, status = "info", 
+                    solidHeader = TRUE, 
+                    
+                    conditionalPanel(
+                      condition = "output.ageData == true",
+                      plotlyOutput("laPlot"),
+                      
+                      br(),
+                      column(4,
+                             checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE)),
+                      column(8,
+                             actionButton("laPlotExcludeSwitch", "Exclude points"),
+                             actionButton("laPlotResetSwitch", "Reset")),
+                      column(12,
+                             verbatimTextOutput("laPlotText"))
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.ageData == false",
+                      h4("Age data not available for the species.", align = "center")
+                    )
+                    
+                ),
+                
+                ### maturityData
                 
                 box(title = "50% maturity based on length (L50)", width = 12, 
                     status = "info", solidHeader = TRUE,
-                    plotOutput("l50Plot"),
-                    verbatimTextOutput("l50PlotText")
+                    
+                    conditionalPanel(
+                      condition = "output.maturityData == true",
+                      plotOutput("l50Plot"),
+                      verbatimTextOutput("l50PlotText")
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.maturityData == false",
+                      h4("Maturity data not available for the species.", align = "center")
+                    )
+                    
                 ),
+                
+                ### sexData
                 
                 box(title = "Sex ratio", width = 12, status = "info", 
                     solidHeader = TRUE, height = 760,
-                    leafletOutput(outputId = "sexRatioMap", height = 700)
+                    
+                    conditionalPanel(
+                      condition = "output.sexData == true",
+                      leafletOutput(outputId = "sexRatioMap", height = 700)
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.sexData == false",
+                      h4("Sex data not available for the species.", align = "center")
+                    )
+                    
                 ),
+                
+                ### lengthData
                 
                 box(title = "Size distribution", width = 12, status = "info", 
                     solidHeader = TRUE, height = 760,
-                    leafletOutput(outputId = "sizeDistributionMap", height = 700)
+                    
+                    conditionalPanel(
+                      condition = "output.lengthData == true",
+                      leafletOutput(outputId = "sizeDistributionMap", height = 700)
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.lengthData == false",
+                      h4("Length data not available for the species.", align = "center")
+                    )
                 )
               )
       ),
@@ -417,9 +489,9 @@ server <- shinyServer(function(input, output, session) {
     tryCatch({
       
       if (length(input$file1[[1]]) > 1) {
-        dat <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+        rv$inputData <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = TRUE, convertColumns = TRUE)
       } else {
-        dat <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = FALSE, convertColumns = TRUE)
+        rv$inputData <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = TRUE, convertColumns = TRUE)
       }
     },
     error = function(e) {
@@ -427,33 +499,33 @@ server <- shinyServer(function(input, output, session) {
     }
     )
     
-    rv$stnall <- dat$stnall
-    rv$indall <- dat$indall
+    rv$stnall <- rv$inputData$stnall
+    rv$indall <- rv$inputData$indall
     
-    rv$mission <- dat$mission
-    rv$fishstation <- dat$fishstation
-    rv$catchsample <- dat$catchsample
-    rv$individual <- dat$individual
-    rv$agedetermination <- dat$agedetermination
-    
-    rv$inputData <- dat
+    rv$mission <- rv$inputData$mission
+    rv$fishstation <- rv$inputData$fishstation
+    rv$catchsample <- rv$inputData$catchsample
+    rv$individual <- rv$inputData$individual
+    rv$agedetermination <- rv$inputData$agedetermination
     
   })
   
-  ##..............
+  
+  ##.................
   ## Test output ####
   
   # output$test <- renderText({
+  #   
   #   # length(input$file1[[1]])
   #   # paste(input$file1[[1]], collapse = "; ")
   #   # paste(input$indSpecies, collapse = "; ")
-  #   paste(input$weigthUnit)
+  #   paste(dim(rv$indall), collapse = "; ")
   # })
-  # 
+  
   ##...................
   ## Update inputs ####
   
-  observeEvent(c(req(input$file1), input$Subset), {
+  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
     updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
     updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
     updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
@@ -539,44 +611,69 @@ server <- shinyServer(function(input, output, session) {
       input$subLat
     }
     
-    tmp <- rv$inputData$stnall
-    tmp <- tmp %>% dplyr::filter(
-      startyear %in% rv$sub$year, 
-      commonname %in% rv$sub$species,
-      cruise %in% rv$sub$cruise,
-      platformname %in% rv$sub$platform,
-      serialnumber %in% rv$sub$serialnumber,
-      gear %in% rv$sub$gear,
-      longitudestart >= rv$sub$lon[1],
-      longitudestart <= rv$sub$lon[2], 
-      latitudestart >= rv$sub$lat[1],
-      latitudestart <= rv$sub$lat[2]
-    )
+    ### Stnall subsetting
     
-    rv$stnall <- tmp
+    # rv$stnall <- rv$inputData$stnall %>% dplyr::filter(
+    #   startyear %in% rv$sub$year,
+    #   commonname %in% rv$sub$species,
+    #   cruise %in% rv$sub$cruise,
+    #   platformname %in% rv$sub$platform,
+    #   serialnumber %in% rv$sub$serialnumber,
+    #   gear %in% rv$sub$gear,
+    #   longitudestart >= rv$sub$lon[1],
+    #   longitudestart <= rv$sub$lon[2],
+    #   latitudestart >= rv$sub$lat[1],
+    #   latitudestart <= rv$sub$lat[2]
+    # )
     
-    tmp <- rv$inputData$indall
-    tmp <- tmp %>% dplyr::filter(
-      startyear %in% rv$sub$year, 
-      commonname %in% rv$sub$species,
-      cruise %in% rv$sub$cruise,
-      platformname %in% rv$sub$platform,
-      serialnumber %in% rv$sub$serialnumber,
-      gear %in% rv$sub$gear,
-      longitudestart >= rv$sub$lon[1],
-      longitudestart <= rv$sub$lon[2], 
-      latitudestart >= rv$sub$lat[1],
-      latitudestart <= rv$sub$lat[2]
-    )
+    rv$stnall <- rv$inputData$stnall[
+      startyear %in% rv$sub$year &
+        commonname %in% rv$sub$species &
+        cruise %in% rv$sub$cruise &
+        platformname %in% rv$sub$platform &
+        serialnumber %in% rv$sub$serialnumber &
+        gear %in% rv$sub$gear &
+        longitudestart >= rv$sub$lon[1] &
+        longitudestart <= rv$sub$lon[2] &
+        latitudestart >= rv$sub$lat[1] &
+        latitudestart <= rv$sub$lat[2],
+      ]
     
-    rv$indall <- tmp
+    ### Indall subsetting
     
-    tmp <- rv$inputData$mission
-    tmp <- tmp %>% dplyr::filter(
-      missionid %in% unique(rv$stnall$missionid)
-    )
+    # rv$indall <- rv$inputData$indall[rv$inputData$indall$commonname %in% rv$sub$species,]
     
-    rv$mission <- tmp
+    # rv$indall <- rv$inputData$indall %>% dplyr::filter(
+    #   startyear %in% rv$sub$year,
+    #   commonname %in% rv$sub$species,
+    #   cruise %in% rv$sub$cruise,
+    #   platformname %in% rv$sub$platform,
+    #   serialnumber %in% rv$sub$serialnumber,
+    #   gear %in% rv$sub$gear,
+    #   longitudestart >= rv$sub$lon[1],
+    #   longitudestart <= rv$sub$lon[2],
+    #   latitudestart >= rv$sub$lat[1],
+    #   latitudestart <= rv$sub$lat[2]
+    # )
+    
+    rv$indall <- rv$inputData$indall[
+      startyear %in% rv$sub$year &
+        commonname %in% rv$sub$species &
+        cruise %in% rv$sub$cruise &
+        platformname %in% rv$sub$platform &
+        serialnumber %in% rv$sub$serialnumber &
+        gear %in% rv$sub$gear &
+        longitudestart >= rv$sub$lon[1] &
+        longitudestart <= rv$sub$lon[2] &
+        latitudestart >= rv$sub$lat[1] &
+        latitudestart <= rv$sub$lat[2],
+      ]
+    
+    ### Mission subsetting
+    
+    rv$mission <- rv$inputData$mission[missionid %in% unique(rv$stnall$missionid), ]
+    
+    ### Other subsetting (to be removed?)
     
     tmp <- rv$inputData$fishstation
     tmp <- tmp %>% dplyr::filter(
@@ -624,80 +721,27 @@ server <- shinyServer(function(input, output, session) {
     rv$agedetermination <- tmp
   })
   
-  ##..............
-  ## Download ####
+  ##...............
+  ## Resetting ####
   
-  output$downloadData <- downloadHandler(
+  observeEvent(input$Reset, {
     
-    filename = function() {
-      
-      if (length(input$downloadDataType) == 1 & !"original" %in% input$downloadDataType) {
-        paste0(input$downloadDataType, input$downloadFileType)
-      } else if (input$downloadFileType == ".rda") {
-        "BioticExplorer_data.rda"
-      } else if (input$downloadFileType == ".xlsx" & !"original" %in% input$downloadDataType) {
-        "BioticExplorer_data.xlsx"
-      } else {
-        "BioticExplorer_data.zip"
-      }
-    },
+    rv$stnall <- rv$inputData$stnall
+    rv$indall <- rv$inputData$indall
     
-    content = function(file) {
-      
-      if (sapply(strsplit(file, "\\."), "[", 2) == "zip") {
-        
-        owd <- setwd(tempdir())
-        on.exit(setwd(owd))
-        files <- NULL
-        
-        #loop through the sheets
-        for (i in 1:length(input$downloadDataType)) {
-          
-          fileName <- paste0(input$downloadDataType[i], ".csv")
-          write.csv(
-            eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))),
-            fileName, row.names = FALSE) 
-          files <- c(fileName,files)
-        }
-        #create the zip file
-        zip(file,files)
-        
-      } else if (sapply(strsplit(file, "\\."), "[", 2) == "rda") {
-        
-        biotic <- lapply(input$downloadDataType, function(k) {
-          eval(parse(text = paste("rv", k, sep = "$")))
-        })
-        
-        names(biotic) <- input$downloadDataType
-        
-        save(biotic, file = file)
-        
-      } else if (sapply(strsplit(file, "\\."), "[", 2) == "xlsx") {
-        wb <- createWorkbook()
-        
-        for (i in 1:length(input$downloadDataType)) {
-          addWorksheet(wb, paste(input$downloadDataType[i]))
-          writeData(wb, paste(input$downloadDataType[i]), 
-                    eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
-        }
-        
-        saveWorkbook(wb, file)
-        
-      } else {
-        tmp <- switch(input$downloadDataType,
-                      "stnall" = rv$stnall,
-                      "indall" = rv$indall)
-        
-        write.csv(tmp, file, row.names = FALSE) 
-      }
-    }
-  )
+    rv$mission <- rv$inputData$mission
+    rv$fishstation <- rv$inputData$fishstation
+    rv$catchsample <- rv$inputData$catchsample
+    rv$individual <- rv$inputData$individual
+    rv$agedetermination <- rv$inputData$agedetermination
+    
+  })
   
   
   ##....................
   ## Overview stats ####
   
-  observeEvent(req(input$file1), {
+  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
     
     output$nStationsBox <- renderValueBox({
       valueBox(
@@ -722,7 +766,7 @@ server <- shinyServer(function(input, output, session) {
     
     output$DateStartBox <- renderValueBox({
       valueBox(
-        value = tags$p(as.Date(min(rv$stnall$stationstartdate, na.rm = TRUE)),
+        value = tags$p(min(rv$stnall$stationstartdate, na.rm = TRUE),
                        style = "font-size: 80%;"),
         subtitle = "First date"
       )
@@ -730,7 +774,7 @@ server <- shinyServer(function(input, output, session) {
     
     output$DateEndBox <- renderValueBox({
       valueBox(
-        value = tags$p(as.Date(max(rv$stnall$stationstartdate, na.rm = TRUE)),
+        value = tags$p(max(rv$stnall$stationstartdate, na.rm = TRUE),
                        style = "font-size: 80%;"),
         subtitle = "Last date"
       )
@@ -752,14 +796,14 @@ server <- shinyServer(function(input, output, session) {
     
     output$nGearsBox <- renderValueBox({
       valueBox(
-        length(unique(rv$stnall$gear)),
+        length(unique(rv$stnall[["gear"]])),
         "Gear types"
       )
     })
     
   })
   
-  ##.................s
+  ##.................
   ## Data tables ####
   
   output$stnall <- DT::renderDataTable({
@@ -767,7 +811,7 @@ server <- shinyServer(function(input, output, session) {
                   options = list(scrollX = TRUE, 
                                  pageLength = 20
                   ) 
-    ) %>% formatRound(c("longitudestart", "latitudestart", "distance", "catchweight", "lengthsampleweight"))
+    ) %>% formatRound(columns = c(FALSE, grepl("latitude|longitude|distance|weight|speed|soaktime", names(rv$stnall))), mark = " ")
   })
   
   output$indall <- DT::renderDataTable({
@@ -784,7 +828,7 @@ server <- shinyServer(function(input, output, session) {
                   options = list(scrollX = TRUE, 
                                  pageLength = 20
                   ) 
-    )# %>% formatRound(c("longitudestart", "latitudestart"))
+    )
   })
   
   output$fishstation <- DT::renderDataTable({
@@ -829,7 +873,7 @@ server <- shinyServer(function(input, output, session) {
       output$stationMap <- renderLeaflet({
         
         leaflet::leaflet(
-          rv$stnall[!is.na(rv$stnall$longitudestart) & !is.na(rv$stnall$latitudestart),]) %>% 
+          rv$stnall[!is.na(rv$stnall$longitudestart) & !is.na(rv$stnall$latitudestart), ]) %>% 
           fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
                     lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
                     lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
@@ -855,7 +899,7 @@ server <- shinyServer(function(input, output, session) {
   ##..........................
   ## Stn data figures ####
   
-  observeEvent(c(req(input$file1), input$Subset), {
+  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
     
     ## Number of stations containing the species plot
     
@@ -1018,7 +1062,7 @@ server <- shinyServer(function(input, output, session) {
     ## Station depth plot
     
     stnD <- rv$stnall %>% group_by(cruise, startyear, serialnumber) %>% summarise(bdepth = unique(bottomdepthstart), fdepth = unique(fishingdepthmin))
-    stnD <- melt(stnD, id = 1:3)
+    stnD <- data.table::melt(data.table::as.data.table(stnD), id.vars = 1:3)
     stnD$variable <- recode_factor(stnD$variable, "bdepth" = "Bottom depth (start)", "fdepth" = "Minimum fishing depth")
     
     output$stationDepthPlot <- renderPlot({
@@ -1041,7 +1085,7 @@ server <- shinyServer(function(input, output, session) {
   
   ## Stn data maps ####
   
-  observeEvent(c(req(input$file1), input$Subset), {
+  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
     
     compDat <- rv$stnall %>% filter(!is.na(catchweight)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname) %>% summarise(catchweight = sum(catchweight)) 
     
@@ -1057,9 +1101,9 @@ server <- shinyServer(function(input, output, session) {
     
     compDat <- compDat %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname, .drop = FALSE) %>% summarise(catchweight = sum(catchweight)) %>% arrange(cruise, startyear, serialnumber, commonname)
     
-    compDatW <- dcast(compDat, cruise + startyear + serialnumber + longitudestart + latitudestart + fishingdepthmin ~ commonname, value.var = "catchweight", fill = 0)
+    compDatW <- tidyr::spread(compDat, commonname, catchweight)
     
-    compDatW$total <- rowSums(compDatW[levels(compDat$commonname)]) 
+    compDatW$total <- rowSums(compDatW[,levels(compDat$commonname)]) 
     
     ## The map
     
@@ -1080,6 +1124,7 @@ server <- shinyServer(function(input, output, session) {
           transitionTime = 0
         )
     })
+    
     ## Catch - fishing depth plot
     
     output$catchSpeciesWeightPlot <- renderPlot({
@@ -1111,7 +1156,7 @@ server <- shinyServer(function(input, output, session) {
                latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
       summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
     
-    tmp2 <- rv$stnall %>% filter(!is.na(longitudestart) & !is.na(latitudestart))
+    tmp2 <- rv$stnall %>% dplyr::filter(!is.na(longitudestart) & !is.na(latitudestart))
     
     tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
     
@@ -1164,7 +1209,7 @@ server <- shinyServer(function(input, output, session) {
   ##..........................................
   ## Ind data overview figures and tables ####
   
-  observeEvent(c(req(input$file1), input$Subset), {
+  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
     
     indSumTab <- rv$indall %>% 
       dplyr::group_by(commonname) %>% 
@@ -1210,13 +1255,28 @@ server <- shinyServer(function(input, output, session) {
   
   ## Ind plots, selected species ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$indSpecies, input$laPlotSexSwitch), {
+  observe({
+    
+    ##..................
+    ## Set switches ####
+    
+    output$ageData <- reactive(FALSE)
+    output$weightData <- reactive(FALSE)
+    output$maturityData <- reactive(FALSE)
+    output$sexData <- reactive(FALSE)
+    output$lengthData <- reactive(FALSE)
+    
+    outputOptions(output, "ageData", suspendWhenHidden = FALSE)
+    outputOptions(output, "weightData", suspendWhenHidden = FALSE)
+    outputOptions(output, "maturityData", suspendWhenHidden = FALSE)
+    outputOptions(output, "sexData", suspendWhenHidden = FALSE)
+    outputOptions(output, "lengthData", suspendWhenHidden = FALSE)
     
     if (input$tabs == "indallSpecies" & !input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
       
-      ## Length-weight plot
+      ### Base individual data ####
       
-      tmpBase <- rv$indall %>% filter(commonname == input$indSpecies)
+      tmpBase <- rv$indall[commonname == input$indSpecies, ] 
       
       if (input$indSpecies == "blåkveite") {
         
@@ -1226,252 +1286,289 @@ server <- shinyServer(function(input, output, session) {
           
           tmpTab$EggaSystem <- tmpTab$`1` > 0 & tmpTab$`2` > 0
           
-          tmpBase <- left_join(tmpBase, tmpTab[!names(tmpTab) %in% 1:10], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
+          tmpBase <- dplyr::left_join(tmpBase, tmpTab[, !names(tmpTab) %in% 1:10, with = FALSE], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
           
           tmpBase$sex <- ifelse(!is.na(tmpBase$sex), tmpBase$sex, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 1, 1, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 2, 2, NA)))
           
-          tmpBase <- tmpBase[names(tmpBase) != "EggaSystem"]
+          tmpBase <- as.data.table(tmpBase[, names(tmpBase) != "EggaSystem"])
         }
       }
       
-      lwDat <- tmpBase %>% filter(!is.na(length) & !is.na(individualweight))
+      ### Length-weight plot ####
       
-      tmp <- lwDat
-      if (input$lengthUnit == "mm") tmp$length <- tmp$length/10
-      if (input$lengthUnit == "m") tmp$length <- tmp$length*100
-      if (input$weightUnit == "kg") tmp$individualweight <- tmp$individualweight*1000
-      
-      lwMod <- lm(log(individualweight) ~ log(length), data = lwDat)
-      tmpMod <- lm(log(individualweight) ~ log(length), data = tmp)
-      
-      output$lwPlot <- renderPlotly({
+      if (all(c("length", "individualweight") %in% names(tmpBase))) {
         
-        p <- ggplot() +
-          geom_point(data = lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) + 
-          theme_classic(base_size = 12) 
+        lwDat <- tmpBase[!is.na(length) & !is.na(individualweight),]
+        # lwDat <- tmpBase %>% dplyr::filter(!is.na(length) & !is.na(individualweight))
         
-        if (input$lwPlotLogSwitch) {
-          p <- p + 
-            scale_x_log10(paste0("Total length [log10(", input$lengthUnit, ")]")) +
-            scale_y_log10(paste0("Weight [log10(", input$weightUnit, ")]")) + 
-            geom_smooth(data = lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
+        if(nrow(lwDat) > 0) {
           
-        } else {
-          p <- p + 
-            scale_x_continuous(paste0("Total length (", input$lengthUnit, ")")) +
-            scale_y_continuous(paste0("Weight (", input$weightUnit, ")")) + 
-            stat_function(data = 
-                            data.frame(x = range(lwDat$length)), aes(x),
-                          fun = function(a, b, x) {a*x^b},
-                          args = list(a = exp(coef(lwMod)[1]), b = coef(lwMod)[2]),
-                          color = "blue", size = 1)
-        }
-        
-        ggplotly(p) 
-        
-      })
-      
-      output$lwPlotText <- renderText(paste0("Coefficients (calculated using cm and g): \n a = ", round(exp(coef(tmpMod)[1]), 3), "; b = ", round(coef(tmpMod)[2], 3), "\n Number of included specimens = ", nrow(lwDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(tmpBase$length)), "; weight = ", sum(is.na(tmpBase$individualweight))))
-      
-      ## Age - length plot
-      
-      laDat <- tmpBase %>% filter(!is.na(age) & !is.na(length))
-      
-      if (nrow(laDat) > 0) {
-        
-        if (input$laPlotSexSwitch) {
+          output$weightData <- reactive(TRUE)
           
-          laDat <- laDat %>% filter(!is.na(sex))
+          tmp <- lwDat
+          if (input$lengthUnit == "mm") tmp$length <- tmp$length/10
+          if (input$lengthUnit == "m") tmp$length <- tmp$length*100
+          if (input$weightUnit == "kg") tmp$individualweight <- tmp$individualweight*1000
           
-          laModF <- fishmethods::growth(age = laDat[laDat$sex == 1,]$age, size = laDat[laDat$sex == 1,]$length, Sinf = max(laDat[laDat$sex == 1,]$length), K = 0.1, t0 = 0, graph = FALSE)
+          lwMod <- lm(log(individualweight) ~ log(length), data = lwDat)
+          tmpMod <- lm(log(individualweight) ~ log(length), data = tmp)
           
-          laModM <- fishmethods::growth(age = laDat[laDat$sex == 2,]$age, size = laDat[laDat$sex == 2,]$length, Sinf = max(laDat[laDat$sex == 2,]$length), K = 0.1, t0 = 0, graph = FALSE)
-          
-          laDat$sex <- as.factor(laDat$sex)
-          laDat$sex <- recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
-          
-          output$laPlot <- renderPlotly({
+          output$lwPlot <- renderPlotly({
             
             p <- ggplot() +
-              geom_point(data = laDat, aes(x = age, y = length, color = as.factor(sex), text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
-              expand_limits(x = 0) +
-              scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
-              geom_hline(yintercept = coef(laModF$vout)[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
-              geom_hline(yintercept = coef(laModM$vout)[1], linetype = 2, color = ColorPalette[1], alpha = 0.5) +
-              ylab(paste0("Total length (", input$lengthUnit, ")")) +
-              xlab("Age (years)") +
-              theme_classic(base_size = 14) + 
-              stat_function(data = data.frame(x = range(laDat$age)), aes(x),
-                            fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
-                            args = list(Sinf = coef(laModM$vout)[1], 
-                                        K = coef(laModM$vout)[2], 
-                                        t0 = coef(laModM$vout)[3]),
-                            color = ColorPalette[1], size = 1) +
-              stat_function(data = data.frame(x = range(laDat$age)), aes(x),
-                            fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
-                            args = list(Sinf = coef(laModF$vout)[1], 
-                                        K = coef(laModF$vout)[2], 
-                                        t0 = coef(laModF$vout)[3]),
-                            color = ColorPalette[4], size = 1)
+              geom_point(data = lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) + 
+              theme_classic(base_size = 12) 
+            
+            if (input$lwPlotLogSwitch) {
+              p <- p + 
+                scale_x_log10(paste0("Total length [log10(", input$lengthUnit, ")]")) +
+                scale_y_log10(paste0("Weight [log10(", input$weightUnit, ")]")) + 
+                geom_smooth(data = lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
+              
+            } else {
+              p <- p + 
+                scale_x_continuous(paste0("Total length (", input$lengthUnit, ")")) +
+                scale_y_continuous(paste0("Weight (", input$weightUnit, ")")) + 
+                stat_function(data = 
+                                data.frame(x = range(lwDat$length)), aes(x),
+                              fun = function(a, b, x) {a*x^b},
+                              args = list(a = exp(coef(lwMod)[1]), b = coef(lwMod)[2]),
+                              color = "blue", size = 1)
+            }
             
             ggplotly(p) 
+            
           })
           
-          output$laPlotText <- renderText(
-            paste0("von Bertalanffy growth function coefficients\n for females and males, respectively: \n Linf (asymptotic average length) = ", round(coef(laModF$vout)[1], 3), " and ", round(coef(laModM$vout)[1], 3), " ", input$lengthUnit, 
-                   "\n K (growth rate coefficient) = ", round(coef(laModF$vout)[2], 3), " and ", round(coef(laModM$vout)[2], 3), 
-                   "\n t0 (length at age 0) = ", round(coef(laModF$vout)[3], 3), " and ", round(coef(laModM$vout)[3], 3), " ", input$lengthUnit, 
-                   "\n tmax (life span; t0 + 3/K) = ", round(coef(laModF$vout)[3] + 3 / coef(laModF$vout)[2], 1), " and ", round(coef(laModM$vout)[3] + 3 / coef(laModM$vout)[2], 1), " years",
-                   "\n Number of included specimens = ", nrow(laDat), 
-                   "\n Total number of measured = ", nrow(tmpBase), 
-                   "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)), "; sex = ", sum(is.na(tmpBase$sex))))
+          output$lwPlotText <- renderText(paste0("Coefficients (calculated using cm and g): \n a = ", round(exp(coef(tmpMod)[1]), 3), "; b = ", round(coef(tmpMod)[2], 3), "\n Number of included specimens = ", nrow(lwDat), "\n Total number of measured = ", nrow(tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(tmpBase$length)), "; weight = ", sum(is.na(tmpBase$individualweight))))
           
-        } else {
+        } 
+      } 
+      
+      ### Age - length plot ####
+      
+      if (all(c("length", "age") %in% names(tmpBase))) {
+        
+        laDat <- tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
+        
+        if(nrow(laDat) > 0) {
           
-          laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
+          output$ageData <- reactive(TRUE)
           
-          
-          output$laPlot <- renderPlotly({
+          if (input$laPlotSexSwitch) {
             
-            p <- ggplot() +
-              geom_point(data = laDat, aes(x = age, y = length)) +
-              expand_limits(x = 0) +
-              geom_hline(yintercept = coef(laMod$vout)[1], linetype = 2, color = "grey") +
+            laDat <- laDat %>% filter(!is.na(sex))
+            
+            laModF <- fishmethods::growth(age = laDat[laDat$sex == 1,]$age, size = laDat[laDat$sex == 1,]$length, Sinf = max(laDat[laDat$sex == 1,]$length), K = 0.1, t0 = 0, graph = FALSE)
+            
+            laModM <- fishmethods::growth(age = laDat[laDat$sex == 2,]$age, size = laDat[laDat$sex == 2,]$length, Sinf = max(laDat[laDat$sex == 2,]$length), K = 0.1, t0 = 0, graph = FALSE)
+            
+            laDat$sex <- as.factor(laDat$sex)
+            laDat$sex <- recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
+            
+            output$laPlot <- renderPlotly({
+              
+              p <- ggplot() +
+                geom_point(data = laDat, aes(x = age, y = length, color = as.factor(sex), text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
+                expand_limits(x = 0) +
+                scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
+                geom_hline(yintercept = coef(laModF$vout)[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
+                geom_hline(yintercept = coef(laModM$vout)[1], linetype = 2, color = ColorPalette[1], alpha = 0.5) +
+                ylab(paste0("Total length (", input$lengthUnit, ")")) +
+                xlab("Age (years)") +
+                theme_classic(base_size = 14) + 
+                stat_function(data = data.frame(x = range(laDat$age)), aes(x),
+                              fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
+                              args = list(Sinf = coef(laModM$vout)[1], 
+                                          K = coef(laModM$vout)[2], 
+                                          t0 = coef(laModM$vout)[3]),
+                              color = ColorPalette[1], size = 1) +
+                stat_function(data = data.frame(x = range(laDat$age)), aes(x),
+                              fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
+                              args = list(Sinf = coef(laModF$vout)[1], 
+                                          K = coef(laModF$vout)[2], 
+                                          t0 = coef(laModF$vout)[3]),
+                              color = ColorPalette[4], size = 1)
+              
+              ggplotly(p) 
+            })
+            
+            output$laPlotText <- renderText(
+              paste0("von Bertalanffy growth function coefficients\n for females and males, respectively: \n Linf (asymptotic average length) = ", round(coef(laModF$vout)[1], 3), " and ", round(coef(laModM$vout)[1], 3), " ", input$lengthUnit, 
+                     "\n K (growth rate coefficient) = ", round(coef(laModF$vout)[2], 3), " and ", round(coef(laModM$vout)[2], 3), 
+                     "\n t0 (length at age 0) = ", round(coef(laModF$vout)[3], 3), " and ", round(coef(laModM$vout)[3], 3), " ", input$lengthUnit, 
+                     "\n tmax (life span; t0 + 3/K) = ", round(coef(laModF$vout)[3] + 3 / coef(laModF$vout)[2], 1), " and ", round(coef(laModM$vout)[3] + 3 / coef(laModM$vout)[2], 1), " years",
+                     "\n Number of included specimens = ", nrow(laDat), 
+                     "\n Total number of measured = ", nrow(tmpBase), 
+                     "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)), "; sex = ", sum(is.na(tmpBase$sex))))
+            
+          } else {
+            
+            laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
+            
+            
+            output$laPlot <- renderPlotly({
+              
+              p <- ggplot() +
+                geom_point(data = laDat, aes(x = age, y = length)) +
+                expand_limits(x = 0) +
+                geom_hline(yintercept = coef(laMod$vout)[1], linetype = 2, color = "grey") +
+                ylab(paste0("Total length (", input$lengthUnit, ")")) +
+                xlab("Age (years)") +
+                theme_classic(base_size = 14) + 
+                stat_function(data = 
+                                data.frame(x = range(laDat$age)), aes(x),
+                              fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
+                              args = list(Sinf = coef(laMod$vout)[1], 
+                                          K = coef(laMod$vout)[2], 
+                                          t0 = coef(laMod$vout)[3]),
+                              color = "blue", size = 1)
+              
+              ggplotly(p) 
+            })
+            
+            output$laPlotText <- renderText(paste0(
+              "von Bertalanffy growth function coefficients: \n Linf (asymptotic average length) = ", round(coef(laMod$vout)[1], 3), " ", input$lengthUnit, 
+              "\n K (growth rate coefficient) = ", round(coef(laMod$vout)[2], 3), 
+              "\n t0 (length at age 0) = ", round(coef(laMod$vout)[3], 3), " ", input$lengthUnit, 
+              "\n tmax (life span; t0 + 3/K) = ", round(coef(laMod$vout)[3] + 3 / coef(laMod$vout)[2], 1), " years", 
+              "\n Number of included specimens = ", nrow(laDat), 
+              "\n Total number of measured = ", nrow(tmpBase), 
+              "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)))
+            )
+          }  
+        } 
+      }
+      
+      ### L50 maturity plot  ####
+      
+      if (all(c("sex", "maturationstage") %in% names(tmpBase))) {
+        
+        l50Dat <- tmpBase[!is.na(tmpBase$sex) & !is.na(tmpBase$maturationstage), ]
+        
+        # l50Dat <- tmpBase %>% dplyr::filter(!is.na(sex) & !is.na(maturationstage))
+        
+        if(nrow(l50Dat) > 0) {
+          
+          output$maturityData <- reactive(TRUE)
+          
+          l50Dat$sex <- factor(l50Dat$sex)
+          l50Dat$sex <- recode_factor(l50Dat$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
+          
+          l50Dat$maturity <- ifelse(l50Dat$maturationstage < 2, 0, ifelse(l50Dat$maturationstage >= 2, 1, NA))
+          
+          modF <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Female",], family = binomial(link = "logit"))
+          modM <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Male",], family = binomial(link = "logit"))
+          
+          Fdat <- unlogit(0.5, modF)
+          Fdat$sex <- "Female"
+          Mdat <- unlogit(0.5, modM)
+          Mdat$sex <- "Male"
+          modDat <- rbind(Fdat, Mdat)
+          
+          output$l50Plot <- renderPlot({
+            
+            ggplot(l50Dat, aes(x = length, y = maturity, shape = sex)) + 
+              geom_point() + 
+              geom_segment(data = modDat, 
+                           aes(x = mean, xend = mean, y = 0, yend = 0.5, color = sex),
+                           linetype = 2) +
+              geom_segment(data = modDat, 
+                           aes(x = -Inf, xend = mean, y = 0.5, yend = 0.5, color = sex),
+                           linetype = 2) +
+              geom_text(data = modDat, 
+                        aes(x = mean, y = -0.03, label = paste(round(mean, 2), input$lengthUnit),
+                            color = sex), size = 3) +
+              stat_smooth(aes(color = sex), method="glm", 
+                          method.args=list(family="binomial")) +
               ylab(paste0("Total length (", input$lengthUnit, ")")) +
-              xlab("Age (years)") +
-              theme_classic(base_size = 14) + 
-              stat_function(data = 
-                              data.frame(x = range(laDat$age)), aes(x),
-                            fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
-                            args = list(Sinf = coef(laMod$vout)[1], 
-                                        K = coef(laMod$vout)[2], 
-                                        t0 = coef(laMod$vout)[3]),
-                            color = "blue", size = 1)
+              ylab("Maturity") + 
+              scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
+              scale_shape("Sex", solid = FALSE) + 
+              theme_bw(base_size = 14) + 
+              guides(color=guide_legend(override.aes=list(fill=NA))) + 
+              theme(legend.position = c(0.9, 0.25), 
+                    legend.background = element_blank(), legend.key = element_blank())
             
-            ggplotly(p) 
           })
           
-          output$laPlotText <- renderText(paste0(
-            "von Bertalanffy growth function coefficients: \n Linf (asymptotic average length) = ", round(coef(laMod$vout)[1], 3), " ", input$lengthUnit, 
-            "\n K (growth rate coefficient) = ", round(coef(laMod$vout)[2], 3), 
-            "\n t0 (length at age 0) = ", round(coef(laMod$vout)[3], 3), " ", input$lengthUnit, 
-            "\n tmax (life span; t0 + 3/K) = ", round(coef(laMod$vout)[3] + 3 / coef(laMod$vout)[2], 1), " years", 
-            "\n Number of included specimens = ", nrow(laDat), 
-            "\n Total number of measured = ", nrow(tmpBase), 
-            "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)))
-          )
-        }  
-      }
-      
-      ## L50 maturity plot  ####
-      
-      l50Dat <- tmpBase %>% filter(!is.na(sex) & !is.na(maturationstage))
-      
-      if(nrow(l50Dat) > 0) {
+          output$l50PlotText <- renderText({
+            paste0("50% maturity at length (L50) based on logit regressions and assuming maturitystage >= 2 as mature:",
+                   "\n\n Females: ", round(modDat[modDat$sex == "Female", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Female", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Female", "ci.max"], 3),
+                   "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Female",]),
+                   "\n\n Males: ", round(modDat[modDat$sex == "Male", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Male", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Male", "ci.max"], 3),
+                   "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Male",]))
+          })
+        } 
         
-        l50Dat$sex <- factor(l50Dat$sex)
-        l50Dat$sex <- recode_factor(l50Dat$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
-        
-        l50Dat$maturity <- ifelse(l50Dat$maturationstage < 2, 0, ifelse(l50Dat$maturationstage >= 2, 1, NA))
-        
-        modF <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Female",], family = binomial(link = "logit"))
-        modM <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Male",], family = binomial(link = "logit"))
-        
-        Fdat <- unlogit(0.5, modF)
-        Fdat$sex <- "Female"
-        Mdat <- unlogit(0.5, modM)
-        Mdat$sex <- "Male"
-        modDat <- rbind(Fdat, Mdat)
-        
-        output$l50Plot <- renderPlot({
-          
-          ggplot(l50Dat, aes(x = length, y = maturity, shape = sex)) + 
-            geom_point() + 
-            geom_segment(data = modDat, 
-                         aes(x = mean, xend = mean, y = 0, yend = 0.5, color = sex),
-                         linetype = 2) +
-            geom_segment(data = modDat, 
-                         aes(x = -Inf, xend = mean, y = 0.5, yend = 0.5, color = sex),
-                         linetype = 2) +
-            geom_text(data = modDat, 
-                      aes(x = mean, y = -0.03, label = paste(round(mean, 2), input$lengthUnit),
-                          color = sex), size = 3) +
-            stat_smooth(aes(color = sex), method="glm", 
-                        method.args=list(family="binomial")) +
-            ylab(paste0("Total length (", input$lengthUnit, ")")) +
-            ylab("Maturity") + 
-            scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
-            scale_shape("Sex", solid = FALSE) + 
-            theme_bw(base_size = 14) + 
-            guides(color=guide_legend(override.aes=list(fill=NA))) + 
-            theme(legend.position = c(0.9, 0.25), 
-                  legend.background = element_blank(), legend.key = element_blank())
-          
-        })
-        
-        output$l50PlotText <- renderText({
-          paste0("50% maturity at length (L50) based on logit regressions and assuming maturitystage >= 2 as mature:",
-                 "\n\n Females: ", round(modDat[modDat$sex == "Female", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Female", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Female", "ci.max"], 3),
-                 "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Female",]),
-                 "\n\n Males: ", round(modDat[modDat$sex == "Male", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Male", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Male", "ci.max"], 3),
-                 "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Male",]))
-        })
-      }
+      } 
       
       ## Sex ratio map ####
       
-      srDat <- tmpBase %>% filter(!is.na(sex)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
-      
-      if (nrow(srDat) > 0) {
+      if (c("sex") %in% names(tmpBase)) {
         
-        output$sexRatioMap <- renderLeaflet({
-          
-          leaflet::leaflet() %>% 
-            fitBounds(lng1 = min(srDat$longitudestart, na.rm = TRUE),
-                      lng2 = max(srDat$longitudestart, na.rm = TRUE),
-                      lat1 = min(srDat$latitudestart, na.rm = TRUE),
-                      lat2 = max(srDat$latitudestart, na.rm = TRUE)) %>% 
-            addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                     attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-            addMinicharts(
-              srDat$longitudestart, srDat$latitudestart,
-              type = "pie", chartdata = srDat[,c("Female", "Male")],
-              colorPalette = c(ColorPalette[4], ColorPalette[1]),
-              width = 40 * log10(srDat$total) / log10(max(srDat$total)), 
-              transitionTime = 0
-            )
-          
-        })
+        srDat <- tmpBase %>% dplyr::filter(!is.na(sex)) %>% dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% dplyr::summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
         
-      }
+        if (nrow(srDat) > 0) {
+          
+          output$sexData <- reactive(TRUE)
+          
+          output$sexRatioMap <- renderLeaflet({
+            
+            leaflet::leaflet() %>% 
+              fitBounds(lng1 = min(srDat$longitudestart, na.rm = TRUE),
+                        lng2 = max(srDat$longitudestart, na.rm = TRUE),
+                        lat1 = min(srDat$latitudestart, na.rm = TRUE),
+                        lat2 = max(srDat$latitudestart, na.rm = TRUE)) %>% 
+              addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                       attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+              addMinicharts(
+                srDat$longitudestart, srDat$latitudestart,
+                type = "pie", chartdata = srDat[,c("Female", "Male")],
+                colorPalette = c(ColorPalette[4], ColorPalette[1]),
+                width = 40 * log10(srDat$total) / log10(max(srDat$total)), 
+                transitionTime = 0
+              )
+            
+          })
+          
+        } 
+      } 
       
       ## Size distribution map ####
       
-      sdDat <- tmpBase %>% filter(!is.na(length)) %>% dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% summarise(count = n())
-      
-      if(nrow(sdDat) > 0) {
+      if (all(c("cruise", "startyear", "serialnumber", "longitudestart", "latitudestart", "length") %in% names(tmpBase))) {
         
-        sdDatW <- dcast(sdDat, cruise + startyear + serialnumber + longitudestart + latitudestart ~ interval, value.var = "count", fill = 0)
-        sdDatW$total <- rowSums(sdDatW[,levels(sdDat$interval)])
+        sdDat <- tmpBase %>% dplyr::filter(!is.na(length)) %>% dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% dplyr::mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% dplyr::summarise(count = n())
         
-        output$sizeDistributionMap <- renderLeaflet({
+        if(nrow(sdDat) > 0) {
           
-          leaflet::leaflet() %>% 
-            fitBounds(lng1 = min(sdDatW$longitudestart, na.rm = TRUE),
-                      lng2 = max(sdDatW$longitudestart, na.rm = TRUE),
-                      lat1 = min(sdDatW$latitudestart, na.rm = TRUE),
-                      lat2 = max(sdDatW$latitudestart, na.rm = TRUE)) %>% 
-            addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                     attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-            addMinicharts(
-              sdDatW$longitudestart, sdDatW$latitudestart,
-              type = "pie", chartdata = sdDatW[,levels(sdDat$interval)],
-              colorPalette = viridis::viridis(5),
-              width = 40 * log10(sdDatW$total) / log10(max(sdDatW$total)), 
-              transitionTime = 0
-            )
+          output$lengthData <- reactive(TRUE)
           
-        })
+          sdDatW <- spread(sdDat, interval, count)
+          
+          sdDatW$total <- rowSums(sdDatW[,levels(sdDat$interval)])
+          
+          output$sizeDistributionMap <- renderLeaflet({
+            
+            leaflet::leaflet() %>% 
+              fitBounds(lng1 = min(sdDatW$longitudestart, na.rm = TRUE),
+                        lng2 = max(sdDatW$longitudestart, na.rm = TRUE),
+                        lat1 = min(sdDatW$latitudestart, na.rm = TRUE),
+                        lat2 = max(sdDatW$latitudestart, na.rm = TRUE)) %>% 
+              addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                       attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+              addMinicharts(
+                sdDatW$longitudestart, sdDatW$latitudestart,
+                type = "pie", chartdata = sdDatW[,levels(sdDat$interval)],
+                colorPalette = viridis::viridis(5),
+                width = 40 * log10(sdDatW$total) / log10(max(sdDatW$total)), 
+                transitionTime = 0
+              )
+            
+          })
+          
+        }
         
       }
       
@@ -1510,9 +1607,86 @@ server <- shinyServer(function(input, output, session) {
       # Add depth preference
       
       
+    } else if (input$tabs == "indallSpecies" & input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
+      
+      output$weightData <- reactive(FALSE)
+      output$ageData <- reactive(FALSE)
+      output$maturityData <- reactive(FALSE)
+      output$sexData <- reactive(FALSE)
+      output$lengthData <- reactive(FALSE)
     }
     
   }) 
+  
+  ##..............
+  ## Download ####
+  
+  output$downloadData <- downloadHandler(
+    
+    filename = function() {
+      
+      if (length(input$downloadDataType) == 1 & !"original" %in% input$downloadDataType) {
+        paste0(input$downloadDataType, input$downloadFileType)
+      } else if (input$downloadFileType == ".rda") {
+        "BioticExplorer_data.rds"
+      } else if (input$downloadFileType == ".xlsx" & !"original" %in% input$downloadDataType) {
+        "BioticExplorer_data.xlsx"
+      } else {
+        "BioticExplorer_data.zip"
+      }
+    },
+    
+    content = function(file) {
+      
+      if (sapply(strsplit(file, "\\."), "[", 2) == "zip") {
+        
+        owd <- setwd(tempdir())
+        on.exit(setwd(owd))
+        files <- NULL
+        
+        #loop through the sheets
+        for (i in 1:length(input$downloadDataType)) {
+          
+          fileName <- paste0(input$downloadDataType[i], ".csv")
+          write.csv(
+            eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))),
+            fileName, row.names = FALSE) 
+          files <- c(fileName,files)
+        }
+        #create the zip file
+        zip(file,files)
+        
+      } else if (sapply(strsplit(file, "\\."), "[", 2) == "rds") {
+        
+        biotic <- lapply(input$downloadDataType, function(k) {
+          eval(parse(text = paste("rv", k, sep = "$")))
+        })
+        
+        names(biotic) <- input$downloadDataType
+        
+        saveRDS(biotic, file = file)
+        
+      } else if (sapply(strsplit(file, "\\."), "[", 2) == "xlsx") {
+        wb <- createWorkbook()
+        
+        for (i in 1:length(input$downloadDataType)) {
+          addWorksheet(wb, paste(input$downloadDataType[i]))
+          writeData(wb, paste(input$downloadDataType[i]), 
+                    eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
+        }
+        
+        saveWorkbook(wb, file)
+        
+      } else {
+        tmp <- switch(input$downloadDataType,
+                      "stnall" = rv$stnall,
+                      "indall" = rv$indall)
+        
+        write.csv(tmp, file, row.names = FALSE) 
+      }
+    }
+  )
+  
   
 })
 
