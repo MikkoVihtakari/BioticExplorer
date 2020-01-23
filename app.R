@@ -59,7 +59,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.3.1 (alpha), 2020-01-23",
+dropdownMenu(type = "notifications", headerText = "Version 0.3.2 (alpha), 2020-01-23",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -134,8 +134,9 @@ body <-
                        p("6)", strong("Download"), "filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types, note that the csv format will be returned as a zip file. Downloading zip files might not work if you run the app in RStudio window. Try again using the 'Run External' option (i.e. run the app in web-browser."),
                        br(),
                        br(),
-                       h5("Author and contact person: Mikko Vihtakari (mikko.vihtakari@hi.no)", align = "left"),
-                       h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team and Shiny developers", href = "https://www.rstudio.com/about/"), align = "left")
+                       h5("Authors: The StoX project team (Mikko Vihtakari, Ibrahim Umar)", align = "left"),
+                       h5("Contact person: Mikko Vihtakari (mikko.vihtakari@hi.no)", align = "left"),
+                       h5("(c) Institute of Marine Research, Norway, acknowledging the", a("RStudio team, Shiny developers", href = "https://www.rstudio.com/about/"), "and the", a("community", hfer = "https://stackoverflow.com/questions/tagged/shiny"), align = "left")
                 )
               )
       ),
@@ -237,7 +238,7 @@ body <-
                          actionButton(inputId = "Subset", label = "Subset"),
                          actionButton(inputId = "Reset", label = "Reset")
                          
-                         # , verbatimTextOutput("test")
+                        # , verbatimTextOutput("test")
                          
                        ),
                        
@@ -455,6 +456,13 @@ body <-
       ),
       
       ##...................
+      ## Debugging tab ####
+      
+      # tabItem("debugging",
+      #         )
+      #       
+      
+      ##...................
       ## Download tab ####
       
       tabItem("downloadDatasets", 
@@ -531,11 +539,11 @@ server <- shinyServer(function(input, output, session) {
   ## Test output ####
   
   # output$test <- renderText({
-  #   
+  # 
   #   # length(input$file1[[1]])
   #   # paste(input$file1[[1]], collapse = "; ")
-  #   # paste(input$indSpecies, collapse = "; ")
-  #   paste(dim(rv$indall), collapse = "; ")
+  #   paste(input$indSpecies, collapse = "; ")
+  #   # paste(dim(rv$indall), collapse = "; ")
   # })
   
   ##...................
@@ -1288,7 +1296,7 @@ server <- shinyServer(function(input, output, session) {
     outputOptions(output, "sexData", suspendWhenHidden = FALSE)
     outputOptions(output, "lengthData", suspendWhenHidden = FALSE)
     
-    if (input$tabs == "indallSpecies" & !input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
+    if (input$tabs == "indallSpecies" & input$indSpecies != "" & !input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
       
       ### Base individual data ####
       
@@ -1623,14 +1631,7 @@ server <- shinyServer(function(input, output, session) {
       # Add depth preference
       
       
-    } else if (input$tabs == "indallSpecies" & input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
-      
-      output$weightData <- reactive(FALSE)
-      output$ageData <- reactive(FALSE)
-      output$maturityData <- reactive(FALSE)
-      output$sexData <- reactive(FALSE)
-      output$lengthData <- reactive(FALSE)
-    }
+    } 
     
   }) 
   
