@@ -672,6 +672,10 @@ server <- shinyServer(function(input, output, session) {
     #   latitudestart <= rv$sub$lat[2]
     # )
     
+    # rv$indall <- rv$inputData$indall[
+    #     commonname %in% rv$sub$species,
+    #   ]
+    #     
     rv$indall <- rv$inputData$indall[
       startyear %in% rv$sub$year &
         commonname %in% rv$sub$species &
@@ -890,10 +894,6 @@ server <- shinyServer(function(input, output, session) {
         
         leaflet::leaflet(
           rv$stnall[!is.na(rv$stnall$longitudestart) & !is.na(rv$stnall$latitudestart), ]) %>% 
-          fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
-                    lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
-                    lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
-                    lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
           addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                    attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
           addRectangles(
