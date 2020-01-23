@@ -59,7 +59,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.3.0 (alpha), 2020-01-22",
+dropdownMenu(type = "notifications", headerText = "Version 0.3.1 (alpha), 2020-01-23",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -432,11 +432,27 @@ body <-
       
       tabItem("indallExamine", DT::dataTableOutput("indall")),
       
+      ##..................
+      ## NMD data tab ####
+      
       tabItem("missionExamine", DT::dataTableOutput("missionTable")),
       tabItem("fishstationExamine", DT::dataTableOutput("fishstation")),
       tabItem("catchsampleExamine", DT::dataTableOutput("catchsample")),
       tabItem("individualExamine", DT::dataTableOutput("individualTable")),
       tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
+      
+      ##........................
+      ## Export figures tab ####
+      
+      tabItem("exportFigures",
+              box(title = "Select figures to export", width = 12, status = "info", 
+                  solidHeader = TRUE,
+                  
+                  checkboxGroupInput("stationOverviewExport", label = h4("Station overview figures"), 
+                                     choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3),
+                                     selected = 1, inline = TRUE)
+              )
+      ),
       
       ##...................
       ## Download tab ####
