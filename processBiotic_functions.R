@@ -19,6 +19,10 @@
 # lengthUnit = "m"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; dataTable = TRUE; convertColumns = FALSE; missionidPrefix = NULL
 processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE, missionidPrefix = NULL) {
   
+  ## Checks
+  
+  if(!file.exists(file)) stop("file does not exist. Check your file path.")
+  
   ## Read the Biotic file ----
   
   dt <- RstoxData::readXmlFile(file)

@@ -44,9 +44,31 @@ if (!"RstoxData" %in% installed.packages()[,"Package"]) {
 
 source("functions.R", encoding = "utf-8")
 source("processBiotic_functions.R", encoding = "utf-8")
+source("figure_functions.R", encoding = "utf-8")
 
 ##____________________
 ## User interface ####
+
+##..............
+## Settings ####
+
+tagList(
+  tags$head(
+    tags$style(
+      HTML(
+        ".checkbox-inline { 
+                    margin-left: 0px;
+                    margin-right: 10px;
+          }
+         .checkbox-inline+.checkbox-inline {
+                    margin-left: 0px;
+                    margin-right: 10px;
+          }
+        "
+      )
+    ) 
+  )
+)
 
 ##............
 ## Header ####
@@ -59,7 +81,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.3.2 (alpha), 2020-01-23",
+dropdownMenu(type = "notifications", headerText = "Version 0.3.3 (alpha), 2020-01-24",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -103,9 +125,11 @@ sidebar <- dashboardSidebar(sidebarMenu(
            menuSubItem("Age data", icon = icon("bar-chart-o"), tabName = "agedeterminationExamine")    
   ),
   
-  menuItem("Export figures", tabName = "exportFigures", icon = icon("file-image")),
+  menuItem("Download", icon = icon("arrow-circle-down"),
+           menuSubItem("Export figures", tabName = "exportFigures", icon = icon("file-image")),
+           menuSubItem("Download data", tabName = "downloadDatasets", icon = icon("table"))
+  )
   
-  menuItem("Download data", tabName = "downloadDatasets", icon = icon("arrow-circle-down"))
 )
 )
 
@@ -238,7 +262,7 @@ body <-
                          actionButton(inputId = "Subset", label = "Subset"),
                          actionButton(inputId = "Reset", label = "Reset")
                          
-                        # , verbatimTextOutput("test")
+                         # , verbatimTextOutput("test")
                          
                        ),
                        
@@ -446,12 +470,61 @@ body <-
       ## Export figures tab ####
       
       tabItem("exportFigures",
-              box(title = "Select figures to export", width = 12, status = "info", 
+              box(title = "1. Select the figures to export", width = 12, status = "info", 
                   solidHeader = TRUE,
                   
+                  checkboxGroupInput("cruiseMapExport", label = h4("Station map and cruise track (use only when the xml file consist of entire cruise)"), 
+                                     choices = list("Cruise map" = 1),
+                                     selected = NULL, inline = TRUE),
+                  
+                  radioButtons("plotCruiseTrack", "Cruise track:", 
+                               choices = list("Do not plot" = "No", "From station sequence" = "Stations", "From file" = "File"),
+                               selected = "No",
+                               inline = TRUE
+                  ),
+                  
+                  conditionalPanel(condition = "input.plotCruiseTrack == 'File'",
+                                   fileInput("cruiseTrackFile",
+                                             label = "Upload cruise track",
+                                             multiple = TRUE,
+                                             accept = NA)
+                  ),
+                  
                   checkboxGroupInput("stationOverviewExport", label = h4("Station overview figures"), 
-                                     choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3),
-                                     selected = 1, inline = TRUE)
+                                     choices = list("Species composition" = "speciesCompositionPlot", "Total catch weight" = "catchweightSumPlot",
+                                                    "Mean catch weight" = "catchweightMeanPlot", "Catch weight range" = "catchweightRangePlot",
+                                                    "Mean weight of specimen" = "catchIndMeanWeightPlot", "Mean number in catch" = "catchcountMeanPlot", 
+                                                    "Range of number in catch" = "catchcountRangePlot", "Total catch by gear type" = 7, 
+                                                    "Station depth" = 8, "Fishing depth of the six most dominant species" = 9
+                                     ),
+                                     selected = NA, inline = TRUE)
+              ),
+              
+              box(title = "2. Download selected figures", width = 12, status = "info", 
+                  solidHeader = TRUE,
+                  
+                  radioButtons("downloadFiguresAs", "Download as:", 
+                               choices = list("Figure files" = "File", "Cruise report template" = "Report"),
+                               selected = "File",
+                               inline = TRUE
+                  ),
+                  
+                  
+                  conditionalPanel(condition = "input.downloadFiguresAs == 'File'",
+                                   radioButtons("downloadFigureFormat", "File format:",
+                                                choices = list("Png" = ".png", "Jpeg" = ".jpeg", "Pdf" = ".pdf"),
+                                                selected = ".png",
+                                                inline = TRUE)
+                  ),
+                  
+                  conditionalPanel(condition = "input.downloadFiguresAs == 'Report'",
+                                   radioButtons("downloadReportFormat", "File format:",
+                                                choices = list("Rmarkdown" = "Rmd", "Word" = "Doc", "Pdf" = "Pdf"),
+                                                selected = "Rmd",
+                                                inline = TRUE)
+                  ),
+                  
+                  downloadButton(outputId = "downloadFigures")
               )
       ),
       
@@ -475,6 +548,7 @@ body <-
                                  "Excel" = ".xlsx"),
                                selected = ".rda"
                   ),
+                  
                   checkboxGroupInput("downloadDataType", "Data to download:",
                                      c("Stations & catches" = "stnall",
                                        "Individuals & ages" = "indall"
@@ -482,6 +556,7 @@ body <-
                                      ),
                                      selected = c("stnall", "indall")
                   ),
+                  
                   downloadButton(outputId = "downloadData")
                   # verbatimTextOutput("test")
                 ) 
@@ -925,144 +1000,48 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(c(req(input$file1), input$Subset, input$Reset), {
     
+    spOverviewDat <- speciesOverviewData(rv$stnall)
+    
     ## Number of stations containing the species plot
     
-    nStn <- rv$stnall %>% dplyr::group_by(commonname) %>% dplyr::summarise(n = length(unique(paste(startyear, serialnumber))))
-    nStn <- nStn[order(-nStn$n),]
-    nStn$commonname <- factor(nStn$commonname, nStn$commonname)
-    
-    output$speciesCompositionPlot <- renderPlot({
-      
-      ggplot(nStn, aes(y = n, x = commonname)) + 
-        geom_col() +
-        ylab("Number of stations containing the species") +
-        xlab("Species database name") +
-        coord_cartesian(expand = FALSE, ylim = range(pretty(nStn$n))) + 
-        theme_bw(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
+    output$speciesCompositionPlot <- renderPlot(speciesCompositionPlot(spOverviewDat))
     
     ## Summed catch weight plot
     
-    catchW <- rv$stnall[!is.na(rv$stnall$catchweight),]
-    
-    catchS <- catchW %>% dplyr::group_by(commonname) %>% dplyr::summarise(mean = mean(catchweight, na.rm = TRUE), se = se(catchweight), max = max(catchweight, na.rm = TRUE), min = min(catchweight, na.rm = TRUE), sum = sum(catchweight, na.rm = TRUE))
-    catchS <- catchS[order(-catchS$sum),]
-    catchS$commonname <- factor(catchS$commonname, catchS$commonname)
-    catchS$se[is.na(catchS$se)] <- 0
-    catchW$commonname <- factor(catchW$commonname, catchS$commonname)
-    
     output$catchweightSumPlot <- renderPlotly({
       
-      p <- ggplot(catchS, aes(x = commonname, y = sum)) + 
-        geom_col() + 
-        scale_y_log10("Summed catch weight [log10(kg)]") +
-        xlab("Species database name") +
-        coord_cartesian() + 
-        theme_bw(base_size = 12) +
-        annotate("text", x = Inf, y = Inf, label = paste("Total catch\n all species\n", round(sum(catchS$sum), 0), "kg"), vjust = 1, hjust = 1, size = 5) + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      p <- catchweightSumPlot(spOverviewDat)
       
-      ggplotly(p) %>% plotly::layout(annotations = list(x = 1, y= 1, xref = "paper", yref = "paper", text = paste("Total catch\n all species\n", round(sum(catchS$sum), 0), "kg"), showarrow = FALSE, font = list(size = 12)))
+      ggplotly(p) %>% plotly::layout(annotations = list(x = 1, y= 1, xref = "paper", yref = "paper", text = paste("Total catch\n all species\n", round(sum(spOverviewDat$catchS$sum), 0), "kg"), showarrow = FALSE, font = list(size = 12)))
       
     })
     
     ## Mean catch weight plot
     
-    output$catchweightMeanPlot <- renderPlot({
-      
-      ggplot(catchS, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) +
-        geom_linerange() +
-        geom_point() +
-        ylab("Mean catch weight (kg; +/- SE)") +
-        xlab("Species database name") +
-        coord_cartesian() + 
-        theme_bw(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
+    output$catchweightMeanPlot <- renderPlot(catchweightMeanPlot(spOverviewDat))
     
     ## Catch weight range plot
     
-    output$catchweightRangePlot <- renderPlot({
-      
-      ggplot() + 
-        geom_linerange(data = catchS, aes(x = commonname, ymax = max, ymin = min), color = "red") +
-        geom_point(data = catchW, aes(x = commonname, y = catchweight), size = 1, shape = 21) +
-        scale_y_log10("Catch weight range [log10(kg)]") +
-        xlab("Species database name") +
-        coord_cartesian() + 
-        theme_bw(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
+    output$catchweightRangePlot <- renderPlot(catchweightRangePlot(spOverviewDat))
     
     ## Mean weight of fish in catch
     
-    meanW <- rv$stnall %>% filter(!is.na(catchweight) & catchweight > 0 & !is.na(catchcount) & catchcount > 0) %>% group_by(commonname, cruise, startyear, serialnumber) %>% summarise(weight = sum(catchweight), n = sum(catchcount), indw = weight/n)
-    meanW <- droplevels(meanW)
-    meanW <- meanW %>% group_by(commonname) %>% summarise(mean = mean(indw), min = min(indw), max = max(indw), sd = sd(indw), se = se(indw)) %>% arrange(-mean)
-    meanW$commonname <- factor(meanW$commonname, meanW$commonname)
-    
-    output$catchIndMeanWeightPlot <- renderPlot({
-      
-      ggplot(meanW, aes(x = commonname, y = mean, ymin = min, ymax = max)) + 
-        geom_pointrange() +
-        scale_y_log10("Mean specimen weight (kg +/- range)", labels = scales::number_format(accuracy = 0.001)) +
-        xlab("Species database name") +
-        theme_bw(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
+    output$catchIndMeanWeightPlot <- renderPlot(catchIndMeanWeightPlot(spOverviewDat))
     
     ## Mean n in catch plot
     
-    catchN <- rv$stnall[!is.na(rv$stnall$catchcount) & rv$stnall$catchcount > 0,]
-    
-    meanN <- catchN %>% group_by(commonname) %>% summarise(mean = mean(catchcount), se = se(catchcount), max = max(catchcount), min = min(catchcount), Nstn = length(unique(paste(cruise, startyear, serialnumber))))
-    meanN <- meanN[order(-meanN$mean),]
-    meanN$se[is.na(meanN$se)] <- 0
-    meanN$commonname <- factor(meanN$commonname, meanN$commonname)
-    catchN$commonname <- factor(catchN$commonname, meanN$commonname)
-    
-    output$catchcountMeanPlot <- renderPlot({
-      
-      ggplot(meanN, aes(x = commonname, y = mean, ymax = mean + se, ymin = mean - se)) + 
-        geom_linerange() +
-        geom_point() +
-        ylab("Mean number in catch (+/- SE)") +
-        xlab("Species database name") +
-        theme_bw(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
+    output$catchcountMeanPlot <- renderPlot(catchcountMeanPlot(spOverviewDat))
     
     ## N range in catch plot
     
-    output$catchcountRangePlot <- renderPlot({
-      
-      ggplot() + 
-        geom_linerange(data = meanN, 
-                       aes(x = commonname, ymax = max, ymin = min), color = "red") +
-        geom_point(data = catchN,
-                   aes(x = commonname, y = catchcount), size = 1, shape = 21) +
-        scale_y_log10("Range for number in catch (log10)") +
-        xlab("Species database name") +
-        coord_cartesian() + 
-        theme_bw(base_size = 14) +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
-    
-    
+    output$catchcountRangePlot <- renderPlot(catchcountRangePlot(spOverviewDat))
     
     ## Catch in gear plot
     
     catchGBase <- rv$stnall[!is.na(rv$stnall$catchweight),]
     catchG <- catchGBase %>% group_by(gear, commonname) %>% 
       summarise(sum = sum(catchweight))
-    catchG$commonname <- factor(catchG$commonname, catchS$commonname)
+    catchG$commonname <- factor(catchG$commonname, spOverviewDat$catchS$commonname)
     
     output$gearcatchPlot <- renderPlot({
       
@@ -1134,10 +1113,6 @@ server <- shinyServer(function(input, output, session) {
     output$catchCompMap <- renderLeaflet({
       
       leaflet::leaflet() %>% 
-        fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
-                  lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
-                  lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
-                  lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
         addMinicharts(
@@ -1189,10 +1164,6 @@ server <- shinyServer(function(input, output, session) {
     output$catchMap <- renderLeaflet({
       
       p <- leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
-        fitBounds(lng1 = min(rv$stnall$longitudestart, na.rm = TRUE),
-                  lng2 = max(rv$stnall$longitudestart, na.rm = TRUE),
-                  lat1 = min(rv$stnall$latitudestart, na.rm = TRUE),
-                  lat2 = max(rv$stnall$latitudestart, na.rm = TRUE)) %>% 
         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
         addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
@@ -1540,10 +1511,6 @@ server <- shinyServer(function(input, output, session) {
           output$sexRatioMap <- renderLeaflet({
             
             leaflet::leaflet() %>% 
-              fitBounds(lng1 = min(srDat$longitudestart, na.rm = TRUE),
-                        lng2 = max(srDat$longitudestart, na.rm = TRUE),
-                        lat1 = min(srDat$latitudestart, na.rm = TRUE),
-                        lat2 = max(srDat$latitudestart, na.rm = TRUE)) %>% 
               addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                        attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
               addMinicharts(
@@ -1576,10 +1543,6 @@ server <- shinyServer(function(input, output, session) {
           output$sizeDistributionMap <- renderLeaflet({
             
             leaflet::leaflet() %>% 
-              fitBounds(lng1 = min(sdDatW$longitudestart, na.rm = TRUE),
-                        lng2 = max(sdDatW$longitudestart, na.rm = TRUE),
-                        lat1 = min(sdDatW$latitudestart, na.rm = TRUE),
-                        lat2 = max(sdDatW$latitudestart, na.rm = TRUE)) %>% 
               addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                        attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
               addMinicharts(
@@ -1637,6 +1600,36 @@ server <- shinyServer(function(input, output, session) {
   
   ##..............
   ## Download ####
+  
+  ### Download figures ####
+  
+  output$downloadFigures <- downloadHandler(
+    
+    filename = function() "BioticExplorer_figures.zip",
+    
+    content = function(file) {
+      
+      owd <- setwd(tempdir())
+      on.exit(setwd(owd))
+      files <- NULL
+      
+      spOverviewDat <- speciesOverviewData(rv$stnall)
+      
+      for (i in 1:length(input$stationOverviewExport)) {
+        
+        fileName <- paste0(input$stationOverviewExport[i], input$downloadFigureFormat)
+        
+        ggsave(fileName, plot = get(input$stationOverviewExport[i])(spOverviewDat))
+        
+        files <- c(fileName,files)
+      }
+      
+      zip(file,files)
+      
+    }
+  )
+  
+  ### Download data ####
   
   output$downloadData <- downloadHandler(
     
