@@ -42,7 +42,7 @@ if (!"RstoxData" %in% installed.packages()[,"Package"]) {
 
 ## Source functions used by the app
 
-source("functions.R", encoding = "utf-8")
+source("other_functions.R", encoding = "utf-8")
 source("processBiotic_functions.R", encoding = "utf-8")
 source("figure_functions.R", encoding = "utf-8")
 
@@ -50,7 +50,7 @@ source("figure_functions.R", encoding = "utf-8")
 ## User interface ####
 
 ##..............
-## Settings ####
+## Settings  and definitions####
 
 tagList(
   tags$head(
@@ -70,6 +70,13 @@ tagList(
   )
 )
 
+stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlot", "Total catch weight" = "catchweightSumPlot",
+                                  "Mean catch weight" = "catchweightMeanPlot", "Catch weight range" = "catchweightRangePlot",
+                                  "Mean weight of specimen" = "catchIndMeanWeightPlot", "Mean number in catch" = "catchcountMeanPlot", 
+                                  "Range of number in catch" = "catchcountRangePlot", "Total catch by gear type" = "gearCatchPlot", 
+                                  "Station depth" = "stationDepthPlot", "Fishing depth of the six most dominant species" = "catchSpeciesWeightPlot"
+)
+
 ##............
 ## Header ####
 
@@ -81,7 +88,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.3.3 (alpha), 2020-01-24",
+dropdownMenu(type = "notifications", headerText = "Version 0.3.4 (alpha), 2020-01-27",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -491,13 +498,11 @@ body <-
                   ),
                   
                   checkboxGroupInput("stationOverviewExport", label = h4("Station overview figures"), 
-                                     choices = list("Species composition" = "speciesCompositionPlot", "Total catch weight" = "catchweightSumPlot",
-                                                    "Mean catch weight" = "catchweightMeanPlot", "Catch weight range" = "catchweightRangePlot",
-                                                    "Mean weight of specimen" = "catchIndMeanWeightPlot", "Mean number in catch" = "catchcountMeanPlot", 
-                                                    "Range of number in catch" = "catchcountRangePlot", "Total catch by gear type" = 7, 
-                                                    "Station depth" = 8, "Fishing depth of the six most dominant species" = 9
-                                     ),
-                                     selected = NA, inline = TRUE)
+                                     choices = stationOverviewFigureList,
+                                     selected = NA, inline = TRUE),
+                  
+                  actionLink("selectAllStationOverviewExport", "Select/deselect all")
+                  
               ),
               
               box(title = "2. Download selected figures", width = 12, status = "info", 
@@ -654,6 +659,20 @@ server <- shinyServer(function(input, output, session) {
     min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
     max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
     updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
+    
+  })
+  
+  ## Export figures tab
+  
+  observeEvent(c(input$selectAllStationOverviewExport), {
+    
+    if(input$selectAllStationOverviewExport > 0) {
+      if(input$selectAllStationOverviewExport %% 2 == 1) {
+        updateSelectInput(session, "stationOverviewExport", selected = stationOverviewFigureList)
+      } else {
+        updateSelectInput(session, "stationOverviewExport", selected = NA)
+      }
+    } 
     
   })
   
@@ -1038,51 +1057,15 @@ server <- shinyServer(function(input, output, session) {
     
     ## Catch in gear plot
     
-    catchGBase <- rv$stnall[!is.na(rv$stnall$catchweight),]
-    catchG <- catchGBase %>% group_by(gear, commonname) %>% 
-      summarise(sum = sum(catchweight))
-    catchG$commonname <- factor(catchG$commonname, spOverviewDat$catchS$commonname)
-    
-    output$gearcatchPlot <- renderPlot({
-      
-      ggplot(catchG, aes(x = commonname, y = as.factor(gear), 
-                         size = sum, color = sum)) +
-        geom_point() + 
-        scale_color_distiller(name = "Total catch [log10(kg)]", 
-                              palette = "Spectral", trans = "log10", 
-                              breaks = c(1 %o% 10^(-4:4))
-        ) +
-        scale_size(name = "Total catch [log10(kg)]", trans = "log10", 
-                   breaks = c(1 %o% 10^(-4:4), range = c(1,8))
-        ) +
-        ylab("Gear code") +
-        xlab("Species database name") +
-        theme_bw(base_size = 14) + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      
-    })
+    output$gearcatchPlot <- renderPlot(gearCatchPlot(spOverviewDat))
     
     ## Station depth plot
     
-    stnD <- rv$stnall %>% group_by(cruise, startyear, serialnumber) %>% summarise(bdepth = unique(bottomdepthstart), fdepth = unique(fishingdepthmin))
-    stnD <- data.table::melt(data.table::as.data.table(stnD), id.vars = 1:3)
-    stnD$variable <- recode_factor(stnD$variable, "bdepth" = "Bottom depth (start)", "fdepth" = "Minimum fishing depth")
+    output$stationDepthPlot <- renderPlot(stationDepthPlot(spOverviewDat))
     
-    output$stationDepthPlot <- renderPlot({
-      
-      ggplot(stnD, aes(x = value)) +
-        geom_histogram(binwidth = 100, color = "black", fill = "grey") +
-        facet_wrap(~variable) +
-        scale_y_continuous("Count", expand = c(0, 0)) +
-        scale_x_continuous("Depth (m)", expand = c(0,0.05)) +
-        expand_limits(x = 0) +
-        theme_classic(base_size = 14) +
-        theme(strip.background = element_blank())
-      
-    })
+    ## Fishing depth plot 
     
-    # stnG <- catchGBase %>% group_by(gear) %>%
-    #   summarise(n = length(unique(paste(cruise, startyear, serialnumber))))
+    output$catchSpeciesWeightPlot <- renderPlot(catchSpeciesWeightPlot(spOverviewDat))
     
   })
   
@@ -1124,18 +1107,7 @@ server <- shinyServer(function(input, output, session) {
         )
     })
     
-    ## Catch - fishing depth plot
     
-    output$catchSpeciesWeightPlot <- renderPlot({
-      
-      ggplot(compDat[compDat$commonname != "Andre arter",], aes(x = fishingdepthmin, y = catchweight, group = commonname)) +
-        geom_smooth(se = FALSE) +
-        geom_point() +
-        ylab("Catch weight (kg)") + 
-        xlab("Minimum fishing depth (m)") +
-        facet_wrap(~commonname, scales = "free_y") + 
-        theme_bw(base_size = 14)
-    })
   })
   
   
@@ -1359,7 +1331,7 @@ server <- shinyServer(function(input, output, session) {
             laModM <- fishmethods::growth(age = laDat[laDat$sex == 2,]$age, size = laDat[laDat$sex == 2,]$length, Sinf = max(laDat[laDat$sex == 2,]$length), K = 0.1, t0 = 0, graph = FALSE)
             
             laDat$sex <- as.factor(laDat$sex)
-            laDat$sex <- recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
+            laDat$sex <- dplyr::recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
             
             output$laPlot <- renderPlotly({
               
@@ -1448,7 +1420,7 @@ server <- shinyServer(function(input, output, session) {
           output$maturityData <- reactive(TRUE)
           
           l50Dat$sex <- factor(l50Dat$sex)
-          l50Dat$sex <- recode_factor(l50Dat$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
+          l50Dat$sex <- dplyr::recode_factor(l50Dat$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
           
           l50Dat$maturity <- ifelse(l50Dat$maturationstage < 2, 0, ifelse(l50Dat$maturationstage >= 2, 1, NA))
           
@@ -1502,7 +1474,10 @@ server <- shinyServer(function(input, output, session) {
       
       if (c("sex") %in% names(tmpBase)) {
         
-        srDat <- tmpBase %>% dplyr::filter(!is.na(sex)) %>% dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% dplyr::summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
+        srDat <- tmpBase %>% 
+          dplyr::filter(!is.na(sex)) %>% 
+          dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% 
+          dplyr::summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
         
         if (nrow(srDat) > 0) {
           
@@ -1530,7 +1505,12 @@ server <- shinyServer(function(input, output, session) {
       
       if (all(c("cruise", "startyear", "serialnumber", "longitudestart", "latitudestart", "length") %in% names(tmpBase))) {
         
-        sdDat <- tmpBase %>% dplyr::filter(!is.na(length)) %>% dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% dplyr::mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% dplyr::summarise(count = n())
+        sdDat <- tmpBase %>% 
+          dplyr::filter(!is.na(length)) %>% 
+          dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% 
+          dplyr::mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% 
+          dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% 
+          dplyr::summarise(count = n())
         
         if(nrow(sdDat) > 0) {
           
