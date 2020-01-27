@@ -14,19 +14,9 @@ if (Sys.info()["sysname"] == "Windows") {
 
 ### OS specific exceptions
 
-if (os == "Linux") {
-  
-  if (!capabilities()["X11"]) {
-    options(bitmapType = "cairo")
-    
-    required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "viridis", "Cairo") 
-  }
-  
-} else {
-  required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "viridis")
-}
-
 ### Install missing packages
+
+required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "viridis", "mapview")
 
 new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
 if (length(new.packages) > 0) install.packages(new.packages)
@@ -77,6 +67,10 @@ stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlo
                                   "Station depth" = "stationDepthPlot", "Fishing depth of the six most dominant species" = "catchSpeciesWeightPlot"
 )
 
+
+stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" = "catchCompMap")
+
+
 ##............
 ## Header ####
 
@@ -88,7 +82,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.3.4 (alpha), 2020-01-27",
+dropdownMenu(type = "notifications", headerText = "Version 0.3.5 (alpha), 2020-01-27",
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -501,12 +495,28 @@ body <-
                                      choices = stationOverviewFigureList,
                                      selected = NA, inline = TRUE),
                   
-                  actionLink("selectAllStationOverviewExport", "Select/deselect all")
+                  actionLink("selectAllStationOverviewExport", "Select/deselect all"),
+                  
+                  h4("Station based maps"),
+                  
+                  splitLayout(cellWidths = c("25%", "40%"),
+                              checkboxGroupInput("stationCatchMapExport", label = NULL, choices = stationMapList[1]),
+                              selectInput("catchMapExportSpecies", NULL, choices = NULL)
+                  ),
+                  
+                  checkboxGroupInput("stationMapExport", label = NULL, 
+                                     choices = stationMapList[-1],
+                                     selected = NA, inline = TRUE),
+                  
+                  
+                  actionLink("selectAllStationMapExport", "Select/deselect all")
                   
               ),
               
               box(title = "2. Download selected figures", width = 12, status = "info", 
                   solidHeader = TRUE,
+                  
+                  numericInput("figureWidth", "Figure width in cm (the height will be scaled automatically)", value = 18), 
                   
                   radioButtons("downloadFiguresAs", "Download as:", 
                                choices = list("Figure files" = "File", "Cruise report template" = "Report"),
@@ -675,6 +685,19 @@ server <- shinyServer(function(input, output, session) {
     } 
     
   })
+  
+  observeEvent(c(input$selectAllStationMapExport), {
+    
+    if(input$selectAllStationMapExport > 0) {
+      if(input$selectAllStationMapExport %% 2 == 1) {
+        updateSelectInput(session, "stationMapExport", selected = stationMapList)
+      } else {
+        updateSelectInput(session, "stationMapExport", selected = NA)
+      }
+    } 
+    
+  })
+  
   
   ##................
   ## Subsetting ####
@@ -1014,7 +1037,7 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  ##..........................
+  ##......................
   ## Stn data figures ####
   
   observeEvent(c(req(input$file1), input$Subset, input$Reset), {
@@ -1067,111 +1090,22 @@ server <- shinyServer(function(input, output, session) {
     
     output$catchSpeciesWeightPlot <- renderPlot(catchSpeciesWeightPlot(spOverviewDat))
     
-  })
-  
-  ## Stn data maps ####
-  
-  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
+    ## Stn data maps ####
     
-    compDat <- rv$stnall %>% filter(!is.na(catchweight)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname) %>% summarise(catchweight = sum(catchweight)) 
+    ## Catch composition map
     
-    sumCompDat <- compDat %>% group_by(commonname) %>% summarise(sum = sum(catchweight)) %>% arrange(-sum)
-    
-    compDat$commonname <- factor(compDat$commonname, sumCompDat$commonname)
-    
-    if (length(sumCompDat$commonname) > 6) {
-      levels(compDat$commonname)[!levels(compDat$commonname) %in% sumCompDat$commonname[1:6]] <- "Andre arter"
-    }
-    
-    levels(compDat$commonname) <- gsub("(^[[:alpha:]])", "\\U\\1", levels(compDat$commonname), perl = TRUE)    
-    
-    compDat <- compDat %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, fishingdepthmin, commonname, .drop = FALSE) %>% summarise(catchweight = sum(catchweight)) %>% arrange(cruise, startyear, serialnumber, commonname)
-    
-    compDatW <- tidyr::spread(compDat, commonname, catchweight)
-    
-    compDatW$total <- rowSums(compDatW[,levels(compDat$commonname)]) 
-    
-    ## The map
-    
-    output$catchCompMap <- renderLeaflet({
-      
-      leaflet::leaflet() %>% 
-        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-        addMinicharts(
-          compDatW$longitudestart, compDatW$latitudestart,
-          type = "pie", chartdata = compDatW[,levels(compDat$commonname)],
-          colorPalette = ColorPalette,
-          width = 40 * log(compDatW$total) / log(max(compDatW$total)), 
-          transitionTime = 0
-        )
-    })
-    
+    output$catchCompMap <- renderLeaflet(catchCompMap(spOverviewDat))
     
   })
   
   
   observeEvent(c(req(input$file1), input$Subset, input$catchMapSpecies), {
     
-    if (input$catchMapSpecies == "All") {
-      sps <- unique(rv$stnall$commonname)
-    } else {
-      sps <- input$catchMapSpecies
-    }
+    ## Catch map ###
     
-    ## Catch map ####
-    
-    tmp <- rv$stnall %>% 
-      filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
-      group_by(startyear, serialnumber, longitudestart, 
-               latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
-      summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
-    
-    tmp2 <- rv$stnall %>% dplyr::filter(!is.na(longitudestart) & !is.na(latitudestart))
-    
-    tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
-    
-    if (nrow(tmp2) > 0) tmp2$catchsum <- 0
-    
-    output$catchMap <- renderLeaflet({
-      
-      p <- leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
-        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
-        addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
-                   weight = 4, radius = 5e4*(tmp$catchsum/max(tmp$catchsum)), 
-                   label = paste0(tmp$serialnumber, "; ", tmp$catchsum, " kg"), 
-                   popup = paste("Serial number:", tmp$serialnumber, "<br>",
-                                 "Date:", tmp$stationstartdate, "<br>",
-                                 "Gear code:", tmp$gear, "<br>",
-                                 "Bottom depth:", round(tmp$bottomdepthstart, 0), "m",
-                                 "<br>", input$catchMapSpecies, "catch:", tmp$catchsum, 
-                                 "kg"), 
-                   color = "red", fill = NA
-        ) 
-      
-      if (nrow(tmp2) > 0) {
-        p %>% 
-          addCircles(lat = tmp2$latitudestart, lng = tmp2$longitudestart, 
-                     weight = 4, radius = 1, 
-                     label = paste0(tmp2$serialnumber, "; ", tmp2$catchsum, " kg"), 
-                     popup = paste("Serial number:", tmp2$serialnumber, "<br>",
-                                   "Date:", tmp2$stationstartdate, "<br>",
-                                   "Gear code:", tmp2$gear, "<br>",
-                                   "Bottom depth:", round(tmp2$bottomdepthstart, 0), "m",
-                                   "<br>", input$catchMapSpecies, "catch:", tmp2$catchsum, 
-                                   "kg"), 
-                     color = "black"
-          )
-      } else {
-        p
-      }
-      
-    })
+    output$catchMap <- renderLeaflet(catchMap(rv$stnall, species = input$catchMapSpecies))
     
   }) 
-  
-  
   
   ##..........................................
   ## Ind data overview figures and tables ####
@@ -1595,17 +1529,41 @@ server <- shinyServer(function(input, output, session) {
       
       spOverviewDat <- speciesOverviewData(rv$stnall)
       
-      for (i in 1:length(input$stationOverviewExport)) {
+      ## Station overview figures
+      
+      if(!is.null(input$stationOverviewExport)) {
         
-        fileName <- paste0(input$stationOverviewExport[i], input$downloadFigureFormat)
-        
-        ggsave(fileName, plot = get(input$stationOverviewExport[i])(spOverviewDat))
-        
-        files <- c(fileName,files)
+        for (i in 1:length(input$stationOverviewExport)) {
+          
+          fileName <- paste0(input$stationOverviewExport[i], input$downloadFigureFormat)
+          
+          ggplot2::ggsave(fileName, plot = get(input$stationOverviewExport[i])(spOverviewDat, base_size = 8), width = input$figureWidth, height = 0.8*input$figureWidth, units = "cm")
+          
+          files <- c(fileName,files)
+        }
       }
       
-      zip(file,files)
+      ## Station maps
       
+      if(!is.null(input$stationMapExport)) {
+        
+        for(i in 1:length(input$stationMapExport)) {
+          
+          fileName <- paste0(input$stationMapExport[i], input$downloadFigureFormat)
+          
+          mapview::mapshot(get(input$stationMapExport[i])(spOverviewDat), file = fileName)
+          
+          files <- c(fileName,files)
+          
+        }
+        
+      }
+      
+      if(is.null(files)) {
+        stop("Select figures to download")
+      } else {
+        zip(file,files)
+      }
     }
   )
   

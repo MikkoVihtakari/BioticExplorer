@@ -94,10 +94,11 @@ speciesOverviewData <- function(data) {
 #' @title Plot Number of stations containing a species
 #' @description Plots a species composition in an \link[=processBioticFile]{bioticProcData} object. 
 #' @param data data object from \link{speciesOverviewData}. Requires the nStn data frame.
+#' @param base_size base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-speciesCompositionPlot <- function(data) {
+speciesCompositionPlot <- function(data, base_size = 14) {
   
   x <- data$nStn
   
@@ -106,18 +107,19 @@ speciesCompositionPlot <- function(data) {
     ylab("Number of stations containing the species") +
     xlab("Species database name") +
     coord_cartesian(expand = FALSE, ylim = range(pretty(x$n))) + 
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = base_size) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
-  
+
 #' @title Plot summed catch weight
 #' @description Plots summed catch weights in an \link[=processBioticFile]{bioticProcData} object. 
 #' @param data data object from \link{speciesOverviewData}. Requires the catchS data frame.
+#' @param base_size base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchweightSumPlot  <- function(data) {
+catchweightSumPlot  <- function(data, base_size = 12) {
   
   x <- data$catchS
   
@@ -126,7 +128,7 @@ catchweightSumPlot  <- function(data) {
     scale_y_log10("Summed catch weight [log10(kg)]") +
     xlab("Species database name") +
     coord_cartesian() +
-    theme_bw(base_size = 12) +
+    theme_bw(base_size = base_size) +
     annotate("text", x = Inf, y = Inf, label = paste("Total catch\n all species\n", round(sum(x$sum), 0), "kg"), vjust = 1, hjust = 1, size = 5) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 }
@@ -136,10 +138,11 @@ catchweightSumPlot  <- function(data) {
 #' @title Plot mean catch weight
 #' @description Plots mean catch weights in an \link[=processBioticFile]{bioticProcData} object. Error bars are standard error of the mean.
 #' @param data data object from \link{speciesOverviewData}. Requires the catchS data frame.
+#' @param base_size base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchweightMeanPlot  <- function(data) {
+catchweightMeanPlot  <- function(data, base_size = 14) {
   
   x <- data$catchS
   
@@ -149,7 +152,7 @@ catchweightMeanPlot  <- function(data) {
     ylab("Mean catch weight (kg; +/- SE)") +
     xlab("Species database name") +
     coord_cartesian() +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = base_size) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
@@ -157,10 +160,11 @@ catchweightMeanPlot  <- function(data) {
 #' @title Plot range of catch weights
 #' @description Plots the range of catch weights in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the catchS and catchW data frames.
+#' @param base_size base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchweightRangePlot  <- function(data) {
+catchweightRangePlot  <- function(data, base_size = 14) {
   
   x <- data$catchS
   y <- data$catchW
@@ -171,7 +175,7 @@ catchweightRangePlot  <- function(data) {
     scale_y_log10("Catch weight range [log10(kg)]") +
     xlab("Species database name") +
     coord_cartesian() +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = base_size) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
@@ -179,10 +183,11 @@ catchweightRangePlot  <- function(data) {
 #' @title Plot mean weight of fish in catch
 #' @description Plots mean weight of fish in catch in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the meanW data frame.
+#' @param base_size base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchIndMeanWeightPlot <- function(data) {
+catchIndMeanWeightPlot <- function(data, base_size = 14) {
   
   x <- data$meanW
   
@@ -190,7 +195,7 @@ catchIndMeanWeightPlot <- function(data) {
     geom_pointrange() +
     scale_y_log10("Mean specimen weight (kg +/- range)", labels = scales::number_format(accuracy = 0.001)) +
     xlab("Species database name") +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = base_size) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
@@ -198,10 +203,11 @@ catchIndMeanWeightPlot <- function(data) {
 #' @title Plot mean number in catches
 #' @description Plots mean number of fish in catches in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the meanN data frame.
+#' @param base_size Base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchcountMeanPlot <- function(data) {
+catchcountMeanPlot <- function(data, base_size = 14) {
   
   x <- data$meanN
   
@@ -210,7 +216,7 @@ catchcountMeanPlot <- function(data) {
     geom_point() +
     ylab("Mean number in catch (+/- SE)") +
     xlab("Species database name") +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = base_size) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
@@ -218,37 +224,39 @@ catchcountMeanPlot <- function(data) {
 #' @title Plot range of number in catches
 #' @description Plots range of number of fish in catches in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the meanN and catchN data frames.
+#' @param base_size Base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchcountRangePlot <- function(data) {
+catchcountRangePlot <- function(data, base_size = 14) {
   
-   x <- data$meanN
-   y <- data$catchN
-   
-   ggplot() +
-     geom_linerange(data = x,
-                    aes(x = commonname, ymax = max, ymin = min), color = "red") +
-     geom_point(data = y,
-                aes(x = commonname, y = catchcount), size = 1, shape = 21) +
-     scale_y_log10("Range for number in catch (log10)") +
-     xlab("Species database name") +
-     coord_cartesian() +
-     theme_bw(base_size = 14) +
-     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  x <- data$meanN
+  y <- data$catchN
+  
+  ggplot() +
+    geom_linerange(data = x,
+                   aes(x = commonname, ymax = max, ymin = min), color = "red") +
+    geom_point(data = y,
+               aes(x = commonname, y = catchcount), size = 1, shape = 21) +
+    scale_y_log10("Range for number in catch (log10)") +
+    xlab("Species database name") +
+    coord_cartesian() +
+    theme_bw(base_size = base_size) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
 
 #' @title Plot catch by species and gear code
 #' @description Plots total catch by fish and gear type in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the catchG data frame.
+#' @param base_size Base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-gearCatchPlot <- function(data) {
+gearCatchPlot <- function(data, base_size = 14) {
   
   ggplot(data$catchG, aes(x = commonname, y = as.factor(gear),
-                     size = sum, color = sum)) +
+                          size = sum, color = sum)) +
     geom_point() +
     scale_color_distiller(name = "Total catch [log10(kg)]",
                           palette = "Spectral", trans = "log10",
@@ -259,7 +267,7 @@ gearCatchPlot <- function(data) {
     ) +
     ylab("Gear code") +
     xlab("Species database name") +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = base_size) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
   
 }
@@ -267,10 +275,11 @@ gearCatchPlot <- function(data) {
 #' @title Plot bottom depth and minimum fishing depth distribution for stations
 #' @description Plots bottom depth and minimum fishing depth distribution for stations in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the stnD data frame.
+#' @param base_size Base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-stationDepthPlot <- function(data) {
+stationDepthPlot <- function(data, base_size = 14) {
   
   ggplot(data$stnD, aes(x = value)) +
     geom_histogram(binwidth = 100, color = "black", fill = "grey") +
@@ -278,7 +287,7 @@ stationDepthPlot <- function(data) {
     scale_y_continuous("Count", expand = c(0, 0)) +
     scale_x_continuous("Depth (m)", expand = c(0,0.05)) +
     expand_limits(x = 0) +
-    theme_classic(base_size = 14) +
+    theme_classic(base_size = base_size) +
     theme(strip.background = element_blank())
   
 }
@@ -286,10 +295,11 @@ stationDepthPlot <- function(data) {
 #' @title Plot minimum fishing depth by catch for six most dominant species
 #' @description Plots minimum fishing depth by catch for six most dominant species in an \link[=processBioticFile]{bioticProcData} object.
 #' @param data data object from \link{speciesOverviewData}. Requires the compDat data frame.
+#' @param base_size Base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
 #' @return Returns a ggplot object
 #' @import ggplot2
 
-catchSpeciesWeightPlot <- function(data) {
+catchSpeciesWeightPlot <- function(data, base_size = 14) {
   
   x <- data$compDat
   
@@ -299,5 +309,98 @@ catchSpeciesWeightPlot <- function(data) {
     ylab("Catch weight (kg)") + 
     xlab("Minimum fishing depth (m)") +
     facet_wrap(~commonname, scales = "free_y") + 
-    theme_bw(base_size = 14)
+    theme_bw(base_size = base_size)
 }
+
+#' @title Plot catch composition on a map
+#' @description Plots catch composition in an \link[=processBioticFile]{bioticProcData} object on a \link[leaflet]{leaflet} map.
+#' @param data data object from \link{speciesOverviewData}. Requires the compDat data frame.
+#' @return Returns a \link[leaflet]{leaflet} object
+#' @import leaflet
+
+catchCompMap <- function(data) {
+  
+  x <- data$compDatW
+  y <- data$compDat
+  
+  leaflet::leaflet() %>% 
+    addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+             attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+    addMinicharts(
+      x$longitudestart, x$latitudestart,
+      type = "pie", chartdata = x[,levels(y$commonname)],
+      colorPalette = ColorPalette,
+      width = 40 * log(x$total) / log(max(x$total)), 
+      transitionTime = 0
+    )
+  
+}
+
+
+#' @title Plot total catch of a specific species on a mpa
+#' @description Plots total catch of a species in an \link[=processBioticFile]{bioticProcData} object on a \link[leaflet]{leaflet} map.
+#' @param data stnall data.table from \link[=processBioticFile]{bioticProcData} class. Typically \code{rv$stnall}.
+#' @param species NMD commonname for a species. The names are in Norwegian. Use "All" to plot a sum of total catch including all species.
+#' @return Returns a \link[leaflet]{leaflet} object
+#' @import leaflet
+
+catchMap <- function(data, species) {
+  
+  ## Definitions
+  
+  if (species == "All") {
+    sps <- unique(data$commonname)
+  } else {
+    sps <- species
+  }
+  
+  ## Prepare data
+  
+  tmp <- data %>% 
+    filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
+    group_by(startyear, serialnumber, longitudestart, 
+             latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
+    summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
+  
+  tmp2 <- data %>% dplyr::filter(!is.na(longitudestart) & !is.na(latitudestart))
+  
+  tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
+  
+  if (nrow(tmp2) > 0) tmp2$catchsum <- 0
+  
+  ## Plot
+  
+  p <- leaflet::leaflet(tmp, options = leafletOptions(zoomControl = FALSE)) %>% 
+    addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+             attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>%
+    addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
+               weight = 4, radius = 5e4*(tmp$catchsum/max(tmp$catchsum)), 
+               label = paste0(tmp$serialnumber, "; ", tmp$catchsum, " kg"), 
+               popup = paste("Serial number:", tmp$serialnumber, "<br>",
+                             "Date:", tmp$stationstartdate, "<br>",
+                             "Gear code:", tmp$gear, "<br>",
+                             "Bottom depth:", round(tmp$bottomdepthstart, 0), "m",
+                             "<br>", species, "catch:", tmp$catchsum, 
+                             "kg"), 
+               color = "red", fill = NA
+    ) 
+  
+  if (nrow(tmp2) > 0) {
+    p %>% 
+      addCircles(lat = tmp2$latitudestart, lng = tmp2$longitudestart, 
+                 weight = 4, radius = 1, 
+                 label = paste0(tmp2$serialnumber, "; ", tmp2$catchsum, " kg"), 
+                 popup = paste("Serial number:", tmp2$serialnumber, "<br>",
+                               "Date:", tmp2$stationstartdate, "<br>",
+                               "Gear code:", tmp2$gear, "<br>",
+                               "Bottom depth:", round(tmp2$bottomdepthstart, 0), "m",
+                               "<br>", species, "catch:", tmp2$catchsum, 
+                               "kg"), 
+                 color = "black"
+      )
+  } else {
+    p
+  }
+  
+}
+
