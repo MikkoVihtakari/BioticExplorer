@@ -10,6 +10,8 @@ if (Sys.info()["sysname"] == "Windows") {
   os <- "Mac"
 } else if (Sys.info()["sysname"] == "Linux") {
   os <- "Linux"
+  if(!capabilities()["X11"] && capabilities()["cairo"])
+    options(bitmapType = 'cairo')
 }
 
 ### OS specific exceptions
