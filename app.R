@@ -14,36 +14,56 @@ if (Sys.info()["sysname"] == "Windows") {
 
 ### OS specific exceptions
 
+if(os == "Linux") {
+  if(!capabilities()["X11"] && capabilities()["cairo"]) {
+    options(bitmapType = 'cairo')
+  }
+}
+
 ### Install missing packages
 
-required.packages <- c("shiny", "shinyFiles", "shinydashboard", "DT", "tidyverse", "devtools", "leaflet", "leaflet.minicharts", "plotly", "openxlsx", "dplyr", "data.table", "scales", "fishmethods", "viridis", "mapview")
+required.packages <- c("shiny" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = TRUE, "DT" = TRUE, 
+                       "data.table" = TRUE,  "tidyverse" = TRUE, "dtplyr" = TRUE, "devtools" = FALSE,
+                       "leaflet" = TRUE, "leaflet.minicharts" = TRUE, "plotly" = TRUE, 
+                       "openxlsx" = FALSE, "scales" = FALSE, "fishmethods" = FALSE, "viridis" = FALSE,
+                       "mapview" = FALSE, "DBI" = FALSE) ## TRUE means that the package should be loaded. FALSE that the functions are used without loading the package
 
-new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
-if (length(new.packages) > 0) install.packages(new.packages)
+new.packages <- names(required.packages)[!(names(required.packages) %in% installed.packages()[,"Package"])]
+if (length(new.packages) > 0) install.packages(names(new.packages))
 
-sapply(required.packages, require, character.only = TRUE)
+sapply(names(required.packages)[required.packages], require, character.only = TRUE)
+
+#### RstoxData
+# (not loaded, use pointer when using the functions)
 
 if (!"RstoxData" %in% installed.packages()[,"Package"]) {
   devtools::install_github("StoXProject/RstoxData")
-  require(RstoxData)
-} else {
-  require(RstoxData)
+}
+
+#### MonetDBLite
+# (not loaded, use pointer when using the functions)
+
+if (!"MonetDBLite" %in% installed.packages()[,"Package"]) {
+  devtools::install_github("hannesmuehleisen/MonetDBLite-R")
 }
 
 ## Source functions used by the app
 
-source("other_functions.R", encoding = "utf-8")
-source("processBiotic_functions.R", encoding = "utf-8")
-source("figure_functions.R", encoding = "utf-8")
+source("R/other_functions.R", encoding = "utf-8")
+source("R/processBiotic_functions.R", encoding = "utf-8")
+source("R/figure_functions.R", encoding = "utf-8")
+# source("R/sql_functions.R", encoding = "utf-8")
+
 
 ##____________________
 ## User interface ####
 
 ##..............
-## Settings  and definitions####
+## Settings  and definitions ####
 
 tagList(
   tags$head(
+    tags$title("BioticExplorer"),
     tags$style(
       HTML(
         ".checkbox-inline { 
@@ -70,6 +90,7 @@ stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlo
 
 stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" = "catchCompMap")
 
+dbPath <- "/Users/a22357/Desktop/IMR_db.monetdb"
 
 ##............
 ## Header ####
@@ -82,7 +103,7 @@ header <- dashboardHeader(title = div(
     column(width = 10, p("Biotic Explorer", align = "center"))
   )
 ),
-dropdownMenu(type = "notifications", headerText = "Version 0.3.5 (alpha), 2020-01-27",
+dropdownMenu(type = "notifications", headerText = scan("VERSION", what = "character", quiet = TRUE),
              icon = icon("cog"), badgeStatus = NULL,
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Explanation of data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
@@ -100,8 +121,8 @@ sidebar <- dashboardSidebar(sidebarMenu(
   menuItem("Information", tabName = "info", icon = icon("info-circle")),
   
   menuItem("Load data & filter", tabName = "info", icon = icon("arrow-circle-up"),
-           menuSubItem("From file", tabName = "upload", icon = icon("file-code")),
-           menuSubItem("From the database", tabName = "upload", icon = icon("database"))
+           menuSubItem("From files", tabName = "upload", icon = icon("file-code")),
+           menuSubItem("From the database", tabName = "uploadDb", icon = icon("database"))
   ),
   
   menuItem("Cruise overview", icon = icon("bar-chart-o"), tabName = "missionExamine"
@@ -166,7 +187,7 @@ body <-
               )
       ),
       
-      ## Upload tab ####
+      ## Upload file tab ####
       
       tabItem("upload",
               
@@ -176,14 +197,16 @@ body <-
                 column(width = 6,
                        
                        box(
-                         title = "1. Upload NMD Biotic xml files", status = "primary", solidHeader = TRUE,
+                         title = "1. Upload NMD Biotic files", status = "primary", solidHeader = TRUE,
                          width = NULL, collapsible = TRUE, 
+                         
+                         p("Here you can open a local file from your computer. BioticExplorer accepts the standard NMD Biotic V3 xml files and R native rds files. The R files can be used to return to a previous data manipulation instance using this app. Use the 'R' download file type in the Download data tab to enable this feature."),
                          
                          strong("Performance mode:"),
                          checkboxInput("performanceMode", "For large (>200 Mb) files. Disables features that burden memory.", FALSE),
                          
                          fileInput("file1",
-                                   label = "Choose xml input file",
+                                   label = "Choose xml or rds input file",
                                    multiple = TRUE,
                                    accept = c(".xml", ".rds")
                          ),
@@ -263,7 +286,7 @@ body <-
                          actionButton(inputId = "Subset", label = "Subset"),
                          actionButton(inputId = "Reset", label = "Reset")
                          
-                         # , verbatimTextOutput("test")
+                         #, verbatimTextOutput("test") # For debugging
                          
                        ),
                        
@@ -285,12 +308,172 @@ body <-
               )
       ),
       
+      ### Database tab ####
+      
+      tabItem("uploadDb",
+              
+              fluidRow(
+                
+                ## Column 1 ###
+                column(width = 8,
+                       
+                       box(
+                         title = "1. Select data from the IMR database", 
+                         status = "primary", solidHeader = TRUE,
+                         width = NULL, collapsible = TRUE, 
+                         
+                         conditionalPanel(
+                           condition = "output.serverVersion == true",
+                           
+                           p("The IMR database contains tens of gigabytes of data. It is therefore important to select only the data you need before sending an inquiry. The estimated size of the selected dataset can be seen on the right. Once you have selected the needed data using this box, press the 'Send inquiry' button. Note that the data processing will take some time. Please, be patient. The server or your browser have probably not crashed even though you see nothing happening."),
+                           
+                           strong("Drop excess data:"),
+                           fluidRow(
+                             column(4, checkboxInput("removeEmpty", "Remove empty columns", TRUE)),
+                             column(4, checkboxInput("coreDataOnly", "Keep only important columns", FALSE))
+                           ),
+                           
+                           fluidRow(
+                             column(6, 
+                                    selectInput(inputId = "selCommercialSamplingDb", 
+                                                label = "Commercial sampling:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selCruiseSeriesDb", 
+                                                label = "Cruise series:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selSurveyTimeSeriesDb", 
+                                                label = "Survey time series:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selCruiseDb", 
+                                                label = "Cruise number:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selGeogAreaDb", 
+                                                label = "Geographic area:",
+                                                choices = NULL, multiple = TRUE)
+                             ),
+                             
+                             column(6,
+                                    selectInput(inputId = "selYearDb", 
+                                                label = "Year:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selSpeciesDb", 
+                                                label = "Species:", 
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selPlatformDb", 
+                                                label = "Platform name:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selGearDb", 
+                                                label = "Gear code:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectInput(inputId = "selICESAreaDb", 
+                                                label = "ICES area:",
+                                                choices = NULL, multiple = TRUE)
+                                    
+                             )),
+                           
+                           
+                           sliderInput(inputId = "selLonDb", label = "Longitude:", min = -180, 
+                                       max = 180, value = c(-180, 180)),
+                           sliderInput(inputId = "selLatDb", label = "Latitude:", min = -90, 
+                                       max = 90, value = c(-90, 90)),
+                           
+                           actionButton(inputId = "doFetchDB", label = "Send inquiry")
+                           
+                         ),
+                         
+                         conditionalPanel(
+                           condition = "output.serverVersion == false",
+                           h4("Desktop version. The database is not available", align = "center"),
+                           p("If you are trying to run the app as a server version, check make sure that the dbPath argument is defined correctly.", align = "center")
+                         )
+                         
+                       ),
+                       
+                       box(
+                         title = "2. Filter the dataset", 
+                         status = "primary", solidHeader = TRUE,
+                         width = NULL, collapsible = TRUE, 
+                         
+                         conditionalPanel(
+                           condition = "output.serverVersion == true",
+                           
+                           p("Once the inquiry is processed, you can use this box to further filter the data you need. The filtering can be done interactively following the exact data overview on the right and on the map. You can reset the filtering without losing the acquired dataset from the database in the previous step. Once you are happy with your dataset, you may proceed to other tabs in this application. "),
+                           fluidRow(
+                             column(6, 
+                                    selectInput(inputId = "subYearDb", label = "Year:",
+                                                choices = NULL, multiple = TRUE),
+                                    selectInput(inputId = "subCruiseDb", label = "Cruise number:",
+                                                choices = NULL, multiple = TRUE),
+                                    selectInput(inputId = "subPlatformDb", label = "Platform name:",
+                                                choices = NULL, multiple = TRUE),
+                                    selectInput(inputId = "subDateFromDb", label = "Date from:",
+                                                choices = "Not implemented yet", multiple = TRUE)
+                             ),
+                             
+                             column(6,
+                                    selectInput(inputId = "subSpeciesDb", label = "Species:", 
+                                                choices = NULL, multiple = TRUE),
+                                    selectInput(inputId = "subSerialnumberDb", 
+                                                label = "Serial number:",
+                                                choices = NULL, multiple = TRUE),
+                                    selectInput(inputId = "subGearDb", label = "Gear code:",
+                                                choices = NULL, multiple = TRUE),
+                                    selectInput(inputId = "subDateToDb", label = "Date to:",
+                                                choices = "Not implemented yet", multiple = TRUE)
+                             )),
+                           
+                           
+                           sliderInput(inputId = "subLonDb", label = "Longitude:", min = -180, 
+                                       max = 180, value = c(-180, 180)),
+                           sliderInput(inputId = "subLatDb", label = "Latitude:", min = -90, 
+                                       max = 90, value = c(-90, 90)),
+                           
+                           actionButton(inputId = "SubsetDb", label = "Subset"),
+                           actionButton(inputId = "ResetDb", label = "Reset")
+                         )
+                       )
+                ), 
+                
+                ## Column 2 ###
+                column(4,
+                       box(
+                         title = "Estimated size", width = NULL, status = "primary",
+                         
+                         valueBoxOutput("EstFileSizeBox"),
+                         valueBoxOutput("EstStationsBox"),
+                         valueBoxOutput("EstYearsBox"),
+                         valueBoxOutput("EstGearsBox"),
+                         valueBoxOutput("EstSpeciesBox"),
+                         valueBoxOutput("EstMeasuredBox"),
+                         valueBoxOutput("EstDateStartBox", width = 6),
+                         valueBoxOutput("EstDateEndBox", width = 6)
+                         #, verbatimTextOutput("test") # For debugging
+                       )
+                       
+                       
+                )
+              )
+              
+      ),
+      
       ### Stnall tab ####      
       tabItem("stnallOverview",
               fluidRow(
-                box(title = "Species composition", width = 12, status = "info", solidHeader = TRUE, plotOutput("speciesCompositionPlot")),
+                box(title = "Species composition", width = 12, status = "info", 
+                    solidHeader = TRUE, plotOutput("speciesCompositionPlot")
+                ),
                 
-                box(title = "Total catch weight", width = 12, status = "info", solidHeader = TRUE, plotlyOutput("catchweightSumPlot")),
+                box(title = "Total catch weight", width = 12, status = "info", 
+                    solidHeader = TRUE, plotlyOutput("catchweightSumPlot")
+                ),
                 
                 box(title = "Catch weight mean and standard error (stations containing the species are replicates)", width = 12, status = "info", solidHeader = TRUE, plotOutput("catchweightMeanPlot")),
                 
@@ -462,10 +645,10 @@ body <-
       ## NMD data tab ####
       
       tabItem("missionExamine", DT::dataTableOutput("missionTable")),
-      tabItem("fishstationExamine", DT::dataTableOutput("fishstation")),
-      tabItem("catchsampleExamine", DT::dataTableOutput("catchsample")),
-      tabItem("individualExamine", DT::dataTableOutput("individualTable")),
-      tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
+      # tabItem("fishstationExamine", DT::dataTableOutput("fishstation")),
+      # tabItem("catchsampleExamine", DT::dataTableOutput("catchsample")),
+      # tabItem("individualExamine", DT::dataTableOutput("individualTable")),
+      # tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
       
       ##........................
       ## Export figures tab ####
@@ -594,18 +777,23 @@ server <- shinyServer(function(input, output, session) {
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
   
-  ## Read data ####
+  output$serverVersion <- reactive(file.exists(dbPath)) 
+  outputOptions(output, "serverVersion", suspendWhenHidden = FALSE)
   
-  rv <- reactiveValues()
+  source("R/filtering_functions.R", local = TRUE) ## Source functions for the session. See https://shiny.rstudio.com/articles/scoping.html
+  
+  rv <- reactiveValues(stnall = NULL, indall = NULL, mission = NULL) ## Create reactive values
+  
+  ## Read data file ####
   
   observeEvent(req(input$file1), {
     
     tryCatch({
       
       if (length(input$file1[[1]]) > 1) {
-        rv$inputData <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = TRUE, convertColumns = TRUE)
+        rv$inputData <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
       } else {
-        rv$inputData <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, dataTable = TRUE, convertColumns = TRUE)
+        rv$inputData <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
       }
     },
     error = function(e) {
@@ -615,63 +803,76 @@ server <- shinyServer(function(input, output, session) {
     
     rv$stnall <- rv$inputData$stnall
     rv$indall <- rv$inputData$indall
-    
     rv$mission <- rv$inputData$mission
-    rv$fishstation <- rv$inputData$fishstation
-    rv$catchsample <- rv$inputData$catchsample
-    rv$individual <- rv$inputData$individual
-    rv$agedetermination <- rv$inputData$agedetermination
+    
+    obsPopulatePanel()
     
   })
   
-  
-  ##.................
+  ## Read database ####
+  # observeEvent(input$uploadDb, {
+  #   
+  #   if(file.exists(dbPath)) {
+  #     con_db <- DBI::dbConnect(MonetDBLite::MonetDBLite(), dbPath)
+  #     
+  #     rv$stnall <- dplyr::tbl(con_db, "stnall")
+  #     rv$indall <- dplyr::tbl(con_db, "indall")
+  #     rv$mission <- dplyr::tbl(con_db, "mission")
+  #     
+  #   }
+  #   # bla <- dplyr::tbl(con_db, "indall") %>% filter(commonname == "tiskjegg") %>% count()
+  #   
+  # })
+
+  #.................
   ## Test output ####
+  
+  
   
   # output$test <- renderText({
   # 
   #   # length(input$file1[[1]])
   #   # paste(input$file1[[1]], collapse = "; ")
-  #   paste(input$indSpecies, collapse = "; ")
+  #   paste(rv$filterChain, collapse = "; ")
   #   # paste(dim(rv$indall), collapse = "; ")
-  # })
-  
+  #  })
+
   ##...................
   ## Update inputs ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
-    updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
-    updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
-    updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
-    updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
-    updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
-    updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
-    updateSelectInput(session, "catchMapSpecies", choices = c("All", sort(unique(rv$stnall$commonname))))
-    updateSelectInput(session, "indSpecies", choices = 
-                        c("Select a species to generate the plots", 
-                          
-                          if(any(is.null(rv$indall$length), is.null(rv$indall$commonname), is.null(rv$indall$individualweight))) {
-                            "No species with sufficient data"
-                            
-                          } else {
-                            rv$indall %>% 
-                              filter(!is.na(length) & !is.na(individualweight)) %>% 
-                              group_by(commonname) %>% dplyr::select(commonname) %>% 
-                              filter(n() > 1) %>% unique() %>% pull() %>% sort()
-                          }
-                        )
-    )
-    
-    min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
-    max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
-    updateSliderInput(session, "subLon", min = min.lon, max = max.lon, value = c(min.lon, max.lon), step = 0.1)
-    
-    min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
-    max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
-    updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
-    
-  })
-  
+  # observeEvent(c(req(input$file1), input$Subset, input$Reset), {
+  #   updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
+  #   updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
+  #   updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
+  #   updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
+  #   updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
+  #   updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
+  #   updateSelectInput(session, "catchMapSpecies", choices = c("All", sort(unique(rv$stnall$commonname))))
+  #   updateSelectInput(session, "indSpecies", choices = 
+  #                       c("Select a species to generate the plots", 
+  #                         
+  #                         if(any(is.null(rv$indall$length), is.null(rv$indall$commonname), is.null(rv$indall$individualweight))) {
+  #                           "No species with sufficient data"
+  #                           
+  #                         } else {
+  #                           rv$indall %>% 
+  #                             filter(!is.na(length) & !is.na(individualweight)) %>% 
+  #                             group_by(commonname) %>% dplyr::select(commonname) %>% 
+  #                             filter(n() > 1) %>% unique() %>% pull() %>% sort()
+  #                         }
+  #                       )
+  #   )
+  #   
+  #   min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
+  #   max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
+  #   updateSliderInput(session, "subLon", min = min.lon, max = max.lon, value = c(min.lon, max.lon), step = 0.1)
+  #   
+  #   min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
+  #   max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
+  #   updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
+  #   
+  # })
+  # 
   ## Export figures tab
   
   observeEvent(c(input$selectAllStationOverviewExport), {
@@ -704,69 +905,81 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$Subset, {
     
+    rv$substart <- TRUE
+    # tmp <- makeFilterChain()
+    # filterChain <- paste(tmp$filterChain, collapse = "& ")
+    # rv$sub <- tmp$sub
+    # 
+    # rv$stnall <- rv$inputData$stnall %>% lazy_dt() %>% 
+    #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
+    # 
+    # rv$indall <- rv$inputData$indall %>% lazy_dt() %>% 
+    #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
+    # 
+    # rv$mission <- rv$mission[missionid %in% unique(rv$stnall$missionid), ]
+    # 
+    # Lon Lat needs update
+    # if(is.null(rv$sub$lon))
+    #   rv$sub$lon <- c(rv$all$min.lon, rv$all$max.lon)
+    # if(is.null(rv$sub$lat))
+    #   rv$sub$lat <- c(rv$all$min.lat, rv$all$max.lat)
+    # 
+    # 
+    # # Update selectors
+    # updateSelectors()
+    # 
+    # updateFilterform()
+    # 
     rv$sub$year <- if (is.null(input$subYear)) {
       unique(rv$inputData$stnall$startyear)
     } else {
       input$subYear
     }
-    
+
     rv$sub$species <- if (is.null(input$subSpecies)) {
       unique(rv$inputData$stnall$commonname)
     } else {
       input$subSpecies
     }
-    
+
     rv$sub$cruise <- if (is.null(input$subCruise)) {
       unique(rv$inputData$stnall$cruise)
     } else {
       input$subCruise
     }
-    
+
     rv$sub$platform <- if (is.null(input$subPlatform)) {
       unique(rv$inputData$stnall$platformname)
     } else {
       input$subPlatform
     }
-    
+
     rv$sub$serialnumber <- if (is.null(input$subSerialnumber)) {
       unique(rv$inputData$stnall$serialnumber)
     } else {
       input$subSerialnumber
     }
-    
+
     rv$sub$gear <- if (is.null(input$subGear)) {
       unique(rv$inputData$stnall$gear)
     } else {
       input$subGear
     }
-    
+
     rv$sub$lon <- if (is.null(input$subLon)) {
       NULL
     } else {
       input$subLon
     }
-    
+
     rv$sub$lat <- if (is.null(input$subLat)) {
       NULL
     } else {
       input$subLat
     }
-    
+
     ### Stnall subsetting
-    
-    # rv$stnall <- rv$inputData$stnall %>% dplyr::filter(
-    #   startyear %in% rv$sub$year,
-    #   commonname %in% rv$sub$species,
-    #   cruise %in% rv$sub$cruise,
-    #   platformname %in% rv$sub$platform,
-    #   serialnumber %in% rv$sub$serialnumber,
-    #   gear %in% rv$sub$gear,
-    #   longitudestart >= rv$sub$lon[1],
-    #   longitudestart <= rv$sub$lon[2],
-    #   latitudestart >= rv$sub$lat[1],
-    #   latitudestart <= rv$sub$lat[2]
-    # )
-    
+
     rv$stnall <- rv$inputData$stnall[
       startyear %in% rv$sub$year &
         commonname %in% rv$sub$species &
@@ -779,28 +992,9 @@ server <- shinyServer(function(input, output, session) {
         latitudestart >= rv$sub$lat[1] &
         latitudestart <= rv$sub$lat[2],
       ]
-    
+
     ### Indall subsetting
-    
-    # rv$indall <- rv$inputData$indall[rv$inputData$indall$commonname %in% rv$sub$species,]
-    
-    # rv$indall <- rv$inputData$indall %>% dplyr::filter(
-    #   startyear %in% rv$sub$year,
-    #   commonname %in% rv$sub$species,
-    #   cruise %in% rv$sub$cruise,
-    #   platformname %in% rv$sub$platform,
-    #   serialnumber %in% rv$sub$serialnumber,
-    #   gear %in% rv$sub$gear,
-    #   longitudestart >= rv$sub$lon[1],
-    #   longitudestart <= rv$sub$lon[2],
-    #   latitudestart >= rv$sub$lat[1],
-    #   latitudestart <= rv$sub$lat[2]
-    # )
-    
-    # rv$indall <- rv$inputData$indall[
-    #     commonname %in% rv$sub$species,
-    #   ]
-    #     
+
     rv$indall <- rv$inputData$indall[
       startyear %in% rv$sub$year &
         commonname %in% rv$sub$species &
@@ -813,57 +1007,11 @@ server <- shinyServer(function(input, output, session) {
         latitudestart >= rv$sub$lat[1] &
         latitudestart <= rv$sub$lat[2],
       ]
-    
+
     ### Mission subsetting
-    
+
     rv$mission <- rv$inputData$mission[missionid %in% unique(rv$stnall$missionid), ]
-    
-    ### Other subsetting (to be removed?)
-    
-    tmp <- rv$inputData$fishstation
-    tmp <- tmp %>% dplyr::filter(
-      startyear %in% unique(rv$stnall$startyear),
-      serialnumber %in% unique(rv$stnall$serialnumber)
-    )
-    
-    rv$fishstation <- tmp
-    
-    tmp <- rv$inputData$catchsample
-    tmp <- tmp %>% dplyr::filter(
-      startyear %in% unique(rv$stnall$startyear),
-      serialnumber %in% unique(rv$stnall$serialnumber),
-      catchsampleid %in% unique(rv$stnall$catchsampleid),
-      catchpartnumber %in% unique(rv$stnall$catchpartnumber),
-      commonname %in% unique(rv$stnall$commonname)
-    )
-    
-    rv$catchsample <- tmp
-    
-    tmp <- rv$inputData$individual
-    tmp <- tmp %>% dplyr::filter(
-      missiontype %in% unique(rv$stnall$missiontype),
-      startyear %in% unique(rv$stnall$startyear),
-      platform %in% unique(rv$stnall$platform),
-      missionnumber %in% unique(rv$stnall$missionnumber),
-      serialnumber %in% unique(rv$stnall$serialnumber),
-      catchsampleid %in% unique(rv$stnall$catchsampleid),
-      specimenid %in% unique(rv$indall$specimenid)
-    )
-    
-    rv$individual <- tmp
-    
-    tmp <- rv$inputData$agedetermination
-    tmp <- tmp %>% dplyr::filter(
-      missiontype %in% unique(rv$stnall$missiontype),
-      startyear %in% unique(rv$stnall$startyear),
-      platform %in% unique(rv$stnall$platform),
-      missionnumber %in% unique(rv$stnall$missionnumber),
-      serialnumber %in% unique(rv$stnall$serialnumber),
-      catchsampleid %in% unique(rv$stnall$catchsampleid),
-      specimenid %in% unique(rv$indall$specimenid)
-    )
-    
-    rv$agedetermination <- tmp
+
   })
   
   ##...............
@@ -873,12 +1021,7 @@ server <- shinyServer(function(input, output, session) {
     
     rv$stnall <- rv$inputData$stnall
     rv$indall <- rv$inputData$indall
-    
     rv$mission <- rv$inputData$mission
-    rv$fishstation <- rv$inputData$fishstation
-    rv$catchsample <- rv$inputData$catchsample
-    rv$individual <- rv$inputData$individual
-    rv$agedetermination <- rv$inputData$agedetermination
     
   })
   
@@ -886,68 +1029,71 @@ server <- shinyServer(function(input, output, session) {
   ##....................
   ## Overview stats ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
-    
-    output$nStationsBox <- renderValueBox({
-      valueBox(
-        value = tags$p(nrow(rv$fishstation), style = "font-size: 80%;"),
-        subtitle = "Stations"
-      )
-    })
-    
-    output$nYearsBox <- renderValueBox({
-      valueBox(
-        length(unique(rv$stnall$startyear)),
-        "Unique years"
-      )
-    })
-    
-    output$nSpeciesBox <- renderValueBox({
-      valueBox(
-        length(unique(rv$stnall$commonname)),
-        "Unique species"
-      )
-    })
-    
-    output$DateStartBox <- renderValueBox({
-      valueBox(
-        value = tags$p(min(rv$stnall$stationstartdate, na.rm = TRUE),
-                       style = "font-size: 80%;"),
-        subtitle = "First date"
-      )
-    })
-    
-    output$DateEndBox <- renderValueBox({
-      valueBox(
-        value = tags$p(max(rv$stnall$stationstartdate, na.rm = TRUE),
-                       style = "font-size: 80%;"),
-        subtitle = "Last date"
-      )
-    })
-    
-    output$nMeasuredBox <- renderValueBox({
-      valueBox(
-        value = tags$p(nrow(rv$indall), style = "font-size: 60%;"),
-        subtitle = "Measured specimen"
-      )
-    })
-    
-    output$nCruisesBox <- renderValueBox({
-      valueBox(
-        nrow(rv$mission),
-        "Cruises"
-      )
-    })
-    
-    output$nGearsBox <- renderValueBox({
-      valueBox(
-        length(unique(rv$stnall[["gear"]])),
-        "Gear types"
-      )
-    })
-    
-  })
-  
+  # observeEvent(c(req(input$file1), input$Subset, input$Reset), {
+  #   
+  #   output$nStationsBox <- renderValueBox({
+  #     
+  #     tmp <- rv$stnall %>% select(missionid, startyear, serialnumber) %>% distinct() %>% nrow()
+  #     
+  #     valueBox(
+  #       value = tags$p(tmp, style = "font-size: 80%;"),
+  #       subtitle = "Stations"
+  #     )
+  #   })
+  #   
+  #   output$nYearsBox <- renderValueBox({
+  #     valueBox(
+  #       length(unique(rv$stnall$startyear)),
+  #       "Unique years"
+  #     )
+  #   })
+  #   
+  #   output$nSpeciesBox <- renderValueBox({
+  #     valueBox(
+  #       length(unique(rv$stnall$commonname)),
+  #       "Unique species"
+  #     )
+  #   })
+  #   
+  #   output$DateStartBox <- renderValueBox({
+  #     valueBox(
+  #       value = tags$p(min(rv$stnall$stationstartdate, na.rm = TRUE),
+  #                      style = "font-size: 80%;"),
+  #       subtitle = "First date"
+  #     )
+  #   })
+  #   
+  #   output$DateEndBox <- renderValueBox({
+  #     valueBox(
+  #       value = tags$p(max(rv$stnall$stationstartdate, na.rm = TRUE),
+  #                      style = "font-size: 80%;"),
+  #       subtitle = "Last date"
+  #     )
+  #   })
+  #   
+  #   output$nMeasuredBox <- renderValueBox({
+  #     valueBox(
+  #       value = tags$p(nrow(rv$indall), style = "font-size: 60%;"),
+  #       subtitle = "Measured specimen"
+  #     )
+  #   })
+  #   
+  #   output$nCruisesBox <- renderValueBox({
+  #     valueBox(
+  #       nrow(rv$mission),
+  #       "Cruises"
+  #     )
+  #   })
+  #   
+  #   output$nGearsBox <- renderValueBox({
+  #     valueBox(
+  #       length(unique(rv$stnall[["gear"]])),
+  #       "Gear types"
+  #     )
+  #   })
+  #   
+  # })
+  # 
   ##.................
   ## Data tables ####
   
@@ -976,67 +1122,73 @@ server <- shinyServer(function(input, output, session) {
     )
   })
   
-  output$fishstation <- DT::renderDataTable({
-    DT::datatable(rv$fishstation, 
-                  options = list(scrollX = TRUE, 
-                                 pageLength = 20
-                  ) 
-    ) %>% formatRound(c("longitudestart", "latitudestart", "distance"))
-  })
-  
-  output$catchsample <- DT::renderDataTable({
-    DT::datatable(rv$catchsample, 
-                  options = list(scrollX = TRUE, 
-                                 pageLength = 20
-                  ) 
-    ) %>% formatRound(c("catchweight", "lengthsampleweight"))
-  })
-  
-  output$individualTable <- DT::renderDataTable({
-    DT::datatable(rv$individual, 
-                  options = list(scrollX = TRUE, 
-                                 pageLength = 20
-                  ) 
-    ) 
-  })
-  
-  output$agedeterminationTable <- DT::renderDataTable({
-    DT::datatable(rv$agedetermination, 
-                  options = list(scrollX = TRUE, 
-                                 pageLength = 20
-                  ) 
-    ) 
-  })
+  # output$fishstation <- DT::renderDataTable({
+  #   DT::datatable(rv$fishstation, 
+  #                 options = list(scrollX = TRUE, 
+  #                                pageLength = 20
+  #                 ) 
+  #   ) %>% formatRound(c("longitudestart", "latitudestart", "distance"))
+  # })
+  # 
+  # output$catchsample <- DT::renderDataTable({
+  #   DT::datatable(rv$catchsample, 
+  #                 options = list(scrollX = TRUE, 
+  #                                pageLength = 20
+  #                 ) 
+  #   ) %>% formatRound(c("catchweight", "lengthsampleweight"))
+  # })
+  # 
+  # output$individualTable <- DT::renderDataTable({
+  #   DT::datatable(rv$individual, 
+  #                 options = list(scrollX = TRUE, 
+  #                                pageLength = 20
+  #                 ) 
+  #   ) 
+  # })
+  # 
+  # output$agedeterminationTable <- DT::renderDataTable({
+  #   DT::datatable(rv$agedetermination,
+  #                 options = list(scrollX = TRUE,
+  #                                pageLength = 20
+  #                 )
+  #   )
+  # })
   
   
   #..................
   ## Station map ####
   
-  observeEvent(req(input$file1), {
-    
-    if (!input$performanceMode) {
-      output$stationMap <- renderLeaflet({
-        
-        leaflet::leaflet(
-          rv$stnall[!is.na(rv$stnall$longitudestart) & !is.na(rv$stnall$latitudestart), ]) %>% 
-          addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                   attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-          addRectangles(
-            lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
-            fillColor = "transparent") %>% 
-          addCircles(lat = ~ latitudestart, lng = ~ longitudestart, 
-                     weight = 1, radius = 2, 
-                     popup = ~as.character(platformname), 
-                     label = ~as.character(serialnumber), 
-                     color = "red", fillOpacity = 0.5
-          )
-      })
-    } else {
-      output$stationMap <- NULL
-    }
-    
-  })
-  
+  # observeEvent(req(input$file1), {
+  #   
+  #   if (!input$performanceMode) {
+  #     output$stationMap <- renderLeaflet({
+  #       
+  #       tmp <- rv$stnall %>% 
+  #         select(missiontype, startyear, platform, platformname, missionnumber, missionid, 
+  #                serialnumber, latitudestart, longitudestart) %>% 
+  #         filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() 
+  #       
+  #       leaflet::leaflet(tmp) %>% 
+  #         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+  #                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+  #         addRectangles(
+  #           lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
+  #           fillColor = "transparent") %>% 
+  #         addCircleMarkers(lat = ~ latitudestart, 
+  #                          lng = ~ longitudestart, 
+  #                          weight = 1, radius = 2, 
+  #                          popup = ~as.character(platformname), 
+  #                          label = ~as.character(serialnumber), 
+  #                          fillOpacity = 0.5,
+  #                          clusterOptions = markerClusterOptions()
+  #         )
+  #     })
+  #   } else {
+  #     output$stationMap <- NULL
+  #   }
+  #   
+  # })
+  # 
   ##......................
   ## Stn data figures ####
   
@@ -1200,7 +1352,6 @@ server <- shinyServer(function(input, output, session) {
       if (all(c("length", "individualweight") %in% names(tmpBase))) {
         
         lwDat <- tmpBase[!is.na(length) & !is.na(individualweight),]
-        # lwDat <- tmpBase %>% dplyr::filter(!is.na(length) & !is.na(individualweight))
         
         if(nrow(lwDat) > 0) {
           

@@ -6,7 +6,6 @@
 #' @param removeEmpty logical indicating whether empty columns should be removed from the output. This option also influences "coreData" columns.
 #' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
 #' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
-#' @param dataTable logical indicating whether the output should be returned as \link[data.table]{data.table}s instead of \link{data.frame}s. Setting this to \code{TRUE} speeds up further calculations using the data (but requires the \link[data.table]{data.table} syntax).
 #' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function, but leads to problems with non-unicode characters.
 #' @param missionidPrefix A prefix for the \code{missionid} identifier, which separates cruises. Used in \code{\link{processBioticFiles}} function when several xml files are put together. \code{NULL} (default) omits the prefix. Not needed in \code{processBioticFile} function.
 #' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
@@ -17,7 +16,7 @@
 # Debugging parameters
 # lengthUnit = "cm"; weightUnit = "g"; removeEmpty = TRUE; coreDataOnly = FALSE; returnOriginal = TRUE; dataTable = TRUE; convertColumns = TRUE; missionidPrefix = NULL
 # lengthUnit = "m"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; dataTable = TRUE; convertColumns = FALSE; missionidPrefix = NULL
-processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE, missionidPrefix = NULL) {
+processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = FALSE, convertColumns = TRUE, missionidPrefix = NULL) {
   
   ## Checks
   
@@ -141,10 +140,10 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   # Inddat
   
-  inddat <- merge(stndat, ind, all.y = TRUE, by = names(stndat)[names(stndat) %in% names(ind)]) 
+  inddat <- merge(stndat[,!names(stndat) %in% c("purpose", "stationcomment"), with = FALSE], ind, all.y = TRUE, by = names(stndat)[names(stndat) %in% names(ind)]) 
   inddat <- rbindlist(list(inddat,age), fill=TRUE, use.names=TRUE)
   
-  inddat[is.na(inddat$commonname), "commonname"] <- "Merging error due to missing data"
+  # inddat[is.na(inddat$commonname), "commonname"] <- "Merging error due to missing data"
   
   ## Return ----
   
@@ -164,24 +163,6 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
     })
   }
   
-  ### Convert to data.frame (not recommended)
-  
-  if (!dataTable) {
-    out <- lapply(out, function(k) {
-      k <- as.data.frame(k)
-    })
-  }
-  
-  ### Make empty data tables NULL to save space 
-  
-  # out <- lapply(out, function(k) {
-  #   if (nrow(k) == 0) {
-  #     NULL
-  #   } else {
-  #     k
-  #   }
-  # })
-  
   ### Class
   
   class(out) <- "bioticProcData"
@@ -200,7 +181,6 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
 #' @param removeEmpty logical indicating whether empty columns should be removed from output. This option also influences "coreData" columns.
 #' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
 #' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
-#' @param dataTable logical indicating whether the output should be returned as \link[data.table]{data.table}s instead of \link{data.frame}s. Setting this to \code{TRUE} speeds up further calculations using the data (but requires the \link[data.table]{data.table} syntax).
 #' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function.
 #' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
 #' @author Mikko Vihtakari (Institute of Marine Research) 
@@ -210,16 +190,19 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
 # Debugging parameters
 # files = c("/Users/mvi023/Desktop/biotic_year_1982_species_172930.xml", "/Users/mvi023/Desktop/biotic_year_2016_species_172930.xml")
 # lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; convertColumns = FALSE; mcCores = 1L
-processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = TRUE, dataTable = TRUE, convertColumns = TRUE) {
+processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = FALSE, convertColumns = TRUE) {
   
   # Read xml files
   
   
   # Debug parameters: lengthUnit. = lengthUnit; weightUnit. = weightUnit; coreDataOnly. = coreDataOnly; returnOriginal. = returnOriginal
-  out <- lapply(seq_along(files), function(i, lengthUnit. = lengthUnit, weightUnit. = weightUnit, coreDataOnly. = coreDataOnly, returnOriginal. = returnOriginal) {
+  out <- lapply(seq_along(files), function(i, lengthUnit. = lengthUnit, weightUnit. = weightUnit, coreDataOnly. = coreDataOnly, returnOriginal. = returnOriginal, convertColumns. = convertColumns) {
     print(paste("i =", i, "file = ", files[i]))
     print(paste(round(100*i/length(files), 0), "%"))
-    processBioticFile(files[i], lengthUnit = lengthUnit., weightUnit = weightUnit., removeEmpty = FALSE, coreDataOnly = coreDataOnly., returnOriginal = returnOriginal., dataTable = TRUE, convertColumns = FALSE, missionidPrefix = i)
+    processBioticFile(files[i], lengthUnit = lengthUnit., weightUnit = weightUnit., removeEmpty = FALSE, 
+                      coreDataOnly = coreDataOnly., returnOriginal = returnOriginal., dataTable = TRUE, 
+                      convertColumns = convertColumns., missionidPrefix = i
+                      )
   })
   
   
@@ -229,13 +212,13 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
   
   # Convert column classes
   
-  if (convertColumns) {
-    
-    out <- lapply(out, function(k) {
-      convertColumnTypes(k)
-    })
-    
-  }
+  # if (convertColumns) {
+  #   
+  #   out <- lapply(out, function(k) {
+  #     convertColumnTypes(k)
+  #   })
+  #   
+  # }
   
   # Convert to data.frames and/or remove empty columns
   

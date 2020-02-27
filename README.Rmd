@@ -4,13 +4,19 @@ output:
     keep_md: yes
 ---
 # Biotic Explorer 
-**A Shiny app to open, examine and manipulate NMD Biotic xml files used by the Institute of Marine Research Norway**
+**A Shiny app to explore Biotic data within the Institute of Marine Research Norway (IMR) database. Version `r scan("VERSION", what = "character", quiet = TRUE)`.**
 
-This is a prototype of the **Biotic Explorer** [Shiny](https://shiny.rstudio.com/) app allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used within the Institute of Marine Research database. While the application is developed by the Institute of Marine Research, **this is not the official version** of the application and is bound to contain bugs and other errors. 
+This is the original version of the **Biotic Explorer** [Shiny](https://shiny.rstudio.com/) app intended for examination and manipulation of the Norwegian Maritime Data Center (NMD) standard Biotic xml files as well as the IMR's Biotic database (see the [User guide section](#userguide)). The application has been developed by the Stox team at the IMR. The official, stable, version of the app can be found from their [GitHub site](https://github.com/StoXProject). 
 
-## Installation
+The app can be run on a desktop (i.e. your computer) for local files and on a [server](http://astarte.imr.no/shiny) for both local files and the entire IMR Biotic database.
 
-The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
+## The server version
+
+A server version of [Biotic Explorer is located on IMR servers](http://astarte.imr.no/shiny/) and can be run through any modern web browser given that **you access it inside the firewall of the institute** (i.e. in the institute intranet or through a VPN). 
+
+## Installation of the desktop version
+
+A desktop version of the app can be installed on any modern computer. The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(fig.width=15, fig.height=8)
@@ -43,7 +49,29 @@ Click "Clone or download" -> "Download ZIP". Find the zip file (typically in you
 
 This is a common problem on IMR Windows computers and can now be avoided by installing a binary version of the RstoxData package (see above). If you want to get the C++ compiler to run on your machine, you need to install Rtools (only under Windows - the compiler is already installed on Unix machines). When you install Rtools, make sure to tick the ["edit the system PATH" option](http://stat545.com/packages01_system-prep.html). Restart RStudio, load devtools (`library(devtools)`) and see what `find_rtools()` returns (should be TRUE). There are numerous reported issues when trying to get the compiler to work. These issues are often caused because the development software for R (Rtools and pkgbuild) drag behind the R releases on Windows. See [here](https://github.com/r-lib/devtools/issues/1772), [here](https://stackoverflow.com/questions/51830648/rstudio-not-finding-rtools), and [here](https://stackoverflow.com/questions/33103203/rtools-is-not-being-detected-from-rstudio). Also setting `options(buildtools.check = NULL)` in RStudio sometimes works. 
 
-## Usage
+## User guide {#userguide}
+
+### Read data
+
+#### Read NMD Biotic xml files
+
+#### Download data from the database
+
+### Examine data
+
+#### Cruise overview data
+
+#### Station data
+
+#### Individual data
+
+### Export
+
+#### Export data
+
+
+
+#### Export figures
 
 1. **Upload data:** Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant.
 2. **Filter data:** Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected.
