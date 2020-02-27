@@ -1,8 +1,3 @@
----
-output: 
-  html_document: 
-    keep_md: yes
----
 # Biotic Explorer 
 **A Shiny app to explore Biotic data within the Institute of Marine Research Norway (IMR) database. Version 0.4.0 (alpha), 2020-02-19.**
 
