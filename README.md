@@ -1,5 +1,5 @@
 # Biotic Explorer 
-**A Shiny app to explore Biotic data within the Institute of Marine Research Norway (IMR) database. Version 0.4.0 (alpha), 2020-02-19.**
+**A Shiny app to explore Biotic data within the Institute of Marine Research Norway (IMR) database. Version 0.4.1 (alpha), 2020-03-11.**
 
 This is the original version of the **Biotic Explorer** [Shiny](https://shiny.rstudio.com/) app intended for examination and manipulation of the Norwegian Maritime Data Center (NMD) standard Biotic xml files as well as the IMR's Biotic database (see the [User guide section](#userguide)). The application has been developed by the Stox team at the IMR. The official, stable, version of the app can be found from their [GitHub site](https://github.com/StoXProject). 
 
@@ -11,7 +11,7 @@ A server version of [Biotic Explorer is located on IMR servers](http://astarte.i
 
 ## Installation of the desktop version
 
-The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
+A desktop version of the app can be installed on any modern computer. The app requires [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/). Install these software on your computer following the instructions on the respective webpages. Open RStudio and install the [Shiny](https://shiny.rstudio.com/) package:
 
 
 
