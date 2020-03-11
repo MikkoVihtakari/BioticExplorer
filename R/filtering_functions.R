@@ -16,15 +16,15 @@ updateSelectors <- function() {
     group_by(commonname) %>% tally() %>% filter(n > 1) %>%
     select(commonname) %>% distinct() %>% arrange(commonname) %>% pull()
   
-  lon <- rv$stnall %>% summarise(min = min(longitudestart), max = max(longitudestart)) %>% collect()
-  lat <- rv$stnall %>% summarise(min = min(latitudestart), max = max(latitudestart)) %>% collect()
+  lon <- rv$stnall %>% summarise(min = min(longitudestart, na.rm = TRUE), max = max(longitudestart, na.rm = TRUE)) %>% collect()
+  lat <- rv$stnall %>% summarise(min = min(latitudestart, na.rm = TRUE), max = max(latitudestart, na.rm = TRUE)) %>% collect()
   
   rv$all$min.lon <- floor(lon$min)
   rv$all$max.lon <- ceiling(lon$max)
   rv$all$min.lat <- floor(lat$min)
   rv$all$max.lat <- ceiling(lat$max)
   
-  rv$all$date <- rv$stnall %>% summarise(min = min(stationstartdate), max = max(stationstartdate)) %>% collect()
+  rv$all$date <- rv$stnall %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
 }
 
 updateFilterform <- function() {
