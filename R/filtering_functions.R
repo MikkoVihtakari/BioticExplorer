@@ -28,12 +28,12 @@ updateSelectors <- function() {
 }
 
 updateFilterform <- function() {
-  updateSelectInput(session, "subYear", choices = rv$all$startyear, selected = rv$sub$year)
-  updateSelectInput(session, "subSpecies", choices = rv$all$commonname, selected = rv$sub$species)
-  updateSelectInput(session, "subCruise", choices = rv$all$cruise, selected = rv$sub$cruise)
-  updateSelectInput(session, "subPlatform", choices = rv$all$platformname, selected = rv$sub$platform)
-  updateSelectInput(session, "subSerialnumber", choices = rv$all$serialnumber, selected = rv$sub$serialnumber)
-  updateSelectInput(session, "subGear", choices = rv$all$gear, selected = rv$sub$gear)
+  updateSelectInput(session, "subYear", choices = rv$all$startyear)
+  updateSelectInput(session, "subSpecies", choices = rv$all$commonname)
+  updateSelectInput(session, "subCruise", choices = rv$all$cruise)
+  updateSelectInput(session, "subPlatform", choices = rv$all$platformname)
+  updateSelectInput(session, "subSerialnumber", choices = rv$all$serialnumber)
+  updateSelectInput(session, "subGear", choices = rv$all$gear)
   
   updateSelectInput(session, "catchMapSpecies", choices = c("All", rv$stnall$commonname))
   updateSelectInput(session, "indSpecies", choices = c("Select a species to generate the plots", rv$all$indSpecies))
