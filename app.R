@@ -91,6 +91,7 @@ stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlo
 stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" = "catchCompMap")
 
 dbPath <- "/Users/a22357/Desktop/IMR_db.monetdb"
+dbIndexPath <- "/Users/a22357/Desktop/dbIndex.rda"
 
 ##............
 ## Header ####
@@ -448,21 +449,37 @@ body <-
                 
                 ## Column 2 ###
                 column(4,
-                       box(
-                         title = "Estimated size", width = NULL, status = "primary",
-                         
-                         valueBoxOutput("EstFileSizeBox"),
-                         valueBoxOutput("EstStationsBox"),
-                         valueBoxOutput("EstYearsBox"),
-                         valueBoxOutput("EstGearsBox"),
-                         valueBoxOutput("EstSpeciesBox"),
-                         valueBoxOutput("EstMeasuredBox"),
-                         valueBoxOutput("EstDateStartBox", width = 6),
-                         valueBoxOutput("EstDateEndBox", width = 6),
-                         verbatimTextOutput("test") # For debugging
+                       conditionalPanel(
+                         condition = "input.doFetchDB == 0",
+                         box(
+                           title = "All data in the database", width = NULL, status = "primary",
+                           valueBoxOutput("EstStationsBox", width = 6),
+                           valueBoxOutput("EstYearsBox", width = 6),
+                           valueBoxOutput("EstGearsBox", width = 6),
+                           valueBoxOutput("EstSpeciesBox", width = 6),
+                           valueBoxOutput("EstDateStartBox", width = 6),
+                           valueBoxOutput("EstDateEndBox", width = 6)
+                           # ,verbatimTextOutput("test") # For debugging
+                         )
+                       ),
+                       conditionalPanel(
+                         condition = "input.doFetchDB != 0",
+                         box(
+                           title = "Fetched data", width = NULL, status = "primary",
+                           valueBoxOutput("nCruisesBoxDb"),
+                           valueBoxOutput("nStationsBoxDb"),
+                           valueBoxOutput("nYearsBoxDb"),
+                           valueBoxOutput("nGearsBoxDb"),
+                           valueBoxOutput("nSpeciesBoxDb"),
+                           valueBoxOutput("nMeasuredBoxDb"),
+                           valueBoxOutput("DateStartBoxDb", width = 6),
+                           valueBoxOutput("DateEndBoxDb", width = 6)
+                           # ,verbatimTextOutput("test") # For debugging
+                         ),
+                         box(title = "Station locations", status = "primary", width = NULL,
+                             leafletOutput(outputId = "stationMapDb")
+                         )
                        )
-                       
-                       
                 )
               )
               
@@ -824,20 +841,74 @@ server <- shinyServer(function(input, output, session) {
         rv$indall <- dplyr::tbl(con_db, "indall")
         rv$mission <- dplyr::tbl(con_db, "mission")
         
-        index <- list()
-        index$missiontypename <- rv$mission %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
-        index$cruise <- rv$mission %>% select(cruise) %>% distinct() %>% pull() %>% sort()
-        index$year <- rv$mission %>% select(startyear) %>% distinct() %>% pull() %>% sort()
-        index$species <- rv$stnall %>% select(commonname) %>% distinct() %>% pull() %>% sort()
-        index$platformname <- rv$stnall %>% select(platformname) %>% distinct() %>% pull() %>% sort()
-        index$gear <- rv$stnall %>% select(gear) %>% distinct() %>% pull() %>% sort()
+        # Running the indexing below, saving to a file and specifying dbIndexPath in Settings section is a time-saver, not a necessity. 
+        if(file.exists(dbIndexPath)) {
+          load(dbIndexPath)
+        } else {
+          index <- list()
+          index$missiontypename <- rv$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
+          index$cruise <- rv$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
+          index$year <- rv$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
+          index$commonname <- rv$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
+          index$platformname <- rv$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
+          index$gear <- rv$stnall %>% lazy_dt() %>% select(gear) %>% distinct() %>% pull() %>% sort()
+        }
         
         updateSelectInput(session, "selMissionTypeDb", choices = index$missiontypename)
         updateSelectInput(session, "selCruiseDb", choices = index$cruise)
         updateSelectInput(session, "selYearDb", choices = index$year)
-        updateSelectInput(session, "selSpeciesDb", choices = index$species)
+        updateSelectInput(session, "selSpeciesDb", choices = index$commonname)
         updateSelectInput(session, "selPlatformDb", choices = index$platformname)
         updateSelectInput(session, "selGearDb", choices = index$gear)
+        
+        output$EstStationsBox <- renderValueBox({
+          
+          tmp <- rv$stnall %>% lazy_dt() %>% select(missionid, startyear, serialnumber) %>% distinct() %>% count() %>% pull()
+          
+          valueBox(
+            value = tags$p(tmp, style = "font-size: 80%;"),
+            subtitle = "Stations"
+          )
+        })
+        
+        output$EstYearsBox <- renderValueBox({
+          valueBox(
+            length(index$year),
+            "Unique years"
+          )
+        })
+        
+        output$EstGearsBox <- renderValueBox({
+          valueBox(
+            length(index$gear),
+            "Gear types"
+          )
+        })
+        
+        output$EstSpeciesBox <- renderValueBox({
+          valueBox(
+            length(index$commonname),
+            "Unique species"
+          )
+        })
+        
+        output$EstDateStartBox <- renderValueBox({
+          valueBox(
+            value = tags$p(index$year %>% min(),
+                           style = "font-size: 80%;"),
+            subtitle = "First year"
+          )
+        })
+        
+        output$EstDateEndBox <- renderValueBox({
+          valueBox(
+            value = tags$p(index$year %>% max(),
+                           style = "font-size: 80%;"),
+            subtitle = "Last year"
+          )
+        })
+        # valueBoxOutput("EstMeasuredBox"),
+        
       }
     }
     # bla <- dplyr::tbl(con_db, "indall") %>% filter(commonname == "tiskjegg") %>% count()
@@ -846,17 +917,31 @@ server <- shinyServer(function(input, output, session) {
   
   ### Filter the database ####
   
+  observeEvent(input$doFetchDB, {
+    
+    tmp <- makeFilterChain(db = TRUE)
+    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+    rv$sub <- tmp$sub
+    
+    rv$stnall <- rv$inputData$stnall <- rv$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$indall <- rv$inputData$indall <- rv$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$mission <- rv$inputData$mission <- rv$mission %>% filter(missionid %in% !!unique(rv$inputData$stnall$missionid)) %>% collect() %>% as.data.table()
+    
+    obsPopulatePanel(db = TRUE)
+    
+  })
+  
   #.................
   ## Test output ####
   
   
   
   output$test <- renderText({
-    # 
-    #   # length(input$file1[[1]])
-    #   # paste(input$file1[[1]], collapse = "; ")
-    #   paste(rv$filterChain, collapse = "; ")
-    paste(dim(rv$indall), collapse = "; ")
+    # #   # 
+    # #   #   # length(input$file1[[1]])
+    # #   #   # paste(input$file1[[1]], collapse = "; ")
+    # #   #   paste(rv$filterChain, collapse = "; ")
+    paste(input$doFetchDB, collapse = "; ")
   })
   
   ##...................
@@ -866,6 +951,8 @@ server <- shinyServer(function(input, output, session) {
     
     updateSelectors()
     updateFilterform()
+    
+    # Delete the stuff under once everything works
     # updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
     # updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
     # updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
@@ -895,7 +982,7 @@ server <- shinyServer(function(input, output, session) {
     # min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
     # max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
     # updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
-
+    
   })
   # 
   ## Export figures tab
@@ -1217,7 +1304,7 @@ server <- shinyServer(function(input, output, session) {
   ##......................
   ## Stn data figures ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
+  observeEvent(c(req(input$file1), input$Subset, input$Reset, input$doFetchDB), {
     
     spOverviewDat <- speciesOverviewData(rv$stnall)
     
