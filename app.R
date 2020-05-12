@@ -445,7 +445,7 @@ body <-
                            valueBoxOutput("EstSpeciesBox", width = 6),
                            valueBoxOutput("EstDateStartBox", width = 6),
                            valueBoxOutput("EstDateEndBox", width = 6)
-                           ,verbatimTextOutput("test") # For debugging
+                           # ,verbatimTextOutput("test") # For debugging
                          )
                        ),
                        conditionalPanel(
@@ -914,13 +914,13 @@ server <- shinyServer(function(input, output, session) {
   #.................
   ## Test output ####
   
-  output$test <- renderText({
+  # output$test <- renderText({
   #   # #   #
   #   # #   #   # length(input$file1[[1]])
   #   # #   #   # paste(input$file1[[1]], collapse = "; ")
   #   # #   #   paste(rv$filterChain, collapse = "; ")
-    paste(input$tabs, collapse = "; ")
-  })
+  #  paste(input$tabs, collapse = "; ")
+  # })
   # 
   
   ##................... 
@@ -965,6 +965,20 @@ server <- shinyServer(function(input, output, session) {
     rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
     obsPopulatePanel()
+    
+  })
+  
+  observeEvent(input$SubsetDB, {
+    
+    tmp <- makeFilterChain(db = TRUE)
+    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+    rv$sub <- tmp$sub
+    
+    rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
+    
+    obsPopulatePanel(db = TRUE)
     
   })
   

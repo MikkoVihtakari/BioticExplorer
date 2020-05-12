@@ -39,6 +39,10 @@ updateSelectors <- function() {
   rv$all$date <- rv$stnall %>% lazy_dt() %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
 }
 
+#' @title Update data selection filters
+#' @param db Logical. If \code{TRUE}, the operation will be targeted for database data, otherwise file data
+#' @param loadDb Logical. Set to \code{TRUE} when database selection is reset or loaded for the first time. Otherwise \code{FALSE}.
+
 updateFilterform <- function(db = FALSE, loadDb = FALSE) {
   
   if(loadDb) {
@@ -124,9 +128,8 @@ updateMap <- function(db = FALSE) {
 
 #' @title Populate the quick overview panel and station map
 #' @param db Logical. If \code{TRUE}, the operation will be targeted for database data, otherwise file data
-#' @param loadDb Logical. Set to \code{TRUE} when database selection is reset or loaded. Otherwise \code{FALSE}.
 
-obsPopulatePanel <- function(db = FALSE, loadDb = FALSE) {
+obsPopulatePanel <- function(db = FALSE) {
   
   # Functions
   
@@ -221,7 +224,7 @@ obsPopulatePanel <- function(db = FALSE, loadDb = FALSE) {
   rv$sub$lat <- c(rv$all$min.lat, rv$all$max.lat)
   
   # Reset form too
-  updateFilterform(db = db, loadDb = loadDb)
+  updateFilterform(db = db)
   
   # Update stats
   
@@ -273,7 +276,7 @@ obsPopulatePanel <- function(db = FALSE, loadDb = FALSE) {
     output$nGearsBox <- nGearsBox()
   }
   
-  updateMap(db)
+  updateMap(db = db)
 }
 
 #' @title Make a filter chain for file-based- and database-data loaded into the memory
