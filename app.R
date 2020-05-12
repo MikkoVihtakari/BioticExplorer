@@ -244,7 +244,7 @@ body <-
                        ), 
                        
                        box(
-                         title = "Quick overview", width = NULL, status = "primary",
+                         title = "Selected data", width = NULL, status = "primary",
                          valueBoxOutput("nCruisesBox"),
                          valueBoxOutput("nStationsBox"),
                          valueBoxOutput("nYearsBox"),
@@ -336,7 +336,15 @@ body <-
                          conditionalPanel(
                            condition = "output.serverVersion == true",
                            
-                           p("The IMR database contains tens of gigabytes of data. It is therefore important to select only the data you need before sending an inquiry. The estimated size of the selected dataset can be seen on the right. Once you have selected the needed data using this box, press the 'Send inquiry' button. Note that the data processing will take some time. Please, be patient. The server or your browser have probably not crashed even though you see nothing happening."),
+                           conditionalPanel(condition = "output.fetchedDb == false",
+                                            p("The IMR database contains tens of gigabytes of data. It is therefore important to select only the data you need before sending an inquiry. The estimated size of the database can be seen on the right. Once you have selected the needed data using this box, press the 'Send inquiry' button. Note that the data processing will take some time. Please, be patient. The server or your browser have probably not crashed even though you see nothing happening.")
+                                            
+                           ),
+                           
+                           conditionalPanel(condition = "output.fetchedDb == true",
+                                            p("You have now selected data from the database and can see the overview on the right. You can use the 'Subset' button to further limit the data selection and the 'Reset' button to reload the entire database. Once you are happy with your dataset, you may proceed to other tabs in this application.")
+                                            
+                           ),
                            
                            strong("Drop excess data:"),
                            fluidRow(
@@ -347,54 +355,54 @@ body <-
                            fluidRow(
                              column(6, 
                                     selectizeInput(inputId = "selMissionTypeDb", 
-                                                label = "Mission type:",
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Mission type:",
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selCruiseSeriesDb", 
-                                                label = "Cruise series:",
-                                                choices = "Not implemented yet", multiple = TRUE),
+                                                   label = "Cruise series:",
+                                                   choices = "Not implemented yet", multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selSurveyTimeSeriesDb", 
-                                                label = "Survey time series:",
-                                                choices = "Not implemented yet", multiple = TRUE),
+                                                   label = "Survey time series:",
+                                                   choices = "Not implemented yet", multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selCruiseDb", 
-                                                label = "Cruise number:",
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Cruise number:",
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selGeogAreaDb", 
-                                                label = "Geographic area:",
-                                                choices = "Not implemented yet", multiple = TRUE),
+                                                   label = "Geographic area:",
+                                                   choices = "Not implemented yet", multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selICESAreaDb", 
-                                                label = "ICES area:",
-                                                choices = "Not implemented yet", multiple = TRUE)
+                                                   label = "ICES area:",
+                                                   choices = "Not implemented yet", multiple = TRUE)
                              ),
                              
                              column(6,
                                     selectizeInput(inputId = "selYearDb", 
-                                                label = "Year:",
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Year:",
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selSpeciesDb", 
-                                                label = "Species:", 
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Species:", 
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selPlatformDb", 
-                                                label = "Platform name:",
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Platform name:",
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selSerialnumberDb", 
-                                                label = "Serial number:",
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Serial number:",
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selGearDb", 
-                                                label = "Gear code:",
-                                                choices = NULL, multiple = TRUE),
+                                                   label = "Gear code:",
+                                                   choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selGearCategoryDb", 
-                                                label = "Gear category:",
-                                                choices = "Not implemented yet", multiple = TRUE)
+                                                   label = "Gear category:",
+                                                   choices = "Not implemented yet", multiple = TRUE)
                                     
                                     
                                     
@@ -406,9 +414,11 @@ body <-
                            sliderInput(inputId = "selLatDb", label = "Latitude:", min = -90, 
                                        max = 90, value = c(-90, 90)),
                            
-                           actionButton(inputId = "doFetchDB", label = "Send inquiry"),
+                           conditionalPanel(condition = "output.fetchedDb == false",
+                                            actionButton(inputId = "doFetchDB", label = "Send inquiry") 
+                           ),
                            
-                           conditionalPanel(condition = "input.doFetchDB != 0",
+                           conditionalPanel(condition = "output.fetchedDb == true",
                                             actionButton(inputId = "SubsetDB", label = "Subset"),
                                             actionButton(inputId = "ResetDB", label = "Reset")
                            )
@@ -421,57 +431,12 @@ body <-
                            p("If you are trying to run the app as a server version, check make sure that the dbPath argument is defined correctly.", align = "center")
                          )
                          
-                       ),
-                       
-                       box(
-                         title = "2. Filter the dataset", 
-                         status = "primary", solidHeader = TRUE,
-                         width = NULL, collapsible = TRUE, 
-                         
-                         conditionalPanel(
-                           condition = "output.serverVersion == true",
-                           
-                           p("Once the inquiry is processed, you can use this box to further filter the data you need. The filtering can be done interactively following the exact data overview on the right and on the map. You can reset the filtering without losing the acquired dataset from the database in the previous step. Once you are happy with your dataset, you may proceed to other tabs in this application. "),
-                           fluidRow(
-                             column(6, 
-                                    selectInput(inputId = "subYearDb", label = "Year:",
-                                                choices = NULL, multiple = TRUE),
-                                    selectInput(inputId = "subCruiseDb", label = "Cruise number:",
-                                                choices = NULL, multiple = TRUE),
-                                    selectInput(inputId = "subPlatformDb", label = "Platform name:",
-                                                choices = NULL, multiple = TRUE),
-                                    selectInput(inputId = "subDateFromDb", label = "Date from:",
-                                                choices = "Not implemented yet", multiple = TRUE)
-                             ),
-                             
-                             column(6,
-                                    selectInput(inputId = "subSpeciesDb", label = "Species:", 
-                                                choices = NULL, multiple = TRUE),
-                                    selectInput(inputId = "subSerialnumberDb", 
-                                                label = "Serial number:",
-                                                choices = NULL, multiple = TRUE),
-                                    selectInput(inputId = "subGearDb", label = "Gear code:",
-                                                choices = NULL, multiple = TRUE),
-                                    selectInput(inputId = "subDateToDb", label = "Date to:",
-                                                choices = "Not implemented yet", multiple = TRUE)
-                             )),
-                           
-                           
-                           sliderInput(inputId = "subLonDb", label = "Longitude:", min = -180, 
-                                       max = 180, value = c(-180, 180)),
-                           sliderInput(inputId = "subLatDb", label = "Latitude:", min = -90, 
-                                       max = 90, value = c(-90, 90)),
-                           
-                           #actionButton(inputId = "SubsetDb", label = "Subset"),
-                           #actionButton(inputId = "ResetDb", label = "Reset")
-                         )
                        )
-                ), 
-                
+                ),
                 ## Column 2 ###
                 column(6,
                        conditionalPanel(
-                         condition = "input.doFetchDB == 0",
+                         condition = "output.fetchedDb == false",
                          box(
                            title = "All data in the database", width = NULL, status = "primary",
                            valueBoxOutput("EstStationsBox", width = 6),
@@ -484,9 +449,9 @@ body <-
                          )
                        ),
                        conditionalPanel(
-                         condition = "input.doFetchDB != 0",
+                         condition = "output.fetchedDb == true",
                          box(
-                           title = "Fetched data", width = NULL, status = "primary",
+                           title = "Selected data", width = NULL, status = "primary",
                            valueBoxOutput("nCruisesBoxDb"),
                            valueBoxOutput("nStationsBoxDb"),
                            valueBoxOutput("nYearsBoxDb"),
@@ -849,6 +814,10 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$tabs, {
     if(input$tabs == "uploadDb") {
       if(file.exists(dbPath)) {
+        
+        output$fetchedDb <- reactive(FALSE)
+        outputOptions(output, "fetchedDb", suspendWhenHidden = FALSE)
+        
         con_db <- DBI::dbConnect(MonetDBLite::MonetDBLite(), dbPath)
         
         rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
@@ -923,6 +892,8 @@ server <- shinyServer(function(input, output, session) {
   ### Filter the database ####
   
   observeEvent(input$doFetchDB, {
+    
+    output$fetchedDb <- reactive(TRUE)
     
     tmp <- makeFilterChain(db = TRUE)
     rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
@@ -1006,13 +977,15 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  observeEvent(input$ResetDb, {
+  observeEvent(input$ResetDB, {
     
-    rv$stnall <- rv$inputData$stnall
-    rv$indall <- rv$inputData$indall
-    rv$mission <- rv$inputData$mission
+    output$fetchedDb <- reactive(FALSE)
     
-    obsPopulatePanel()
+    rv$stnall <- NULL
+    rv$indall <- NULL
+    rv$mission <- NULL
+    
+    updateFilterform(loadDb = TRUE)
     
   })
   
