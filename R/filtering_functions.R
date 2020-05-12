@@ -16,13 +16,24 @@ updateSelectors <- function() {
     group_by(commonname) %>% tally() %>% filter(n > 1) %>%
     select(commonname) %>% distinct() %>% pull() %>% sort()
   
-  lon <- rv$stnall %>% lazy_dt() %>% summarise(min = min(longitudestart, na.rm = TRUE), max = max(longitudestart, na.rm = TRUE)) %>% collect()
-  lat <- rv$stnall %>% lazy_dt() %>% summarise(min = min(latitudestart, na.rm = TRUE), max = max(latitudestart, na.rm = TRUE)) %>% collect()
+  lon <- rv$stnall %>% lazy_dt() %>% filter(!is.na(longitudestart)) %>% summarise(min = suppressWarnings(min(longitudestart)), max = suppressWarnings(max(longitudestart))) %>% collect()
+  lat <- rv$stnall %>% lazy_dt() %>% filter(!is.na(latitudestart)) %>% summarise(min = suppressWarnings(min(latitudestart)), max = suppressWarnings(max(latitudestart))) %>% collect()
   
-  rv$all$min.lon <- floor(lon$min)
-  rv$all$max.lon <- ceiling(lon$max)
-  rv$all$min.lat <- floor(lat$min)
-  rv$all$max.lat <- ceiling(lat$max)
+  if(nrow(lon) == 0) {
+    rv$all$min.lon <- -180
+    rv$all$max.lon <- 180
+  } else {
+    rv$all$min.lon <- floor(lon$min)
+    rv$all$max.lon <- ceiling(lon$max)
+  }
+  
+  if(nrow(lat) == 0) {
+    rv$all$min.lat <- -90
+    rv$all$max.lat <- 90
+  } else {
+    rv$all$min.lat <- floor(lat$min)
+    rv$all$max.lat <- ceiling(lat$max)
+  }
   
   rv$all$date <- rv$stnall %>% lazy_dt() %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
 }
@@ -52,10 +63,17 @@ updateMap <- function(db = FALSE) {
   # Functions 
   
   stationMap <- function() {
-    renderLeaflet({
-      
-      leaflet::leaflet(rv$stnall %>% lazy_dt() %>% select(missiontype, startyear, platform, platformname, missionnumber, missionid, serialnumber, latitudestart, longitudestart) %>% 
-                         filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() %>% collect()) %>% 
+    
+    x <- rv$stnall %>% lazy_dt() %>% select(missiontype, startyear, platform, platformname, missionnumber, missionid, serialnumber, latitudestart, longitudestart) %>% 
+      filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() %>% collect()
+    
+    if(nrow(x) == 0) {
+      leaflet::leaflet() %>% 
+        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+        addMarkers(lng = 20, lat = 70, label = "No position information")
+    } else {
+      leaflet::leaflet(data) %>% 
         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
         addRectangles(
@@ -68,15 +86,17 @@ updateMap <- function(db = FALSE) {
                          color = "red", fillOpacity = 0.5,
                          clusterOptions = markerClusterOptions()
         )
-    })
+    }
   }
+  
+  # Data
   
   ## Station map ##
   if (!input$performanceMode) {
     if(db) {
-      output$stationMapDb <- stationMap()
+      output$stationMapDb <- renderLeaflet(stationMap())
     } else {
-      output$stationMap <- stationMap()
+      output$stationMap <- renderLeaflet(stationMap())
     }
   } else {
     output$stationMap <- NULL

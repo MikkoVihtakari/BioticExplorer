@@ -748,13 +748,6 @@ body <-
       ),
       
       ##...................
-      ## Debugging tab ####
-      
-      # tabItem("debugging",
-      #         )
-      #       
-      
-      ##...................
       ## Download tab ####
       
       tabItem("downloadDatasets", 
@@ -1018,28 +1011,36 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$Subset, {
     
     rv$substart <- TRUE
+    # 
     # tmp <- makeFilterChain()
-    # filterChain <- paste(tmp$filterChain, collapse = "& ")
+    # rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
     # rv$sub <- tmp$sub
     # 
-    # rv$stnall <- rv$inputData$stnall %>% lazy_dt() %>% 
-    #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
-    # 
-    # rv$indall <- rv$inputData$indall %>% lazy_dt() %>% 
-    #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
-    # 
-    # rv$mission <- rv$mission[missionid %in% unique(rv$stnall$missionid), ]
-    # 
-    # Lon Lat needs update
+    # rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    # rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    # rv$mission <- rv$mission  %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$inputData$stnall$missionid)) %>% collect() %>% as.data.table()
+    # # tmp <- makeFilterChain()
+    # # filterChain <- paste(tmp$filterChain, collapse = "& ")
+    # # rv$sub <- tmp$sub
+    # # 
+    # # rv$stnall <- rv$inputData$stnall %>% lazy_dt() %>% 
+    # #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
+    # # 
+    # # rv$indall <- rv$inputData$indall %>% lazy_dt() %>% 
+    # #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
+    # # 
+    # # rv$mission <- rv$mission[missionid %in% unique(rv$stnall$missionid), ]
+    # # 
+    # # Lon Lat needs update
     # if(is.null(rv$sub$lon))
     #   rv$sub$lon <- c(rv$all$min.lon, rv$all$max.lon)
     # if(is.null(rv$sub$lat))
     #   rv$sub$lat <- c(rv$all$min.lat, rv$all$max.lat)
-    # 
-    # 
-    # # Update selectors
+    # # 
+    # # 
+    # # # Update selectors
     # updateSelectors()
-    # 
+    # # 
     # updateFilterform()
     # 
     rv$sub$year <- if (is.null(input$subYear)) {
@@ -1137,75 +1138,6 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  
-  ##....................
-  ## Overview stats ####
-  
-  # observeEvent(c(req(input$file1), input$Subset, input$Reset), {
-  #   
-  #   output$nStationsBox <- renderValueBox({
-  #     
-  #     tmp <- rv$stnall %>% select(missionid, startyear, serialnumber) %>% distinct() %>% nrow()
-  #     
-  #     valueBox(
-  #       value = tags$p(tmp, style = "font-size: 80%;"),
-  #       subtitle = "Stations"
-  #     )
-  #   })
-  #   
-  #   output$nYearsBox <- renderValueBox({
-  #     valueBox(
-  #       length(unique(rv$stnall$startyear)),
-  #       "Unique years"
-  #     )
-  #   })
-  #   
-  #   output$nSpeciesBox <- renderValueBox({
-  #     valueBox(
-  #       length(unique(rv$stnall$commonname)),
-  #       "Unique species"
-  #     )
-  #   })
-  #   
-  #   output$DateStartBox <- renderValueBox({
-  #     valueBox(
-  #       value = tags$p(min(rv$stnall$stationstartdate, na.rm = TRUE),
-  #                      style = "font-size: 80%;"),
-  #       subtitle = "First date"
-  #     )
-  #   })
-  #   
-  #   output$DateEndBox <- renderValueBox({
-  #     valueBox(
-  #       value = tags$p(max(rv$stnall$stationstartdate, na.rm = TRUE),
-  #                      style = "font-size: 80%;"),
-  #       subtitle = "Last date"
-  #     )
-  #   })
-  #   
-  #   output$nMeasuredBox <- renderValueBox({
-  #     valueBox(
-  #       value = tags$p(nrow(rv$indall), style = "font-size: 60%;"),
-  #       subtitle = "Measured specimen"
-  #     )
-  #   })
-  #   
-  #   output$nCruisesBox <- renderValueBox({
-  #     valueBox(
-  #       nrow(rv$mission),
-  #       "Cruises"
-  #     )
-  #   })
-  #   
-  #   output$nGearsBox <- renderValueBox({
-  #     valueBox(
-  #       length(unique(rv$stnall[["gear"]])),
-  #       "Gear types"
-  #     )
-  #   })
-  #   
-  # })
-  # 
   ##.................
   ## Data tables ####
   
@@ -1304,71 +1236,75 @@ server <- shinyServer(function(input, output, session) {
   ##......................
   ## Stn data figures ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$Reset, input$doFetchDB), {
-    
-    spOverviewDat <- speciesOverviewData(rv$stnall)
-    
-    ## Number of stations containing the species plot
-    
-    output$speciesCompositionPlot <- renderPlot(speciesCompositionPlot(spOverviewDat))
-    
-    ## Summed catch weight plot
-    
-    output$catchweightSumPlot <- renderPlotly({
+  observeEvent(input$tabs, {
+    if(input$tabs == "stnallOverview") {
       
-      p <- catchweightSumPlot(spOverviewDat)
+      spOverviewDat <- speciesOverviewData(rv$stnall)
       
-      ggplotly(p) %>% plotly::layout(annotations = list(x = 1, y= 1, xref = "paper", yref = "paper", text = paste("Total catch\n all species\n", round(sum(spOverviewDat$catchS$sum), 0), "kg"), showarrow = FALSE, font = list(size = 12)))
+      ## Number of stations containing the species plot
       
-    })
-    
-    ## Mean catch weight plot
-    
-    output$catchweightMeanPlot <- renderPlot(catchweightMeanPlot(spOverviewDat))
-    
-    ## Catch weight range plot
-    
-    output$catchweightRangePlot <- renderPlot(catchweightRangePlot(spOverviewDat))
-    
-    ## Mean weight of fish in catch
-    
-    output$catchIndMeanWeightPlot <- renderPlot(catchIndMeanWeightPlot(spOverviewDat))
-    
-    ## Mean n in catch plot
-    
-    output$catchcountMeanPlot <- renderPlot(catchcountMeanPlot(spOverviewDat))
-    
-    ## N range in catch plot
-    
-    output$catchcountRangePlot <- renderPlot(catchcountRangePlot(spOverviewDat))
-    
-    ## Catch in gear plot
-    
-    output$gearcatchPlot <- renderPlot(gearCatchPlot(spOverviewDat))
-    
-    ## Station depth plot
-    
-    output$stationDepthPlot <- renderPlot(stationDepthPlot(spOverviewDat))
-    
-    ## Fishing depth plot 
-    
-    output$catchSpeciesWeightPlot <- renderPlot(catchSpeciesWeightPlot(spOverviewDat))
-    
-    ## Stn data maps ####
-    
-    ## Catch composition map
-    
-    output$catchCompMap <- renderLeaflet(catchCompMap(spOverviewDat))
-    
+      output$speciesCompositionPlot <- renderPlot(speciesCompositionPlot(spOverviewDat))
+      
+      ## Summed catch weight plot
+      
+      output$catchweightSumPlot <- renderPlotly({
+        
+        p <- catchweightSumPlot(spOverviewDat)
+        
+        ggplotly(p) %>% plotly::layout(annotations = list(x = 1, y= 1, xref = "paper", yref = "paper", text = paste("Total catch\n all species\n", round(sum(spOverviewDat$catchS$sum), 0), "kg"), showarrow = FALSE, font = list(size = 12)))
+        
+      })
+      
+      ## Mean catch weight plot
+      
+      output$catchweightMeanPlot <- renderPlot(catchweightMeanPlot(spOverviewDat))
+      
+      ## Catch weight range plot
+      
+      output$catchweightRangePlot <- renderPlot(catchweightRangePlot(spOverviewDat))
+      
+      ## Mean weight of fish in catch
+      
+      output$catchIndMeanWeightPlot <- renderPlot(catchIndMeanWeightPlot(spOverviewDat))
+      
+      ## Mean n in catch plot
+      
+      output$catchcountMeanPlot <- renderPlot(catchcountMeanPlot(spOverviewDat))
+      
+      ## N range in catch plot
+      
+      output$catchcountRangePlot <- renderPlot(catchcountRangePlot(spOverviewDat))
+      
+      ## Catch in gear plot
+      
+      output$gearcatchPlot <- renderPlot(gearCatchPlot(spOverviewDat))
+      
+      ## Station depth plot
+      
+      output$stationDepthPlot <- renderPlot(stationDepthPlot(spOverviewDat))
+      
+      ## Fishing depth plot 
+      
+      output$catchSpeciesWeightPlot <- renderPlot(catchSpeciesWeightPlot(spOverviewDat))
+      
+    } 
   })
   
   
-  observeEvent(c(req(input$file1), input$Subset, input$catchMapSpecies), {
+  observeEvent(c(input$tabs,  input$catchMapSpecies), {
+    if(input$tabs == "stnallMap") {
     
     ## Catch map ###
     
     output$catchMap <- renderLeaflet(catchMap(rv$stnall, species = input$catchMapSpecies))
     
+    ## Catch composition map
+    
+    #if(nrow(spOverviewDat$compDatW) != 0) {
+    output$catchCompMap <- renderLeaflet(catchCompMap(spOverviewDat))
+    #}
+    
+    }
   }) 
   
   ##..........................................
