@@ -31,8 +31,8 @@ updateSelectors <- function() {
     rv$all$min.lat <- -90
     rv$all$max.lat <- 90
   } else {
-    rv$all$min.lat <- floor(lat$min)
-    rv$all$max.lat <- ceiling(lat$max)
+    rv$all$min.lat <- round_any(lat$min, 0.1, floor)
+    rv$all$max.lat <- round_any(lat$max, 0.1, ceiling)
   }
   
   rv$all$date <- rv$stnall %>% lazy_dt() %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
@@ -73,7 +73,7 @@ updateMap <- function(db = FALSE) {
                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
         addMarkers(lng = 20, lat = 70, label = "No position information")
     } else {
-      leaflet::leaflet(data) %>% 
+      leaflet::leaflet(x) %>% 
         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
         addRectangles(
@@ -357,7 +357,7 @@ makeFilterChain <- function(db = FALSE) {
   if(all(sub$lon == c(-180, 180))) sub$lon <- NULL
   
   if (!is.null(sub$lon)) {
-    filterChain <- append(filterChain, paste0("longitudestart >= '", sub$lon[1], "' & longitudestart <= '", sub$lon[2], "'")) 
+    filterChain <- append(filterChain, paste0("longitudestart >= ",sub$lon[1], " & longitudestart <= ", sub$lon[2])) 
   }
   
   ## Latitude
@@ -371,7 +371,7 @@ makeFilterChain <- function(db = FALSE) {
   if(all(sub$lat == c(-90, 90))) sub$lat <- NULL
   
   if (!is.null(sub$lat)) {
-    filterChain <- append(filterChain, paste0("latitudestart >= '", sub$lat[1], "' & latitudestart <= '", sub$lat[2], "'"))
+    filterChain <- append(filterChain, paste0("latitudestart >= ", sub$lat[1], " & latitudestart <= ", sub$lat[2]))
   }
   
   # if (!identical(as.numeric(input$subLon), c(rv$all$min.lon, rv$all$max.lon))) {

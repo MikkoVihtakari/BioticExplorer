@@ -830,21 +830,21 @@ server <- shinyServer(function(input, output, session) {
       if(file.exists(dbPath)) {
         con_db <- DBI::dbConnect(MonetDBLite::MonetDBLite(), dbPath)
         
-        rv$stnall <- dplyr::tbl(con_db, "stnall")
-        rv$indall <- dplyr::tbl(con_db, "indall")
-        rv$mission <- dplyr::tbl(con_db, "mission")
+        rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
+        rv$inputData$indall <- dplyr::tbl(con_db, "indall")
+        rv$inputData$mission <- dplyr::tbl(con_db, "mission")
         
         # Running the indexing below, saving to a file and specifying dbIndexPath in Settings section is a time-saver, not a necessity. 
         if(file.exists(dbIndexPath)) {
           load(dbIndexPath)
         } else {
           index <- list()
-          index$missiontypename <- rv$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
-          index$cruise <- rv$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
-          index$year <- rv$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
-          index$commonname <- rv$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
-          index$platformname <- rv$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
-          index$gear <- rv$stnall %>% lazy_dt() %>% select(gear) %>% distinct() %>% pull() %>% sort()
+          index$missiontypename <- rv$inputData$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
+          index$cruise <- rv$inputData$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
+          index$year <- rv$inputData$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
+          index$commonname <- rv$inputData$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
+          index$platformname <- rv$inputData$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
+          index$gear <- rv$inputData$stnall %>% lazy_dt() %>% select(gear) %>% distinct() %>% pull() %>% sort()
         }
         
         updateSelectInput(session, "selMissionTypeDb", choices = index$missiontypename)
@@ -856,7 +856,7 @@ server <- shinyServer(function(input, output, session) {
         
         output$EstStationsBox <- renderValueBox({
           
-          tmp <- rv$stnall %>% lazy_dt() %>% select(missionid, startyear, serialnumber) %>% distinct() %>% count() %>% pull()
+          tmp <- rv$inputData$stnall %>% lazy_dt() %>% select(missionid, startyear, serialnumber) %>% distinct() %>% count() %>% pull()
           
           valueBox(
             value = tags$p(tmp, style = "font-size: 80%;"),
@@ -916,9 +916,9 @@ server <- shinyServer(function(input, output, session) {
     rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
     rv$sub <- tmp$sub
     
-    rv$stnall <- rv$inputData$stnall <- rv$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$indall <- rv$inputData$indall <- rv$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$mission <- rv$inputData$mission <- rv$mission %>% filter(missionid %in% !!unique(rv$inputData$stnall$missionid)) %>% collect() %>% as.data.table()
+    rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$inputData$stnall$missionid)) %>% collect() %>% as.data.table()
     
     obsPopulatePanel(db = TRUE)
     
@@ -926,25 +926,23 @@ server <- shinyServer(function(input, output, session) {
   
   #.................
   ## Test output ####
-  
-  
-  
-  output$test <- renderText({
-    # #   # 
-    # #   #   # length(input$file1[[1]])
-    # #   #   # paste(input$file1[[1]], collapse = "; ")
-    # #   #   paste(rv$filterChain, collapse = "; ")
-    paste(input$doFetchDB, collapse = "; ")
-  })
-  
+
+  # output$test <- renderText({
+  #   # #   #
+  #   # #   #   # length(input$file1[[1]])
+  #   # #   #   # paste(input$file1[[1]], collapse = "; ")
+  #   # #   #   paste(rv$filterChain, collapse = "; ")
+  #   paste(rv$filterChain, collapse = "; ")
+  # })
+  # 
   ##...................
   ## Update inputs ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
-    
-    updateSelectors()
-    updateFilterform()
-    
+  # observeEvent(c(req(input$file1), input$Subset, input$Reset), {
+  #   
+  #   updateSelectors()
+  #   updateFilterform()
+  #   
     # Delete the stuff under once everything works
     # updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
     # updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
@@ -976,7 +974,7 @@ server <- shinyServer(function(input, output, session) {
     # max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
     # updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
     
-  })
+  # })
   # 
   ## Export figures tab
   
@@ -1011,14 +1009,17 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$Subset, {
     
     rv$substart <- TRUE
-    # 
-    # tmp <- makeFilterChain()
-    # rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
-    # rv$sub <- tmp$sub
-    # 
-    # rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    # rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    # rv$mission <- rv$mission  %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$inputData$stnall$missionid)) %>% collect() %>% as.data.table()
+     
+    tmp <- makeFilterChain()
+    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+    rv$sub <- tmp$sub
+     
+    rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+    rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
+    
+    obsPopulatePanel()
+    
     # # tmp <- makeFilterChain()
     # # filterChain <- paste(tmp$filterChain, collapse = "& ")
     # # rv$sub <- tmp$sub
@@ -1043,87 +1044,87 @@ server <- shinyServer(function(input, output, session) {
     # # 
     # updateFilterform()
     # 
-    rv$sub$year <- if (is.null(input$subYear)) {
-      unique(rv$inputData$stnall$startyear)
-    } else {
-      input$subYear
-    }
-    
-    rv$sub$species <- if (is.null(input$subSpecies)) {
-      unique(rv$inputData$stnall$commonname)
-    } else {
-      input$subSpecies
-    }
-    
-    rv$sub$cruise <- if (is.null(input$subCruise)) {
-      unique(rv$inputData$stnall$cruise)
-    } else {
-      input$subCruise
-    }
-    
-    rv$sub$platform <- if (is.null(input$subPlatform)) {
-      unique(rv$inputData$stnall$platformname)
-    } else {
-      input$subPlatform
-    }
-    
-    rv$sub$serialnumber <- if (is.null(input$subSerialnumber)) {
-      unique(rv$inputData$stnall$serialnumber)
-    } else {
-      input$subSerialnumber
-    }
-    
-    rv$sub$gear <- if (is.null(input$subGear)) {
-      unique(rv$inputData$stnall$gear)
-    } else {
-      input$subGear
-    }
-    
-    rv$sub$lon <- if (is.null(input$subLon)) {
-      NULL
-    } else {
-      input$subLon
-    }
-    
-    rv$sub$lat <- if (is.null(input$subLat)) {
-      NULL
-    } else {
-      input$subLat
-    }
-    
-    ### Stnall subsetting
-    
-    rv$stnall <- rv$inputData$stnall[
-      startyear %in% rv$sub$year &
-        commonname %in% rv$sub$species &
-        cruise %in% rv$sub$cruise &
-        platformname %in% rv$sub$platform &
-        serialnumber %in% rv$sub$serialnumber &
-        gear %in% rv$sub$gear &
-        longitudestart >= rv$sub$lon[1] &
-        longitudestart <= rv$sub$lon[2] &
-        latitudestart >= rv$sub$lat[1] &
-        latitudestart <= rv$sub$lat[2],
-    ]
-    
-    ### Indall subsetting
-    
-    rv$indall <- rv$inputData$indall[
-      startyear %in% rv$sub$year &
-        commonname %in% rv$sub$species &
-        cruise %in% rv$sub$cruise &
-        platformname %in% rv$sub$platform &
-        serialnumber %in% rv$sub$serialnumber &
-        gear %in% rv$sub$gear &
-        longitudestart >= rv$sub$lon[1] &
-        longitudestart <= rv$sub$lon[2] &
-        latitudestart >= rv$sub$lat[1] &
-        latitudestart <= rv$sub$lat[2],
-    ]
-    
-    ### Mission subsetting
-    
-    rv$mission <- rv$inputData$mission[missionid %in% unique(rv$stnall$missionid), ]
+    # rv$sub$year <- if (is.null(input$subYear)) {
+    #   unique(rv$inputData$stnall$startyear)
+    # } else {
+    #   input$subYear
+    # }
+    # 
+    # rv$sub$species <- if (is.null(input$subSpecies)) {
+    #   unique(rv$inputData$stnall$commonname)
+    # } else {
+    #   input$subSpecies
+    # }
+    # 
+    # rv$sub$cruise <- if (is.null(input$subCruise)) {
+    #   unique(rv$inputData$stnall$cruise)
+    # } else {
+    #   input$subCruise
+    # }
+    # 
+    # rv$sub$platform <- if (is.null(input$subPlatform)) {
+    #   unique(rv$inputData$stnall$platformname)
+    # } else {
+    #   input$subPlatform
+    # }
+    # 
+    # rv$sub$serialnumber <- if (is.null(input$subSerialnumber)) {
+    #   unique(rv$inputData$stnall$serialnumber)
+    # } else {
+    #   input$subSerialnumber
+    # }
+    # 
+    # rv$sub$gear <- if (is.null(input$subGear)) {
+    #   unique(rv$inputData$stnall$gear)
+    # } else {
+    #   input$subGear
+    # }
+    # 
+    # rv$sub$lon <- if (is.null(input$subLon)) {
+    #   NULL
+    # } else {
+    #   input$subLon
+    # }
+    # 
+    # rv$sub$lat <- if (is.null(input$subLat)) {
+    #   NULL
+    # } else {
+    #   input$subLat
+    # }
+    # 
+    # ### Stnall subsetting
+    # 
+    # rv$stnall <- rv$inputData$stnall[
+    #   startyear %in% rv$sub$year &
+    #     commonname %in% rv$sub$species &
+    #     cruise %in% rv$sub$cruise &
+    #     platformname %in% rv$sub$platform &
+    #     serialnumber %in% rv$sub$serialnumber &
+    #     gear %in% rv$sub$gear &
+    #     longitudestart >= rv$sub$lon[1] &
+    #     longitudestart <= rv$sub$lon[2] &
+    #     latitudestart >= rv$sub$lat[1] &
+    #     latitudestart <= rv$sub$lat[2],
+    # ]
+    # 
+    # ### Indall subsetting
+    # 
+    # rv$indall <- rv$inputData$indall[
+    #   startyear %in% rv$sub$year &
+    #     commonname %in% rv$sub$species &
+    #     cruise %in% rv$sub$cruise &
+    #     platformname %in% rv$sub$platform &
+    #     serialnumber %in% rv$sub$serialnumber &
+    #     gear %in% rv$sub$gear &
+    #     longitudestart >= rv$sub$lon[1] &
+    #     longitudestart <= rv$sub$lon[2] &
+    #     latitudestart >= rv$sub$lat[1] &
+    #     latitudestart <= rv$sub$lat[2],
+    # ]
+    # 
+    # ### Mission subsetting
+    # 
+    # rv$mission <- rv$inputData$mission[missionid %in% unique(rv$stnall$missionid), ]
     
   })
   
@@ -1135,6 +1136,8 @@ server <- shinyServer(function(input, output, session) {
     rv$stnall <- rv$inputData$stnall
     rv$indall <- rv$inputData$indall
     rv$mission <- rv$inputData$mission
+    
+    obsPopulatePanel()
     
   })
   
@@ -1310,7 +1313,8 @@ server <- shinyServer(function(input, output, session) {
   ##..........................................
   ## Ind data overview figures and tables ####
   
-  observeEvent(c(req(input$file1), input$Subset, input$Reset), {
+  observeEvent(input$tabs, {
+    if(input$tabs == "indallOverview") {
     
     indSumTab <- rv$indall %>% 
       dplyr::group_by(commonname) %>% 
@@ -1351,7 +1355,7 @@ server <- shinyServer(function(input, output, session) {
     
     # Mean individual length & sex
     # Mean length - depth
-    
+    } 
   })
   
   ## Ind plots, selected species ####

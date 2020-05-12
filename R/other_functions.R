@@ -74,3 +74,17 @@ unlogit <- function(p, model) {
 ## Custom colour palette
 
 ColorPalette <- c("#449BCF", "#82C893", "#D696C8", "#FF5F68", "#FF9252", "#FFC95B", "#056A89")
+
+#' @title Round to multiple of any number
+#' @param x numeric vector to round
+#' @param accuracy number to round to; for POSIXct objects, a number of seconds
+#' @param f rounding function: \code{\link{floor}}, \code{\link{ceiling}} or
+#'  \code{\link{round}}
+#' @keywords internal
+#' @author Hadley Wickham
+#' @export
+#'
+round_any <- function(x, accuracy, f = round) {
+  f(x / accuracy) * accuracy
+}
+
