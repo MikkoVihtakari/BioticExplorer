@@ -5,6 +5,7 @@ updateSelectors <- function() {
   # Update selectors
   rv$all <- list()
   rv$all$startyear <- rv$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
+  rv$all$missiontypename <- rv$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
   rv$all$commonname <- rv$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
   rv$all$cruise <- rv$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
   rv$all$platformname <- rv$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
@@ -38,10 +39,28 @@ updateSelectors <- function() {
   rv$all$date <- rv$stnall %>% lazy_dt() %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
 }
 
-updateFilterform <- function(db = FALSE) {
+updateFilterform <- function(db = FALSE, loadDb = FALSE) {
   
-  if(db) {
-    NULL # for now
+  if(loadDb) {
+    updateSelectizeInput(session, "selMissionTypeDb", choices = index$missiontypename, server = TRUE)
+    updateSelectizeInput(session, "selCruiseDb", choices = index$cruise, server = TRUE)
+    updateSelectizeInput(session, "selYearDb", choices = index$year, server = TRUE)
+    updateSelectizeInput(session, "selSpeciesDb", choices = index$commonname, server = TRUE)
+    updateSelectizeInput(session, "selPlatformDb", choices = index$platformname, server = TRUE)
+    updateSelectizeInput(session, "selSerialnumberDb", choices = index$serialnumber, server = TRUE)
+    updateSelectizeInput(session, "selGearDb", choices = index$gear, server = TRUE)
+  } else if(db) {
+    updateSelectizeInput(session, "selMissionTypeDb", choices = rv$all$missiontypename, server = TRUE)
+    updateSelectizeInput(session, "selYearDb", choices = rv$all$startyear, server = TRUE)
+    updateSelectizeInput(session, "selSpeciesDb", choices = rv$all$commonname, server = TRUE)
+    updateSelectizeInput(session, "selCruiseDb", choices = rv$all$cruise, server = TRUE)
+    updateSelectizeInput(session, "selPlatformDb", choices = rv$all$platformname, server = TRUE)
+    updateSelectizeInput(session, "selSerialnumberDb", choices = rv$all$serialnumber, server = TRUE)
+    updateSelectizeInput(session, "selGearDb", choices = rv$all$gear, server = TRUE)
+    updateSelectInput(session, "catchMapSpecies", choices = c("All", rv$all$commonname))
+    updateSelectInput(session, "indSpecies", choices = c("Select a species to generate the plots", rv$all$indSpecies))
+    updateSliderInput(session, "selLonDb", min = rv$all$min.lon, max = rv$all$max.lon, value = rv$sub$lon, step = 0.1)
+    updateSliderInput(session, "selLatDb", min = rv$all$min.lat, max = rv$all$max.lat, value = rv$sub$lat, step = 0.1) 
   } else {
     updateSelectInput(session, "subYear", choices = rv$all$startyear)
     updateSelectInput(session, "subSpecies", choices = rv$all$commonname)
@@ -49,7 +68,7 @@ updateFilterform <- function(db = FALSE) {
     updateSelectInput(session, "subPlatform", choices = rv$all$platformname)
     updateSelectInput(session, "subSerialnumber", choices = rv$all$serialnumber)
     updateSelectInput(session, "subGear", choices = rv$all$gear)
-    updateSelectInput(session, "catchMapSpecies", choices = c("All", rv$stnall$commonname))
+    updateSelectInput(session, "catchMapSpecies", choices = c("All", rv$all$commonname))
     updateSelectInput(session, "indSpecies", choices = c("Select a species to generate the plots", rv$all$indSpecies))
     updateSliderInput(session, "subLon", min = rv$all$min.lon, max = rv$all$max.lon, value = rv$sub$lon, step = 0.1)
     updateSliderInput(session, "subLat", min = rv$all$min.lat, max = rv$all$max.lat, value = rv$sub$lat, step = 0.1) 
@@ -104,10 +123,21 @@ updateMap <- function(db = FALSE) {
 }
 
 #' @title Populate the quick overview panel and station map
+#' @param db Logical. If \code{TRUE}, the operation will be targeted for database data, otherwise file data
+#' @param loadDb Logical. Set to \code{TRUE} when database selection is reset or loaded. Otherwise \code{FALSE}.
 
-obsPopulatePanel <- function(db = FALSE) {
+obsPopulatePanel <- function(db = FALSE, loadDb = FALSE) {
   
   # Functions
+  
+  nCruisesBox <- function() {
+    renderValueBox({
+      valueBox(
+        rv$mission %>% lazy_dt() %>% count() %>% pull(),
+        "Cruises"
+      )
+    })
+  }
   
   nStationsBox <- function() {
     renderValueBox({
@@ -168,15 +198,6 @@ obsPopulatePanel <- function(db = FALSE) {
     })
   }
   
-  nCruisesBox <- function() {
-    renderValueBox({
-      valueBox(
-        rv$mission %>% lazy_dt() %>% count() %>% pull(),
-        "Cruises"
-      )
-    })
-  }
-  
   nGearsBox <- function() {
     renderValueBox({
       valueBox(
@@ -190,7 +211,7 @@ obsPopulatePanel <- function(db = FALSE) {
   rv$sub <- list()
   
   # Inform that a subset has never been performed
-  rv$substart <- FALSE
+  # rv$substart <- FALSE
   
   # Update selectors
   updateSelectors()
@@ -200,9 +221,15 @@ obsPopulatePanel <- function(db = FALSE) {
   rv$sub$lat <- c(rv$all$min.lat, rv$all$max.lat)
   
   # Reset form too
-  updateFilterform(db)
+  updateFilterform(db = db, loadDb = loadDb)
   
   # Update stats
+  
+  if(db) {
+    output$nCruisesBoxDb <- nCruisesBox()
+  } else {
+    output$nCruisesBox <- nCruisesBox()
+  }
   
   if(db) {
     output$nStationsBoxDb <- nStationsBox()
@@ -238,12 +265,6 @@ obsPopulatePanel <- function(db = FALSE) {
     output$nMeasuredBoxDb <- nMeasuredBox()
   } else {
     output$nMeasuredBox <- nMeasuredBox()  
-  }
-  
-  if(db) {
-    output$nCruisesBoxDb <- nCruisesBox()
-  } else {
-    output$nCruisesBox <- nCruisesBox()
   }
   
   if(db) {
@@ -313,9 +334,11 @@ makeFilterChain <- function(db = FALSE) {
   
   ## Serial number
   
-  if(!db) {
+  if(db) {
+    sub$serialnumber <- input$selSerialnumberDb
+  } else {
     sub$serialnumber <- input$subSerialnumber   
-  } 
+  }
   
   if (!is.null(sub$serialnumber)) {
     filterChain <- append(filterChain, 

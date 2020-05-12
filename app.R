@@ -93,6 +93,16 @@ stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" =
 dbPath <- "/Users/a22357/Desktop/IMR_db.monetdb"
 dbIndexPath <- "/Users/a22357/Desktop/dbIndex.rda"
 
+if(file.exists(dbPath)) {
+  message("dbPath found. Enabling server version.")
+  if(file.exists(dbIndexPath)) {
+    load(dbIndexPath, envir = .GlobalEnv)
+    message("dbIndexPath found. Loading the database index.")
+  }
+} else {
+  message("dbPath not found. Enabling desktop version.")
+}
+
 ##............
 ## Header ####
 
@@ -316,7 +326,7 @@ body <-
               fluidRow(
                 
                 ## Column 1 ###
-                column(width = 8,
+                column(width = 6,
                        
                        box(
                          title = "1. Select data from the IMR database", 
@@ -336,51 +346,57 @@ body <-
                            
                            fluidRow(
                              column(6, 
-                                    selectInput(inputId = "selMissionTypeDb", 
+                                    selectizeInput(inputId = "selMissionTypeDb", 
                                                 label = "Mission type:",
                                                 choices = NULL, multiple = TRUE),
                                     
-                                    selectInput(inputId = "selCruiseSeriesDb", 
+                                    selectizeInput(inputId = "selCruiseSeriesDb", 
                                                 label = "Cruise series:",
                                                 choices = "Not implemented yet", multiple = TRUE),
                                     
-                                    selectInput(inputId = "selSurveyTimeSeriesDb", 
+                                    selectizeInput(inputId = "selSurveyTimeSeriesDb", 
                                                 label = "Survey time series:",
                                                 choices = "Not implemented yet", multiple = TRUE),
                                     
-                                    selectInput(inputId = "selCruiseDb", 
+                                    selectizeInput(inputId = "selCruiseDb", 
                                                 label = "Cruise number:",
                                                 choices = NULL, multiple = TRUE),
                                     
-                                    selectInput(inputId = "selGeogAreaDb", 
+                                    selectizeInput(inputId = "selGeogAreaDb", 
                                                 label = "Geographic area:",
+                                                choices = "Not implemented yet", multiple = TRUE),
+                                    
+                                    selectizeInput(inputId = "selICESAreaDb", 
+                                                label = "ICES area:",
                                                 choices = "Not implemented yet", multiple = TRUE)
                              ),
                              
                              column(6,
-                                    selectInput(inputId = "selYearDb", 
+                                    selectizeInput(inputId = "selYearDb", 
                                                 label = "Year:",
                                                 choices = NULL, multiple = TRUE),
                                     
-                                    selectInput(inputId = "selSpeciesDb", 
+                                    selectizeInput(inputId = "selSpeciesDb", 
                                                 label = "Species:", 
                                                 choices = NULL, multiple = TRUE),
                                     
-                                    selectInput(inputId = "selPlatformDb", 
+                                    selectizeInput(inputId = "selPlatformDb", 
                                                 label = "Platform name:",
                                                 choices = NULL, multiple = TRUE),
                                     
-                                    selectInput(inputId = "selGearDb", 
+                                    selectizeInput(inputId = "selSerialnumberDb", 
+                                                label = "Serial number:",
+                                                choices = NULL, multiple = TRUE),
+                                    
+                                    selectizeInput(inputId = "selGearDb", 
                                                 label = "Gear code:",
                                                 choices = NULL, multiple = TRUE),
                                     
-                                    selectInput(inputId = "selGearCategoryDb", 
+                                    selectizeInput(inputId = "selGearCategoryDb", 
                                                 label = "Gear category:",
-                                                choices = "Not implemented yet", multiple = TRUE),
-                                    
-                                    selectInput(inputId = "selICESAreaDb", 
-                                                label = "ICES area:",
                                                 choices = "Not implemented yet", multiple = TRUE)
+                                    
+                                    
                                     
                              )),
                            
@@ -390,7 +406,12 @@ body <-
                            sliderInput(inputId = "selLatDb", label = "Latitude:", min = -90, 
                                        max = 90, value = c(-90, 90)),
                            
-                           actionButton(inputId = "doFetchDB", label = "Send inquiry")
+                           actionButton(inputId = "doFetchDB", label = "Send inquiry"),
+                           
+                           conditionalPanel(condition = "input.doFetchDB != 0",
+                                            actionButton(inputId = "SubsetDB", label = "Subset"),
+                                            actionButton(inputId = "ResetDB", label = "Reset")
+                           )
                            
                          ),
                          
@@ -441,14 +462,14 @@ body <-
                            sliderInput(inputId = "subLatDb", label = "Latitude:", min = -90, 
                                        max = 90, value = c(-90, 90)),
                            
-                           actionButton(inputId = "SubsetDb", label = "Subset"),
-                           actionButton(inputId = "ResetDb", label = "Reset")
+                           #actionButton(inputId = "SubsetDb", label = "Subset"),
+                           #actionButton(inputId = "ResetDb", label = "Reset")
                          )
                        )
                 ), 
                 
                 ## Column 2 ###
-                column(4,
+                column(6,
                        conditionalPanel(
                          condition = "input.doFetchDB == 0",
                          box(
@@ -835,31 +856,24 @@ server <- shinyServer(function(input, output, session) {
         rv$inputData$mission <- dplyr::tbl(con_db, "mission")
         
         # Running the indexing below, saving to a file and specifying dbIndexPath in Settings section is a time-saver, not a necessity. 
-        if(file.exists(dbIndexPath)) {
-          load(dbIndexPath)
-        } else {
+        if(!exists("index")) {
           index <- list()
           index$missiontypename <- rv$inputData$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
           index$cruise <- rv$inputData$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
           index$year <- rv$inputData$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
+          index$nstations <- rv$inputData$stnall %>% lazy_dt() %>% select(missionid, startyear, serialnumber) %>% distinct() %>% count() %>% pull()
           index$commonname <- rv$inputData$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
           index$platformname <- rv$inputData$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
+          # index$serialnumber <- rv$inputData$stnall %>% lazy_dt() %>% select(serialnumber) %>% distinct() %>% pull() %>% sort()
           index$gear <- rv$inputData$stnall %>% lazy_dt() %>% select(gear) %>% distinct() %>% pull() %>% sort()
         }
         
-        updateSelectInput(session, "selMissionTypeDb", choices = index$missiontypename)
-        updateSelectInput(session, "selCruiseDb", choices = index$cruise)
-        updateSelectInput(session, "selYearDb", choices = index$year)
-        updateSelectInput(session, "selSpeciesDb", choices = index$commonname)
-        updateSelectInput(session, "selPlatformDb", choices = index$platformname)
-        updateSelectInput(session, "selGearDb", choices = index$gear)
+        updateFilterform(loadDb = TRUE)
         
         output$EstStationsBox <- renderValueBox({
           
-          tmp <- rv$inputData$stnall %>% lazy_dt() %>% select(missionid, startyear, serialnumber) %>% distinct() %>% count() %>% pull()
-          
           valueBox(
-            value = tags$p(tmp, style = "font-size: 80%;"),
+            value = tags$p(index$nstations, style = "font-size: 80%;"),
             subtitle = "Stations"
           )
         })
@@ -900,11 +914,9 @@ server <- shinyServer(function(input, output, session) {
             subtitle = "Last year"
           )
         })
-        # valueBoxOutput("EstMeasuredBox"),
         
       }
     }
-    # bla <- dplyr::tbl(con_db, "indall") %>% filter(commonname == "tiskjegg") %>% count()
     
   })
   
@@ -918,7 +930,7 @@ server <- shinyServer(function(input, output, session) {
     
     rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
     rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$inputData$stnall$missionid)) %>% collect() %>% as.data.table()
+    rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
     obsPopulatePanel(db = TRUE)
     
@@ -926,7 +938,7 @@ server <- shinyServer(function(input, output, session) {
   
   #.................
   ## Test output ####
-
+  
   # output$test <- renderText({
   #   # #   #
   #   # #   #   # length(input$file1[[1]])
@@ -935,47 +947,8 @@ server <- shinyServer(function(input, output, session) {
   #   paste(rv$filterChain, collapse = "; ")
   # })
   # 
-  ##...................
-  ## Update inputs ####
   
-  # observeEvent(c(req(input$file1), input$Subset, input$Reset), {
-  #   
-  #   updateSelectors()
-  #   updateFilterform()
-  #   
-    # Delete the stuff under once everything works
-    # updateSelectInput(session, "subYear", choices = sort(unique(rv$stnall$startyear)))
-    # updateSelectInput(session, "subSpecies", choices = sort(unique(rv$stnall$commonname)))
-    # updateSelectInput(session, "subCruise", choices = sort(unique(rv$stnall$cruise)))
-    # updateSelectInput(session, "subPlatform", choices = sort(unique(rv$stnall$platformname)))
-    # updateSelectInput(session, "subSerialnumber", choices = sort(unique(rv$stnall$serialnumber)))
-    # updateSelectInput(session, "subGear", choices = sort(unique(rv$stnall$gear)))
-    # updateSelectInput(session, "catchMapSpecies", choices = c("All", sort(unique(rv$stnall$commonname))))
-    # updateSelectInput(session, "indSpecies", choices =
-    #                     c("Select a species to generate the plots",
-    # 
-    #                       if(any(is.null(rv$indall$length), is.null(rv$indall$commonname), is.null(rv$indall$individualweight))) {
-    #                         "No species with sufficient data"
-    # 
-    #                       } else {
-    #                         rv$indall %>%
-    #                           filter(!is.na(length) & !is.na(individualweight)) %>%
-    #                           group_by(commonname) %>% dplyr::select(commonname) %>%
-    #                           filter(n() > 1) %>% unique() %>% pull() %>% sort()
-    #                       }
-    #                     )
-    # )
-    # 
-    # min.lon <- floor(min(rv$stnall$longitudestart, na.rm = TRUE))
-    # max.lon <- ceiling(max(rv$stnall$longitudestart, na.rm = TRUE))
-    # updateSliderInput(session, "subLon", min = min.lon, max = max.lon, value = c(min.lon, max.lon), step = 0.1)
-    # 
-    # min.lat <- floor(min(rv$stnall$latitudestart, na.rm = TRUE))
-    # max.lat <- ceiling(max(rv$stnall$latitudestart, na.rm = TRUE))
-    # updateSliderInput(session, "subLat", min = min.lat, max = max.lat, value = c(min.lat, max.lat), step = 0.1)
-    
-  # })
-  # 
+  ##................... 
   ## Export figures tab
   
   observeEvent(c(input$selectAllStationOverviewExport), {
@@ -1008,123 +981,15 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$Subset, {
     
-    rv$substart <- TRUE
-     
     tmp <- makeFilterChain()
     rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
     rv$sub <- tmp$sub
-     
+    
     rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
     rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
     rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
     obsPopulatePanel()
-    
-    # # tmp <- makeFilterChain()
-    # # filterChain <- paste(tmp$filterChain, collapse = "& ")
-    # # rv$sub <- tmp$sub
-    # # 
-    # # rv$stnall <- rv$inputData$stnall %>% lazy_dt() %>% 
-    # #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
-    # # 
-    # # rv$indall <- rv$inputData$indall %>% lazy_dt() %>% 
-    # #   filter(rlang::eval_tidy(rlang::parse_expr(filterChain))) %>% as.data.table()
-    # # 
-    # # rv$mission <- rv$mission[missionid %in% unique(rv$stnall$missionid), ]
-    # # 
-    # # Lon Lat needs update
-    # if(is.null(rv$sub$lon))
-    #   rv$sub$lon <- c(rv$all$min.lon, rv$all$max.lon)
-    # if(is.null(rv$sub$lat))
-    #   rv$sub$lat <- c(rv$all$min.lat, rv$all$max.lat)
-    # # 
-    # # 
-    # # # Update selectors
-    # updateSelectors()
-    # # 
-    # updateFilterform()
-    # 
-    # rv$sub$year <- if (is.null(input$subYear)) {
-    #   unique(rv$inputData$stnall$startyear)
-    # } else {
-    #   input$subYear
-    # }
-    # 
-    # rv$sub$species <- if (is.null(input$subSpecies)) {
-    #   unique(rv$inputData$stnall$commonname)
-    # } else {
-    #   input$subSpecies
-    # }
-    # 
-    # rv$sub$cruise <- if (is.null(input$subCruise)) {
-    #   unique(rv$inputData$stnall$cruise)
-    # } else {
-    #   input$subCruise
-    # }
-    # 
-    # rv$sub$platform <- if (is.null(input$subPlatform)) {
-    #   unique(rv$inputData$stnall$platformname)
-    # } else {
-    #   input$subPlatform
-    # }
-    # 
-    # rv$sub$serialnumber <- if (is.null(input$subSerialnumber)) {
-    #   unique(rv$inputData$stnall$serialnumber)
-    # } else {
-    #   input$subSerialnumber
-    # }
-    # 
-    # rv$sub$gear <- if (is.null(input$subGear)) {
-    #   unique(rv$inputData$stnall$gear)
-    # } else {
-    #   input$subGear
-    # }
-    # 
-    # rv$sub$lon <- if (is.null(input$subLon)) {
-    #   NULL
-    # } else {
-    #   input$subLon
-    # }
-    # 
-    # rv$sub$lat <- if (is.null(input$subLat)) {
-    #   NULL
-    # } else {
-    #   input$subLat
-    # }
-    # 
-    # ### Stnall subsetting
-    # 
-    # rv$stnall <- rv$inputData$stnall[
-    #   startyear %in% rv$sub$year &
-    #     commonname %in% rv$sub$species &
-    #     cruise %in% rv$sub$cruise &
-    #     platformname %in% rv$sub$platform &
-    #     serialnumber %in% rv$sub$serialnumber &
-    #     gear %in% rv$sub$gear &
-    #     longitudestart >= rv$sub$lon[1] &
-    #     longitudestart <= rv$sub$lon[2] &
-    #     latitudestart >= rv$sub$lat[1] &
-    #     latitudestart <= rv$sub$lat[2],
-    # ]
-    # 
-    # ### Indall subsetting
-    # 
-    # rv$indall <- rv$inputData$indall[
-    #   startyear %in% rv$sub$year &
-    #     commonname %in% rv$sub$species &
-    #     cruise %in% rv$sub$cruise &
-    #     platformname %in% rv$sub$platform &
-    #     serialnumber %in% rv$sub$serialnumber &
-    #     gear %in% rv$sub$gear &
-    #     longitudestart >= rv$sub$lon[1] &
-    #     longitudestart <= rv$sub$lon[2] &
-    #     latitudestart >= rv$sub$lat[1] &
-    #     latitudestart <= rv$sub$lat[2],
-    # ]
-    # 
-    # ### Mission subsetting
-    # 
-    # rv$mission <- rv$inputData$mission[missionid %in% unique(rv$stnall$missionid), ]
     
   })
   
@@ -1132,6 +997,16 @@ server <- shinyServer(function(input, output, session) {
   ## Resetting ####
   
   observeEvent(input$Reset, {
+    
+    rv$stnall <- rv$inputData$stnall
+    rv$indall <- rv$inputData$indall
+    rv$mission <- rv$inputData$mission
+    
+    obsPopulatePanel()
+    
+  })
+  
+  observeEvent(input$ResetDb, {
     
     rv$stnall <- rv$inputData$stnall
     rv$indall <- rv$inputData$indall
@@ -1296,17 +1171,17 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(c(input$tabs,  input$catchMapSpecies), {
     if(input$tabs == "stnallMap") {
-    
-    ## Catch map ###
-    
-    output$catchMap <- renderLeaflet(catchMap(rv$stnall, species = input$catchMapSpecies))
-    
-    ## Catch composition map
-    
-    #if(nrow(spOverviewDat$compDatW) != 0) {
-    output$catchCompMap <- renderLeaflet(catchCompMap(spOverviewDat))
-    #}
-    
+      
+      ## Catch map ###
+      
+      output$catchMap <- renderLeaflet(catchMap(rv$stnall, species = input$catchMapSpecies))
+      
+      ## Catch composition map
+      
+      #if(nrow(spOverviewDat$compDatW) != 0) {
+      output$catchCompMap <- renderLeaflet(catchCompMap(spOverviewDat))
+      #}
+      
     }
   }) 
   
@@ -1315,46 +1190,46 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$tabs, {
     if(input$tabs == "indallOverview") {
-    
-    indSumTab <- rv$indall %>% 
-      dplyr::group_by(commonname) %>% 
-      dplyr::summarise(Total = length(commonname), 
-                       Length = {if("length" %in% names(.)) sum(!is.na(length)) else 0},
-                       Weight = {if("individualweight" %in% names(.)) sum(!is.na(individualweight)) else 0}, 
-                       Sex = {if("sex" %in% names(.)) sum(!is.na(sex)) else 0}, 
-                       Maturationstage = {if("maturationstage" %in% names(.)) sum(!is.na(maturationstage)) else 0}, 
-                       Specialstage = {if("specialstage" %in% names(.)) sum(!is.na(specialstage)) else 0}, 
-                       Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0}
-      ) 
-    
-    output$individualSummaryTable <- DT::renderDataTable({
-      DT::datatable(indSumTab, options = list(searching = FALSE))
-    })
-    
-    
-    # meanIndLStn <- rv$indall %>% filter(!is.na(length)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, commonname) %>% summarise(meanLength = mean(length))
-    # 
-    # meanIndL <- meanIndLStn %>% group_by(commonname) %>% summarise(mean = mean(meanLength), sd = sd(meanLength), se = se(meanLength), n = length(meanLength))
-    # 
-    # ggplot(tmp, aes(x = commonname, y = meanLength)) + geom_point()
-    # 
-    # tmp <- rv$indall %>% filter(!is.na(length) & !is.na(individualweight)) %>% group_by(commonname) %>% filter(n() > 10) %>% summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n())
-    #
-    # output$rickerPlot <- renderPlot({
-    #   
-    #   ggplot() + 
-    #     geom_hline(yintercept = 3) + 
-    #     geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
-    #     geom_point(data = tmp, aes(x = commonname, y = ricker)) + 
-    #     ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
-    #     xlab("Species database name") +
-    #     theme_classic(base_size = 14) +
-    #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-    #   
-    # })
-    
-    # Mean individual length & sex
-    # Mean length - depth
+      
+      indSumTab <- rv$indall %>% 
+        dplyr::group_by(commonname) %>% 
+        dplyr::summarise(Total = length(commonname), 
+                         Length = {if("length" %in% names(.)) sum(!is.na(length)) else 0},
+                         Weight = {if("individualweight" %in% names(.)) sum(!is.na(individualweight)) else 0}, 
+                         Sex = {if("sex" %in% names(.)) sum(!is.na(sex)) else 0}, 
+                         Maturationstage = {if("maturationstage" %in% names(.)) sum(!is.na(maturationstage)) else 0}, 
+                         Specialstage = {if("specialstage" %in% names(.)) sum(!is.na(specialstage)) else 0}, 
+                         Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0}
+        ) 
+      
+      output$individualSummaryTable <- DT::renderDataTable({
+        DT::datatable(indSumTab, options = list(searching = FALSE))
+      })
+      
+      
+      # meanIndLStn <- rv$indall %>% filter(!is.na(length)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, commonname) %>% summarise(meanLength = mean(length))
+      # 
+      # meanIndL <- meanIndLStn %>% group_by(commonname) %>% summarise(mean = mean(meanLength), sd = sd(meanLength), se = se(meanLength), n = length(meanLength))
+      # 
+      # ggplot(tmp, aes(x = commonname, y = meanLength)) + geom_point()
+      # 
+      # tmp <- rv$indall %>% filter(!is.na(length) & !is.na(individualweight)) %>% group_by(commonname) %>% filter(n() > 10) %>% summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n())
+      #
+      # output$rickerPlot <- renderPlot({
+      #   
+      #   ggplot() + 
+      #     geom_hline(yintercept = 3) + 
+      #     geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
+      #     geom_point(data = tmp, aes(x = commonname, y = ricker)) + 
+      #     ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
+      #     xlab("Species database name") +
+      #     theme_classic(base_size = 14) +
+      #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      #   
+      # })
+      
+      # Mean individual length & sex
+      # Mean length - depth
     } 
   })
   
