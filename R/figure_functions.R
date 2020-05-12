@@ -449,11 +449,11 @@ catchMap <- function(data, species) {
   
   ## Prepare data
   
-  tmp <- data %>% 
+  tmp <- data %>% lazy_dt()
     filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
     group_by(startyear, serialnumber, longitudestart, 
              latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
-    summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2))
+    summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2)) %>% collect()
   
   tmp2 <- data %>% dplyr::filter(!is.na(longitudestart) & !is.na(latitudestart))
   

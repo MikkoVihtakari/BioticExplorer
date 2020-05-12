@@ -100,6 +100,7 @@ updateMap <- function(db = FALSE) {
         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
         addRectangles(
+          # lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
           lng1 = rv$sub$lon[1], lat1 = rv$sub$lat[1], lng2 = rv$sub$lon[2], lat2 = rv$sub$lat[2],
           fillColor = "transparent") %>% 
         addCircleMarkers(lat = ~ latitudestart, lng = ~ longitudestart, 
