@@ -445,7 +445,7 @@ body <-
                            valueBoxOutput("EstSpeciesBox", width = 6),
                            valueBoxOutput("EstDateStartBox", width = 6),
                            valueBoxOutput("EstDateEndBox", width = 6)
-                           # ,verbatimTextOutput("test") # For debugging
+                           ,verbatimTextOutput("test") # For debugging
                          )
                        ),
                        conditionalPanel(
@@ -782,7 +782,7 @@ server <- shinyServer(function(input, output, session) {
   
   source("R/filtering_functions.R", local = TRUE) ## Source functions for the session. See https://shiny.rstudio.com/articles/scoping.html
   
-  rv <- reactiveValues(stnall = NULL, indall = NULL, mission = NULL) ## Create reactive values
+  rv <- reactiveValues(stnall = NULL, indall = NULL, mission = NULL, uploadDbclicked = FALSE) ## Create reactive values
   
   ## Read data file ####
   
@@ -815,8 +815,12 @@ server <- shinyServer(function(input, output, session) {
     if(input$tabs == "uploadDb") {
       if(file.exists(dbPath)) {
         
-        output$fetchedDb <- reactive(FALSE)
-        outputOptions(output, "fetchedDb", suspendWhenHidden = FALSE)
+        if(!rv$uploadDbclicked) {
+          output$fetchedDb <- reactive(FALSE)
+          outputOptions(output, "fetchedDb", suspendWhenHidden = FALSE)
+        }
+        
+        rv$uploadDbclicked <- TRUE
         
         con_db <- DBI::dbConnect(MonetDBLite::MonetDBLite(), dbPath)
         
@@ -910,13 +914,13 @@ server <- shinyServer(function(input, output, session) {
   #.................
   ## Test output ####
   
-  # output$test <- renderText({
+  output$test <- renderText({
   #   # #   #
   #   # #   #   # length(input$file1[[1]])
   #   # #   #   # paste(input$file1[[1]], collapse = "; ")
   #   # #   #   paste(rv$filterChain, collapse = "; ")
-  #   paste(rv$filterChain, collapse = "; ")
-  # })
+    paste(input$tabs, collapse = "; ")
+  })
   # 
   
   ##................... 
