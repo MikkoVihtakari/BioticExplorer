@@ -268,26 +268,26 @@ body <-
                          
                          fluidRow(
                            column(6, 
-                                  selectInput(inputId = "subYear", label = "Year:",
+                                  selectizeInput(inputId = "subYear", label = "Year:",
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subCruise", label = "Cruise number:",
+                                  selectizeInput(inputId = "subCruise", label = "Cruise number:",
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subPlatform", label = "Platform name:",
+                                  selectizeInput(inputId = "subPlatform", label = "Platform name:",
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subDateFrom", label = "Date from:",
-                                              choices = "Not implemented yet", multiple = TRUE)
+                                  dateRangeInput(inputId = "subDate", label = "Date:",
+                                                 start = "1900-01-01", startview = "decade", weekstart = 1)
                            ),
                            
                            column(6,
-                                  selectInput(inputId = "subSpecies", label = "Species:", 
+                                  selectizeInput(inputId = "subSpecies", label = "Species:", 
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subSerialnumber", 
+                                  selectizeInput(inputId = "subSerialnumber", 
                                               label = "Serial number:",
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subGear", label = "Gear code:",
+                                  selectizeInput(inputId = "subGear", label = "Gear code:",
                                               choices = NULL, multiple = TRUE),
-                                  selectInput(inputId = "subDateTo", label = "Date to:",
-                                              choices = "Not implemented yet", multiple = TRUE)
+                                  selectizeInput(inputId = "subMissionType", label = "Mission type:",
+                                              choices = NULL, multiple = TRUE)
                            )),
                          
                          
