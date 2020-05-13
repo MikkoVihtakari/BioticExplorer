@@ -61,6 +61,7 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
     updateSelectizeInput(session, "selPlatformDb", choices = rv$all$platformname, server = TRUE)
     updateSelectizeInput(session, "selSerialnumberDb", choices = rv$all$serialnumber, server = TRUE)
     updateSelectizeInput(session, "selGearDb", choices = rv$all$gear, server = TRUE)
+    updateDateRangeInput(session, "selDateDb", start = rv$all$date[[1]], end = rv$all$date[[2]])
     updateSelectInput(session, "catchMapSpecies", choices = c("All", rv$all$commonname))
     updateSelectInput(session, "indSpecies", choices = c("Select a species to generate the plots", rv$all$indSpecies))
     updateSliderInput(session, "selLonDb", min = rv$all$min.lon, max = rv$all$max.lon, value = rv$sub$lon, step = 0.1)
