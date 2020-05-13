@@ -298,7 +298,7 @@ body <-
                          actionButton(inputId = "Subset", label = "Subset"),
                          actionButton(inputId = "Reset", label = "Reset")
                          
-                         #, verbatimTextOutput("test") # For debugging
+                         , verbatimTextOutput("test") # For debugging
                          
                        ),
                        
@@ -749,11 +749,12 @@ body <-
                   ),
                   
                   checkboxGroupInput("downloadDataType", "Data to download:",
-                                     c("Stations & catches" = "stnall",
+                                     c("Cruise overview" = "mission",
+                                       "Stations & catches" = "stnall",
                                        "Individuals & ages" = "indall"
                                        #"Original format" = "original"
                                      ),
-                                     selected = c("stnall", "indall")
+                                     selected = c("mission", "stnall", "indall")
                   ),
                   
                   downloadButton(outputId = "downloadData")
@@ -794,7 +795,11 @@ server <- shinyServer(function(input, output, session) {
       if (length(input$file1[[1]]) > 1) {
         rv$inputData <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
       } else {
-        rv$inputData <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
+        if(tolower(gsub("^.+\\.", "", input$file1$name)) == "rds") {
+          rv$inputData <- readRDS(file = input$file1$datapath)
+        } else {
+          rv$inputData <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
+        }
       }
     },
     error = function(e) {
@@ -915,13 +920,14 @@ server <- shinyServer(function(input, output, session) {
   #.................
   ## Test output ####
   
-  # output$test <- renderText({
+  output$test <- renderText({
   #   # #   #
   #   # #   #   # length(input$file1[[1]])
-  #   # #   #   # paste(input$file1[[1]], collapse = "; ")
+  # paste(input$file1, collapse = "; ")
+    paste(rv$fileext, collapse = "; ")
   #   # #   #   paste(rv$filterChain, collapse = "; ")
   #  paste(input$tabs, collapse = "; ")
-  # })
+   })
   # 
   
   ##................... 
@@ -1687,15 +1693,15 @@ server <- shinyServer(function(input, output, session) {
         saveRDS(biotic, file = file)
         
       } else if (sapply(strsplit(file, "\\."), "[", 2) == "xlsx") {
-        wb <- createWorkbook()
+        wb <- openxlsx::createWorkbook()
         
         for (i in 1:length(input$downloadDataType)) {
-          addWorksheet(wb, paste(input$downloadDataType[i]))
-          writeData(wb, paste(input$downloadDataType[i]), 
+          openxlsx::addWorksheet(wb, paste(input$downloadDataType[i]))
+          openxlsx::writeData(wb, paste(input$downloadDataType[i]), 
                     eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
         }
         
-        saveWorkbook(wb, file)
+        openxlsx::saveWorkbook(wb, file)
         
       } else {
         tmp <- switch(input$downloadDataType,
