@@ -90,8 +90,8 @@ stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlo
 
 stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" = "catchCompMap")
 
-dbPath <- "/Users/a22357/Desktop/IMR_db.monetdb"
-dbIndexPath <- "/Users/a22357/Desktop/dbIndex.rda"
+dbPath <- "~/Desktop/IMR_db.monetdb" 
+dbIndexPath <- "~/Desktop/dbIndex.rda"
 
 if(file.exists(dbPath)) {
   message("dbPath found. Enabling server version.")
@@ -161,8 +161,8 @@ sidebar <- dashboardSidebar(sidebarMenu(
   ),
   
   menuItem("Download", icon = icon("arrow-circle-down"),
-           menuSubItem("Export figures", tabName = "exportFigures", icon = icon("file-image")),
-           menuSubItem("Download data", tabName = "downloadDatasets", icon = icon("table"))
+           menuSubItem("Data", tabName = "downloadDatasets", icon = icon("table")),
+           menuSubItem("Figures", tabName = "exportFigures", icon = icon("file-image"))
   )
   
 )
@@ -183,14 +183,20 @@ body <-
                 column(width = 12,
                        h1("Welcome to the Biotic Explorer", align = "center"),
                        br(),
-                       p("This is a", a("Shiny app", href = "http://shiny.rstudio.com"), "allowing examination and manipulation of the Norwegian Maritime Data-center (NMD) standard xml files, which are used by the Institute of Marine Research. To start with the app, click the", strong("'Upload & filter'"), "tab on the side panel."),
-                       h4("Work-flow"),
-                       p("1)", strong("Upload data:"), "Click 'Browse..' and select an xml file from your computer. An overview of data and sampling station locations will be shown under. You can use the available options to remove data that are not relevant."),
-                       p("2)", strong("Filter data:"), "Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected."),
-                       p("3) You can examine the station and catch data by clicking the 'Stations & catches' tab. Use the 'Overview' sub-tab for a graphical overview or the 'Examine' tab for a tabular overview, which you can filter and search as you wish, but note that filtering here does not influence the returned data."),
-                       p("4) Similarly, an overview of individual measured fish is given under 'Individuals & ages' tab."),
-                       p("5) 'Mission data' through 'Age data' tabs give a tabular overview of each data type in the NMD xml Biotic file."),
-                       p("6)", strong("Download"), "filtered data using the 'Download' tab. Select the format you want to download in (R, csv or Excel). If you select multiple data types, note that the csv format will be returned as a zip file. Downloading zip files might not work if you run the app in RStudio window. Try again using the 'Run External' option (i.e. run the app in web-browser."),
+                       p("This is a", a("Shiny app", href = "http://shiny.rstudio.com"), "allowing data exploration of the Institute of Marine Research's database (IMR). The app can also be used to examine Norwegian Maritime Data-center (NMD) Biotic v3 .xml files. Click the", strong("'Load data & filter'"), "tab on the side panel to get started. Note that the IMR logo turns to a 'BUSY' symbol when the app is processing information. Avoid clicking anything while the app is busy."),
+                       h3("Usage"),
+                       h4("Read"),
+                       p(strong("Database:"), "Click 'Load data & filter -> From the database'. Select the desired data and click 'Send inquiry'. The 'BUSY' symbol on the left top corner will disappear when the operation is done. This may take time depending on the size of the selected dataset. You will get an overview of selected data and positions on the right. You can now further limit the dataset using the 'Subset' button and reset the data selection using the 'Reset' button."),
+                       p(strong("File:"), "Click 'Load data & filter -> From files -> Browse..' and select one or multiple .xml files from your computer. An overview of data and sampling station locations will be shown below. Use the 'Filter data by' options to select data you want to keep. Click the 'Subset' button once you are ready and see how the overview will change based on the information you selected. The 'Reset' button will reset the selection."),
+                       p(strong("Resume a previous session:"), "Click 'Load data & filter -> From files -> Browse..' and open an .rds file saved using the app (see 'Download'). You can now continue working on data from an earlier Biotic Explorer session."),
+                       h4("Examine"),
+                       p(strong("Cruise overview:"), "Click the 'Cruise overview' tab to see all cruises in the dataset. These data comprise of the '$mission' element in NMD Biotic files."),
+                       p(strong("Stations & catches:"), "The 'Overview' tab lists selected plots to establish an overview of the '$fishstation' and '$catchsample' elements in NMD Biotic files. 'Map of catches' tab shows a location overview of catches and the 'Examine data' the data in a tabular form."),
+                       p(strong("Individuals & ages:"), "The 'Overview' tab shows a general overview of the '$individual' and '$agedetermination' elements in NMD Biotic files. The 'Species plots' tab can be used to generate plots describing basic life-history parameters of a species with sufficient data and the 'Examine data' tab shows the data in a tabular form."),
+                       p(strong("Hierarchical data tables"), "tab shows the data in NMD Biotic hierarchical format."),
+                       h4("Download"),
+                       p(strong("Download:"), "Data from a Biotic Explorer session can be downloaded using the 'Download -> Data' tab. If you want to reopen the data in Biotic Explorer or open the data in R, use the 'R' option without changing 'Data to download' options. This will save the data as an .rds file, which can be opened using the", a("'readRDS'", href = "https://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html"), "function in R and reopened using Biotic Explorer. Data can also be downloaded as .zip compressed .csv files or as an Excel file. The data are automatically placed to tabs in Excel files."),
+                         p(strong("Figures:"), "You can select which Biotic Explorer figures to download and in which format using the 'Download -> Figures' tab. If you want to modify the figures beyond the options given in the app, you may", a("download Biotic Explorer", href = "https://github.com/MikkoVihtakari/BioticExplorer"), "and modify the figure functions listed under 'R/figure_functions.R'."),
                        br(),
                        br(),
                        h5("Authors: The StoX project team (Mikko Vihtakari, Ibrahim Umar)", align = "left"),
@@ -269,25 +275,25 @@ body <-
                          fluidRow(
                            column(6, 
                                   selectizeInput(inputId = "subYear", label = "Year:",
-                                              choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subCruise", label = "Cruise number:",
-                                              choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subPlatform", label = "Platform name:",
-                                              choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE),
                                   dateRangeInput(inputId = "subDate", label = "Date:",
                                                  start = "1900-01-01", startview = "decade", weekstart = 1)
                            ),
                            
                            column(6,
                                   selectizeInput(inputId = "subSpecies", label = "Species:", 
-                                              choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subSerialnumber", 
-                                              label = "Serial number:",
-                                              choices = NULL, multiple = TRUE),
+                                                 label = "Serial number:",
+                                                 choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subGear", label = "Gear code:",
-                                              choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subMissionType", label = "Mission type:",
-                                              choices = NULL, multiple = TRUE)
+                                                 choices = NULL, multiple = TRUE)
                            )),
                          
                          
@@ -364,10 +370,6 @@ body <-
                                                    label = "Cruise series:",
                                                    choices = "Not implemented yet", multiple = TRUE),
                                     
-                                    selectizeInput(inputId = "selSurveyTimeSeriesDb", 
-                                                   label = "Survey time series:",
-                                                   choices = "Not implemented yet", multiple = TRUE),
-                                    
                                     selectizeInput(inputId = "selCruiseDb", 
                                                    label = "Cruise number:",
                                                    choices = NULL, multiple = TRUE),
@@ -378,7 +380,10 @@ body <-
                                     
                                     selectizeInput(inputId = "selICESAreaDb", 
                                                    label = "ICES area:",
-                                                   choices = "Not implemented yet", multiple = TRUE)
+                                                   choices = "Not implemented yet", multiple = TRUE),
+                                    
+                                    dateRangeInput(inputId = "selDateDb", label = "Date:",
+                                                   start = "1900-01-01", startview = "decade", weekstart = 1)
                              ),
                              
                              column(6,
@@ -837,14 +842,14 @@ server <- shinyServer(function(input, output, session) {
         
         # Running the indexing below, saving to a file and specifying dbIndexPath in Settings section is a time-saver, not a necessity. 
         if(!exists("index")) {
-          index <- list()
+          index <<- list()
           index$missiontypename <- rv$inputData$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
           index$cruise <- rv$inputData$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
           index$year <- rv$inputData$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
           index$nstations <- rv$inputData$stnall %>% lazy_dt() %>% select(missionid, startyear, serialnumber) %>% distinct() %>% count() %>% pull()
           index$commonname <- rv$inputData$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
           index$platformname <- rv$inputData$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
-          # index$serialnumber <- rv$inputData$stnall %>% lazy_dt() %>% select(serialnumber) %>% distinct() %>% pull() %>% sort()
+          index$serialnumber <- rv$inputData$stnall %>% lazy_dt() %>% select(serialnumber) %>% distinct() %>% pull() %>% sort()
           index$gear <- rv$inputData$stnall %>% lazy_dt() %>% select(gear) %>% distinct() %>% pull() %>% sort()
         }
         
@@ -922,13 +927,13 @@ server <- shinyServer(function(input, output, session) {
   ## Test output ####
   
   output$test <- renderText({
-  #   # #   #
-  #   # #   #   # length(input$file1[[1]])
-  # paste(input$file1, collapse = "; ")
+    #   # #   #
+    #   # #   #   # length(input$file1[[1]])
+    # paste(input$file1, collapse = "; ")
     paste(rv$fileext, collapse = "; ")
-  #   # #   #   paste(rv$filterChain, collapse = "; ")
-  #  paste(input$tabs, collapse = "; ")
-   })
+    #   # #   #   paste(rv$filterChain, collapse = "; ")
+    #  paste(input$tabs, collapse = "; ")
+  })
   # 
   
   ##................... 
@@ -1699,7 +1704,7 @@ server <- shinyServer(function(input, output, session) {
         for (i in 1:length(input$downloadDataType)) {
           openxlsx::addWorksheet(wb, paste(input$downloadDataType[i]))
           openxlsx::writeData(wb, paste(input$downloadDataType[i]), 
-                    eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
+                              eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))))
         }
         
         openxlsx::saveWorkbook(wb, file)
