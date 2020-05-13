@@ -1,6 +1,38 @@
 ##############################
-# File version 2020-02-27 ####
+# File version 2020-05-13 ####
 # Author and contact: mikko.vihtakari@hi.no
+
+#' @title Station overview map using leaflet
+#' @param data data required by the map. See \code{updateMap}
+
+stationMap <- function(data) {
+  
+  if(nrow(data) == 0) {
+    leaflet::leaflet() %>% 
+      addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+               attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+      addMarkers(lng = 20, lat = 70, label = "No position information")
+  } else {
+    leaflet::leaflet(data) %>% 
+      addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+               attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+      addCircleMarkers(lat = ~ latitudestart, lng = ~ longitudestart, 
+                       weight = 1, radius = 2, 
+                       popup = ~as.character(platformname), 
+                       label = ~as.character(serialnumber), 
+                       color = "red", fillOpacity = 0.5,
+                       clusterOptions = markerClusterOptions()
+      )
+  }
+}
+
+
+
+# addRectangles(
+# lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
+# lng1 = rv$sub$lon[1], lat1 = rv$sub$lat[1], lng2 = rv$sub$lon[2], lat2 = rv$sub$lat[2],
+# fillColor = "transparent") %>% 
+
 
 #' @title Generate data for species overview plots
 #' @description Generates data required by species overview plots in Biotic Explorer

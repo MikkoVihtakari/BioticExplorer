@@ -83,44 +83,27 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
 
 updateMap <- function(db = FALSE) {
   
-  # Functions 
+  # Data 
   
-  stationMap <- function() {
-    
-    x <- rv$stnall %>% lazy_dt() %>% select(missiontype, startyear, platform, platformname, missionnumber, missionid, serialnumber, latitudestart, longitudestart) %>% 
-      filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() %>% collect()
-    
-    if(nrow(x) == 0) {
-      leaflet::leaflet() %>% 
-        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-        addMarkers(lng = 20, lat = 70, label = "No position information")
-    } else {
-      leaflet::leaflet(x) %>% 
-        addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                 attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-        addRectangles(
-          # lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
-          lng1 = rv$sub$lon[1], lat1 = rv$sub$lat[1], lng2 = rv$sub$lon[2], lat2 = rv$sub$lat[2],
-          fillColor = "transparent") %>% 
-        addCircleMarkers(lat = ~ latitudestart, lng = ~ longitudestart, 
-                         weight = 1, radius = 2, 
-                         popup = ~as.character(platformname), 
-                         label = ~as.character(serialnumber), 
-                         color = "red", fillOpacity = 0.5,
-                         clusterOptions = markerClusterOptions()
-        )
-    }
-  }
-  
-  # Data
+  x <- rv$stnall %>% lazy_dt() %>% select(missiontype, startyear, platform, platformname, missionnumber, missionid, serialnumber, latitudestart, longitudestart) %>% 
+    filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() %>% collect()
   
   ## Station map ##
   if (!input$performanceMode) {
     if(db) {
-      output$stationMapDb <- renderLeaflet(stationMap())
+      output$stationMapDb <- renderLeaflet(stationMap(data = x) %>% 
+                                             addRectangles(
+                                               lng1 = input$selLonDb[1], lat1 = input$selLatDb[1], 
+                                               lng2 = input$selLonDb[2], lat2 = input$selLatDb[2],
+                                               fillColor = "transparent")
+      )
     } else {
-      output$stationMap <- renderLeaflet(stationMap())
+      output$stationMap <- renderLeaflet(stationMap(data = x) %>% 
+                                           addRectangles(
+                                             lng1 = input$subLon[1], lat1 = input$subLat[1], 
+                                             lng2 = input$subLon[2], lat2 = input$subLat[2],
+                                             fillColor = "transparent")
+      )
     }
   } else {
     output$stationMap <- NULL

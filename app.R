@@ -133,8 +133,9 @@ sidebar <- dashboardSidebar(sidebarMenu(
   menuItem("Information", tabName = "info", icon = icon("info-circle")),
   
   menuItem("Load data & filter", tabName = "info", icon = icon("arrow-circle-up"),
-           menuSubItem("From files", tabName = "upload", icon = icon("file-code")),
-           menuSubItem("From the database", tabName = "uploadDb", icon = icon("database"))
+           menuSubItem("From the database", tabName = "uploadDb", icon = icon("database")),
+           menuSubItem("From files", tabName = "upload", icon = icon("file-code"))
+           
   ),
   
   menuItem("Cruise overview", icon = icon("bar-chart-o"), tabName = "missionExamine"
@@ -1705,6 +1706,7 @@ server <- shinyServer(function(input, output, session) {
         
       } else {
         tmp <- switch(input$downloadDataType,
+                      "mission" = rv$mission,
                       "stnall" = rv$stnall,
                       "indall" = rv$indall)
         
