@@ -37,7 +37,7 @@ sapply(names(required.packages)[required.packages], require, character.only = TR
 # (not loaded, use pointer when using the functions)
 
 if (!"RstoxData" %in% installed.packages()[,"Package"]) {
-  devtools::install_github("StoXProject/RstoxData")
+  install.packages("RstoxData", repo="https://stoxproject.github.io/repo")
 }
 
 #### MonetDBLite
@@ -116,9 +116,10 @@ header <- dashboardHeader(title = div(
 ),
 dropdownMenu(type = "notifications", headerText = scan("VERSION", what = "character", quiet = TRUE),
              icon = icon("cog"), badgeStatus = NULL,
-             notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
+             notificationItem("Usage of Biotic Explorer", icon = icon("book"), status = "info", href = "https://github.com/MikkoVihtakari/BioticExplorer"),
              notificationItem("Data fields", icon = icon("question-circle"), status = "info", href = "http://www.imr.no/formats/nmdbiotic/v3/nmdbioticv3_en.html"),
              notificationItem("Data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
+             notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
              notificationItem("Data policy", icon = icon("creative-commons"), status = "info", href = "http://www.imr.no/filarkiv/2013/03/datapolitikk_nmd.pdf/nb-no")
 )
 )
@@ -195,7 +196,7 @@ body <-
                        p(strong("Individuals & ages:"), "The 'Overview' tab shows a general overview of the '$individual' and '$agedetermination' elements in NMD Biotic files. The 'Species plots' tab can be used to generate plots describing basic life-history parameters of a species with sufficient data and the 'Examine data' tab shows the data in a tabular form."),
                        p(strong("Hierarchical data tables"), "tab shows the data in NMD Biotic hierarchical format."),
                        h4("Download"),
-                       p(strong("Download:"), "Data from a Biotic Explorer session can be downloaded using the 'Download -> Data' tab. If you want to reopen the data in Biotic Explorer or open the data in R, use the 'R' option without changing 'Data to download' options. This will save the data as an .rds file, which can be opened using the", a("'readRDS'", href = "https://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html"), "function in R and reopened using Biotic Explorer. Data can also be downloaded as .zip compressed .csv files or as an Excel file. The data are automatically placed to tabs in Excel files."),
+                       p(strong("Data:"), "Data from a Biotic Explorer session can be downloaded using the 'Download -> Data' tab. If you want to reopen the data in Biotic Explorer or open the data in R, use the 'R' option without changing 'Data to download' options. This will save the data as an .rds file, which can be opened using the", a("'readRDS'", href = "https://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html"), "function in R and reopened using Biotic Explorer. Data can also be downloaded as .zip compressed .csv files or as an Excel file. The data are automatically placed to tabs in Excel files."),
                          p(strong("Figures:"), "You can select which Biotic Explorer figures to download and in which format using the 'Download -> Figures' tab. If you want to modify the figures beyond the options given in the app, you may", a("download Biotic Explorer", href = "https://github.com/MikkoVihtakari/BioticExplorer"), "and modify the figure functions listed under 'R/figure_functions.R'."),
                        br(),
                        br(),
