@@ -70,7 +70,7 @@ overview, and subset buttons.
 
 <div class="figure">
 
-<img src="/Users/a22357/ownCloud/Workstuff/R/R packages/BioticExplorer/man/figures/README-interface.png" alt="Figure 1. The Biotic Explorer interface consists of the sidebar (1), main panel (2), process symbol (3), and help button (4). The sidebar consists of tabs (1a). The main panel consists of different elements depending on tab selection. The data interface consists of data selection fields (2a), data overview (2b), and subset buttons (2c)." width="2127" />
+<img src="man/figures/README-interface.png" alt="Figure 1. The Biotic Explorer interface consists of the sidebar (1), main panel (2), process symbol (3), and help button (4). The sidebar consists of tabs (1a). The main panel consists of different elements depending on tab selection. The data interface consists of data selection fields (2a), data overview (2b), and subset buttons (2c)." width="2127" />
 
 <p class="caption">
 
