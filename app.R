@@ -1177,11 +1177,17 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(c(input$tabs,  input$catchMapSpecies), {
     if(input$tabs == "stnallMap") {
       
-      spOverviewDat <- speciesOverviewData(rv$stnall)
-      
       ## Catch map ###
       
       output$catchMap <- renderLeaflet(catchMap(rv$stnall, species = input$catchMapSpecies))
+      
+    }
+  }) 
+  
+  observeEvent(c(input$tabs,  input$catchMapSpecies), {
+    if(input$tabs == "stnallMap") {
+      
+      spOverviewDat <- speciesOverviewData(rv$stnall)
       
       ## Catch composition map
       

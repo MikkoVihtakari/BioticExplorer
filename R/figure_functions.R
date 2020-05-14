@@ -481,13 +481,12 @@ catchMap <- function(data, species) {
   
   ## Prepare data
   
-  tmp <- data %>% lazy_dt()
-    filter(commonname %in% sps & !is.na(longitudestart) & !is.na(latitudestart)) %>% 
-    group_by(startyear, serialnumber, longitudestart, 
-             latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
-    summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2)) %>% collect()
+  tmp2 <- data %>% lazy_dt() %>% filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% collect()
   
-  tmp2 <- data %>% dplyr::filter(!is.na(longitudestart) & !is.na(latitudestart))
+  tmp <- tmp2 %>% lazy_dt() %>% 
+    filter(commonname %in% sps) %>% 
+    group_by(startyear, serialnumber, longitudestart, latitudestart, gear, bottomdepthstart, stationstartdate) %>% 
+    summarize(catchsum = round(sum(catchweight, na.rm = TRUE), 2)) %>% collect()
   
   tmp2 <- tmp2[!paste(tmp2$startyear, tmp2$serialnumber, sep = "_") %in% paste(tmp$startyear, tmp$serialnumber, sep = "_"), !names(tmp2) %in% c("catchsampleid", "commonname", "catchcategory", "catchpartnumber", "catchweight", "catchcount", "lengthsampleweight", "lengthsamplecount")]
   
