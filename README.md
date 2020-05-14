@@ -140,22 +140,22 @@ on data from an earlier Biotic Explorer session.
 #### Cruise overview data
 
 Click the ‘Cruise overview’ tab to see all cruises in the dataset. These
-data comprise of the ‘$mission’ element in NMD Biotic files.
+data comprise of the ‘mission’ element in NMD Biotic files.
 
 #### Station data
 
 The ‘Overview’ tab lists selected plots to establish an overview of the
-‘\(fishstation' and '\)catchsample’ elements in NMD Biotic files. ‘Map
-of catches’ tab shows a location overview of catches and the ‘Examine
-data’ the data in a tabular form.
+‘fishstation’ and ‘catchsample’ elements in NMD Biotic files. ‘Map of
+catches’ tab shows a location overview of catches and the ‘Examine data’
+the data in a tabular form.
 
 #### Individual data
 
-The ‘Overview’ tab shows a general overview of the
-‘\(individual' and '\)agedetermination’ elements in NMD Biotic files.
-The ‘Species plots’ tab can be used to generate plots describing basic
-life-history parameters of a species with sufficient data and the
-‘Examine data’ tab shows the data in a tabular form.
+The ‘Overview’ tab shows a general overview of the ‘individual’ and
+‘agedetermination’ elements in NMD Biotic files. The ‘Species plots’
+tab can be used to generate plots describing basic life-history
+parameters of a species with sufficient data and the ‘Examine data’ tab
+shows the data in a tabular form.
 
 ### Download
 
