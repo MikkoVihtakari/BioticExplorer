@@ -197,7 +197,7 @@ body <-
                        p(strong("Hierarchical data tables"), "tab shows the data in NMD Biotic hierarchical format."),
                        h4("Download"),
                        p(strong("Data:"), "Data from a Biotic Explorer session can be downloaded using the 'Download -> Data' tab. If you want to reopen the data in Biotic Explorer or open the data in R, use the 'R' option without changing 'Data to download' options. This will save the data as an .rds file, which can be opened using the", a("'readRDS'", href = "https://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html"), "function in R and reopened using Biotic Explorer. Data can also be downloaded as .zip compressed .csv files or as an Excel file. The data are automatically placed to tabs in Excel files."),
-                         p(strong("Figures:"), "You can select which Biotic Explorer figures to download and in which format using the 'Download -> Figures' tab. If you want to modify the figures beyond the options given in the app, you may", a("download Biotic Explorer", href = "https://github.com/MikkoVihtakari/BioticExplorer"), "and modify the figure functions listed under 'R/figure_functions.R'."),
+                       p(strong("Figures:"), "You can select which Biotic Explorer figures to download and in which format using the 'Download -> Figures' tab. If you want to modify the figures beyond the options given in the app, you may", a("download Biotic Explorer", href = "https://github.com/MikkoVihtakari/BioticExplorer"), "and modify the figure functions listed under 'R/figure_functions.R'."),
                        br(),
                        br(),
                        h5("Authors: The StoX project team (Mikko Vihtakari, Ibrahim Umar)", align = "left"),
@@ -442,7 +442,7 @@ body <-
                        )
                 ),
                 ## Column 2 ###
-                column(6,
+                column(width = 6,
                        conditionalPanel(
                          condition = "output.fetchedDb == false",
                          box(
@@ -1204,16 +1204,16 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$tabs, {
     if(input$tabs == "indallOverview") {
       
-      indSumTab <- rv$indall %>% 
+      indSumTab <- rv$indall %>% lazy_dt() %>% 
         dplyr::group_by(commonname) %>% 
-        dplyr::summarise(Total = length(commonname), 
+        dplyr::summarise(Total = n(), 
                          Length = {if("length" %in% names(.)) sum(!is.na(length)) else 0},
                          Weight = {if("individualweight" %in% names(.)) sum(!is.na(individualweight)) else 0}, 
                          Sex = {if("sex" %in% names(.)) sum(!is.na(sex)) else 0}, 
                          Maturationstage = {if("maturationstage" %in% names(.)) sum(!is.na(maturationstage)) else 0}, 
                          Specialstage = {if("specialstage" %in% names(.)) sum(!is.na(specialstage)) else 0}, 
                          Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0}
-        ) 
+        ) %>% collect() 
       
       output$individualSummaryTable <- DT::renderDataTable({
         DT::datatable(indSumTab, options = list(searching = FALSE))
