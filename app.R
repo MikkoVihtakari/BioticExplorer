@@ -52,8 +52,6 @@ if (!"MonetDBLite" %in% installed.packages()[,"Package"]) {
 source("R/other_functions.R", encoding = "utf-8")
 source("R/processBiotic_functions.R", encoding = "utf-8")
 source("R/figure_functions.R", encoding = "utf-8")
-# source("R/sql_functions.R", encoding = "utf-8")
-
 
 ##____________________
 ## User interface ####
