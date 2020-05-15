@@ -533,14 +533,9 @@ body <-
                     solidHeader = TRUE,
                     DT::dataTableOutput("individualSummaryTable"),
                     br(),
-                    box(title = "Median length and distribution of species with > 10 length measurements", width = 12, status = "info", solidHeader = TRUE, plotOutput("indLengthPlot"))
+                    box(title = "Median length and distribution of species with > 10 length measurements", width = 12, status = "info", solidHeader = TRUE, plotOutput("indLengthPlot")),
+                    box(title = "Median weight and distribution of species with > 10 weight measurements", width = 12, status = "info", solidHeader = TRUE, plotOutput("indWeightPlot"))
                 )
-                # box(title = "Ricker thing", width = 12, status = "info",
-                #     solidHeader = TRUE,
-                #     # plotOutput("rickerPlot")
-                #     verbatimTextOutput("test")
-                # ),
-                
               )
       ),
       
@@ -1238,50 +1233,7 @@ server <- shinyServer(function(input, output, session) {
       })
       
       output$indLengthPlot <- renderPlot(indLengthPlot(indall = rv$indall))
-      
-      
-      # 
-      # 
-      # meanIndL <- meanIndLStn %>% group_by(commonname) %>% summarise(mean = mean(meanLength), sd = sd(meanLength), se = se(meanLength), n = length(meanLength))
-      # 
-      # ggplot(tmp, aes(x = commonname, y = meanLength)) + geom_point()
-      # 
-      # 
-      # nLimit = 10
-      # indall <- rv$indall
-      # 
-      # 
-      # sps <- indall %>% lazy_dt() %>% filter(!is.na(individualweight)) %>% group_by(commonname) %>% count() %>% filter(n > nLimit) %>% pull(commonname) 
-      # 
-      # indWei <- indall %>% lazy_dt() %>%
-      #   filter(!is.na(individualweight), commonname %in% sps) %>% collect() %>% as.data.table()
-      # 
-      # tmp <- rv$indall %>% lazy_dt() %>% 
-      #   filter(!is.na(individualweight)) %>% 
-      #   group_by(commonname) %>% 
-      #   filter(n() > 10) %>%
-      #   summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n(), medWeigth = median(individualweight)) %>%
-      #   arrange(-medWeigth) %>% collect()
-      #
-      # output$rickerPlot <- renderPlot({
-      #   
-      # ggplot() +
-      #   geom_hline(yintercept = 3) +
-      #   geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
-      #   geom_point(data = tmp, aes(x = commonname, y = ricker)) +
-      #   ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
-      #   xlab("Species database name") +
-      #   theme_classic(base_size = 14) +
-      #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      # 
-      # ggplot() +
-      #   geom_violin()
-      
-      
-      # })
-      
-      # Mean individual length & sex
-      # Mean length - depth
+      output$indWeightPlot <- renderPlot(indWeightPlot(indall = rv$indall))
     } 
   })
   
