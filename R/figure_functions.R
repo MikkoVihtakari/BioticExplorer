@@ -528,3 +528,47 @@ catchMap <- function(data, species) {
   
 }
 
+#' @title Plot overview of fish length by species
+#' @description Plots overview of fish length by species in an \link[=processBioticFile]{bioticProcData} object on a \link[leaflet]{leaflet} map.
+#' @param indall indall data.table from \link[=processBioticFile]{bioticProcData} class. Typically \code{rv$indall}.
+#' @param nLimit Integer for the minimum number of length measurements / species to be included in the plot.
+#' @param base_size base size parameter for ggplot. See \link[ggplot2]{theme_bw}.
+#' @return Returns a ggplot object
+#' @import ggplot2
+
+
+indLengthPlot <- function(indall, nLimit = 10, unit = "m", base_size = 14) {
+  
+  sps <- indall %>% lazy_dt() %>% filter(!is.na(length)) %>% group_by(commonname) %>% count() %>% filter(n > nLimit) %>% pull(commonname) 
+  
+  if(length(sps) > 0) {
+    
+    indLen <- indall %>% lazy_dt() %>%
+      filter(!is.na(length), commonname %in% sps) %>% collect() %>% as.data.table()
+    
+    meanIndLen <- indLen %>% lazy_dt() %>%  
+      group_by(commonname) %>%
+      summarise(medLength = median(length)) %>% 
+      arrange(-medLength) %>% collect()
+    
+    indLen[, commonname := factor(commonname, levels = meanIndLen$commonname)]
+    
+    ggplot() +
+      geom_violin(data = indLen, aes(y = length, x = commonname)) +
+      geom_point(data = meanIndLen, aes(y = medLength, x = commonname), shape = 95, size = 5) + 
+      ylab(paste0("Length (", unit, ")")) +
+      xlab("Species database name") +
+      #coord_cartesian(expand = FALSE, ylim = range(pretty(x$n))) +
+      theme_bw(base_size = base_size) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    
+  } else {
+    
+    ggplot() +
+      annotate("text", x = 1, y = 1, label = paste0("None of the species has\n >", nLimit, " length measured individuals")) +
+      ylab(paste0("Length (", unit, ")")) +
+      xlab("Species database name") +
+      theme_bw(base_size = base_size) +
+      theme(axis.text = element_blank())
+  }
+}

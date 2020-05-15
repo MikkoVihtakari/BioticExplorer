@@ -531,7 +531,9 @@ body <-
               fluidRow(
                 box(title = "Individual sample overview", width = 12, status = "info", 
                     solidHeader = TRUE,
-                    DT::dataTableOutput("individualSummaryTable")
+                    DT::dataTableOutput("individualSummaryTable"),
+                    br(),
+                    box(title = "Median length and distribution of species with > 10 length measurements", width = 12, status = "info", solidHeader = TRUE, plotOutput("indLengthPlot"))
                 )
                 # box(title = "Ricker thing", width = 12, status = "info",
                 #     solidHeader = TRUE,
@@ -1213,32 +1215,53 @@ server <- shinyServer(function(input, output, session) {
                          Maturationstage = {if("maturationstage" %in% names(.)) sum(!is.na(maturationstage)) else 0}, 
                          Specialstage = {if("specialstage" %in% names(.)) sum(!is.na(specialstage)) else 0}, 
                          Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0}
-        ) %>% collect() 
+        ) %>% arrange(-Total) %>% collect() 
       
       output$individualSummaryTable <- DT::renderDataTable({
         DT::datatable(indSumTab, options = list(searching = FALSE))
       })
       
+      output$indLengthPlot <- renderPlot(indLengthPlot(indall = rv$indall))
       
-      # meanIndLStn <- rv$indall %>% filter(!is.na(length)) %>% group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, commonname) %>% summarise(meanLength = mean(length))
+      
+      # 
       # 
       # meanIndL <- meanIndLStn %>% group_by(commonname) %>% summarise(mean = mean(meanLength), sd = sd(meanLength), se = se(meanLength), n = length(meanLength))
       # 
       # ggplot(tmp, aes(x = commonname, y = meanLength)) + geom_point()
       # 
-      # tmp <- rv$indall %>% filter(!is.na(length) & !is.na(individualweight)) %>% group_by(commonname) %>% filter(n() > 10) %>% summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n())
+      # 
+      # nLimit = 10
+      # indall <- rv$indall
+      # 
+      # 
+      # sps <- indall %>% lazy_dt() %>% filter(!is.na(individualweight)) %>% group_by(commonname) %>% count() %>% filter(n > nLimit) %>% pull(commonname) 
+      # 
+      # indWei <- indall %>% lazy_dt() %>%
+      #   filter(!is.na(individualweight), commonname %in% sps) %>% collect() %>% as.data.table()
+      # 
+      # tmp <- rv$indall %>% lazy_dt() %>% 
+      #   filter(!is.na(individualweight)) %>% 
+      #   group_by(commonname) %>% 
+      #   filter(n() > 10) %>%
+      #   summarise(ricker = sd(log(individualweight))/sd(log(length)), n = n(), medWeigth = median(individualweight)) %>%
+      #   arrange(-medWeigth) %>% collect()
       #
       # output$rickerPlot <- renderPlot({
       #   
-      #   ggplot() + 
-      #     geom_hline(yintercept = 3) + 
-      #     geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
-      #     geom_point(data = tmp, aes(x = commonname, y = ricker)) + 
-      #     ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
-      #     xlab("Species database name") +
-      #     theme_classic(base_size = 14) +
-      #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-      #   
+        # ggplot() +
+        #   geom_hline(yintercept = 3) +
+        #   geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
+        #   geom_point(data = tmp, aes(x = commonname, y = ricker)) +
+        #   ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
+        #   xlab("Species database name") +
+        #   theme_classic(base_size = 14) +
+        #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+        # 
+        # ggplot() +
+        #   geom_violin()
+        
+        
       # })
       
       # Mean individual length & sex
@@ -1313,13 +1336,13 @@ server <- shinyServer(function(input, output, session) {
             
             if (input$lwPlotLogSwitch) {
               p <- p + 
-                scale_x_log10(paste0("Total length [log10(", input$lengthUnit, ")]")) +
+                scale_x_log10(paste0("Length [log10(", input$lengthUnit, ")]")) +
                 scale_y_log10(paste0("Weight [log10(", input$weightUnit, ")]")) + 
                 geom_smooth(data = lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
               
             } else {
               p <- p + 
-                scale_x_continuous(paste0("Total length (", input$lengthUnit, ")")) +
+                scale_x_continuous(paste0("Length (", input$lengthUnit, ")")) +
                 scale_y_continuous(paste0("Weight (", input$weightUnit, ")")) + 
                 stat_function(data = 
                                 data.frame(x = range(lwDat$length)), aes(x),
