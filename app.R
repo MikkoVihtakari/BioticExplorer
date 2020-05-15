@@ -154,7 +154,7 @@ sidebar <- dashboardSidebar(sidebarMenu(
            menuSubItem("Examine data", tabName = "indallExamine")
   ),
   
-  menuItem("Hierarchical data tables", icon = icon("sort-by-attributes", lib = "glyphicon"),
+  menuItem("Hierarchical data tables", tabName = "bioticTables", icon = icon("sort-by-attributes", lib = "glyphicon"),
            menuSubItem("Station data", icon = icon("bar-chart-o"), tabName = "fishstationExamine"),
            menuSubItem("Catch data", icon = icon("bar-chart-o"), tabName = "catchsampleExamine"),
            menuSubItem("Individual data", icon = icon("bar-chart-o"), tabName = "individualExamine"),
@@ -662,10 +662,10 @@ body <-
       ## NMD data tab ####
       
       tabItem("missionExamine", DT::dataTableOutput("missionTable")),
-      # tabItem("fishstationExamine", DT::dataTableOutput("fishstation")),
-      # tabItem("catchsampleExamine", DT::dataTableOutput("catchsample")),
-      # tabItem("individualExamine", DT::dataTableOutput("individualTable")),
-      # tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
+      tabItem("fishstationExamine", DT::dataTableOutput("fishstation")),
+      tabItem("catchsampleExamine", DT::dataTableOutput("catchsample")),
+      tabItem("individualExamine", DT::dataTableOutput("individualTable")),
+      tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
       
       ##........................
       ## Export figures tab ####
@@ -1051,73 +1051,89 @@ server <- shinyServer(function(input, output, session) {
     )
   })
   
-  # output$fishstation <- DT::renderDataTable({
-  #   DT::datatable(rv$fishstation, 
-  #                 options = list(scrollX = TRUE, 
-  #                                pageLength = 20
-  #                 ) 
-  #   ) %>% formatRound(c("longitudestart", "latitudestart", "distance"))
-  # })
-  # 
-  # output$catchsample <- DT::renderDataTable({
-  #   DT::datatable(rv$catchsample, 
-  #                 options = list(scrollX = TRUE, 
-  #                                pageLength = 20
-  #                 ) 
-  #   ) %>% formatRound(c("catchweight", "lengthsampleweight"))
-  # })
-  # 
-  # output$individualTable <- DT::renderDataTable({
-  #   DT::datatable(rv$individual, 
-  #                 options = list(scrollX = TRUE, 
-  #                                pageLength = 20
-  #                 ) 
-  #   ) 
-  # })
-  # 
-  # output$agedeterminationTable <- DT::renderDataTable({
-  #   DT::datatable(rv$agedetermination,
-  #                 options = list(scrollX = TRUE,
-  #                                pageLength = 20
-  #                 )
-  #   )
-  # })
+  ### NMD data tables ####
   
+  observeEvent(input$tabs, {
+    
+    ## Fish station ####
+    if(input$tabs == "fishstationExamine") {
+      
+      cols <- colnames(rv$stnall)[colnames(rv$stnall) %in% RstoxData::xsdObjects$nmdbioticv3.xsd$tableHeaders$fishstation]
+      
+      rv$fishstation <- rv$stnall %>% lazy_dt() %>% 
+        select(cols) %>% 
+        distinct() %>% collect()
+      
+      output$fishstation <- DT::renderDataTable({
+        
+        DT::datatable(rv$fishstation,
+                      options = list(scrollX = TRUE,
+                                     pageLength = 20
+                      )
+        ) %>% formatRound(c("longitudestart", "latitudestart", "distance"))
+      })
+    }
+    
+    ## Catch sample ####
+    if(input$tabs == "catchsampleExamine") {
+      
+      cols <- colnames(rv$stnall)[colnames(rv$stnall) %in% RstoxData::xsdObjects$nmdbioticv3.xsd$tableHeaders$catchsample]
+      
+      rv$catchsample <- rv$stnall %>% lazy_dt() %>% 
+        select(cols) %>% 
+        distinct() %>% collect()
+      
+      output$catchsample <- DT::renderDataTable({
+        
+        DT::datatable(rv$catchsample,
+                      options = list(scrollX = TRUE,
+                                     pageLength = 20
+                      )
+        ) %>% formatRound(c("catchweight", "lengthsampleweight"))
+      })
+    }
+    
+    ## Individual ####
+    if(input$tabs == "individualExamine") {
+      
+      cols <- colnames(rv$indall)[colnames(rv$indall) %in% RstoxData::xsdObjects$nmdbioticv3.xsd$tableHeaders$individual]
+      
+      rv$individual <- rv$indall %>% lazy_dt() %>% 
+        select(cols) %>% 
+        distinct() %>% collect()
+      
+      output$individualTable <- DT::renderDataTable({
+        DT::datatable(rv$individual,
+                      options = list(scrollX = TRUE,
+                                     pageLength = 20
+                      )
+        )
+      })
+    }
+    
+    ## Age ####
+    if(input$tabs == "agedeterminationExamine") {
+      
+      cols <- colnames(rv$indall)[colnames(rv$indall) %in% RstoxData::xsdObjects$nmdbioticv3.xsd$tableHeaders$agedetermination]
+      
+      if("age" %in% cols) {
+        rv$agedetermination <- rv$indall %>% lazy_dt() %>% 
+          select(cols) %>% 
+          distinct() %>% collect()
+      } else {
+        rv$agedetermination <- NULL
+      }
+      
+      output$agedeterminationTable <- DT::renderDataTable({
+        DT::datatable(rv$agedetermination,
+                      options = list(scrollX = TRUE,
+                                     pageLength = 20
+                      )
+        )
+      })
+    }
+  })
   
-  #..................
-  ## Station map ####
-  
-  # observeEvent(req(input$file1), {
-  #   
-  #   if (!input$performanceMode) {
-  #     output$stationMap <- renderLeaflet({
-  #       
-  #       tmp <- rv$stnall %>% 
-  #         select(missiontype, startyear, platform, platformname, missionnumber, missionid, 
-  #                serialnumber, latitudestart, longitudestart) %>% 
-  #         filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() 
-  #       
-  #       leaflet::leaflet(tmp) %>% 
-  #         addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-  #                  attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-  #         addRectangles(
-  #           lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
-  #           fillColor = "transparent") %>% 
-  #         addCircleMarkers(lat = ~ latitudestart, 
-  #                          lng = ~ longitudestart, 
-  #                          weight = 1, radius = 2, 
-  #                          popup = ~as.character(platformname), 
-  #                          label = ~as.character(serialnumber), 
-  #                          fillOpacity = 0.5,
-  #                          clusterOptions = markerClusterOptions()
-  #         )
-  #     })
-  #   } else {
-  #     output$stationMap <- NULL
-  #   }
-  #   
-  # })
-  # 
   ##......................
   ## Stn data figures ####
   
@@ -1249,19 +1265,19 @@ server <- shinyServer(function(input, output, session) {
       #
       # output$rickerPlot <- renderPlot({
       #   
-        # ggplot() +
-        #   geom_hline(yintercept = 3) +
-        #   geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
-        #   geom_point(data = tmp, aes(x = commonname, y = ricker)) +
-        #   ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
-        #   xlab("Species database name") +
-        #   theme_classic(base_size = 14) +
-        #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-        # 
-        # ggplot() +
-        #   geom_violin()
-        
-        
+      # ggplot() +
+      #   geom_hline(yintercept = 3) +
+      #   geom_text(data = tmp, aes(x = commonname, y = Inf, label = n), vjust = 1) +
+      #   geom_point(data = tmp, aes(x = commonname, y = ricker)) +
+      #   ylab("Sd(log(sum(weight)))/Sd(log(sum(length)))") +
+      #   xlab("Species database name") +
+      #   theme_classic(base_size = 14) +
+      #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      # 
+      # ggplot() +
+      #   geom_violin()
+      
+      
       # })
       
       # Mean individual length & sex
