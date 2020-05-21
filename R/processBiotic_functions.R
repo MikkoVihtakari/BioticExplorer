@@ -1,22 +1,19 @@
 #' @title Read and process a NMD Biotic xml file for further use in the BioticExplorer
 #' @description A wrapper for \code{\link[RstoxData]{readXmlFile}} to enable further use in the BioticExplorer
 #' @param file character string specifying the file path to the xml file. Accepts only one file at the time.
-#' @param lengthUnit character string specifying the unit for length output. Alternatives: "mm", "cm" or "m".
-#' @param weightUnit character string specifying the unit for weigth output. Alternatives: "g" or "kg". 
-#' @param removeEmpty logical indicating whether empty columns should be removed from the output. This option also influences "coreData" columns.
-#' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
-#' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
+#' @param removeEmpty logical indicating whether empty columns should be removed from the output. 
 #' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function, but leads to problems with non-unicode characters.
+#' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
 #' @param missionidPrefix A prefix for the \code{missionid} identifier, which separates cruises. Used in \code{\link{processBioticFiles}} function when several xml files are put together. \code{NULL} (default) omits the prefix. Not needed in \code{processBioticFile} function.
-#' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
-#' @author Mikko Vihtakari (Institute of Marine Research) 
+#' @details This function should be identical to the BioticExplorerServer::bioticToDatabase function. Included here to make avoid adding a dependency. Copy that function here when it is changed.
+#' @return Returns a list of Biotic data with \code{$mission}, \code{$stnall} and \code{$indall} data tables. The \code{$stnall} and \code{$indall} are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
+#' @author Mikko Vihtakari, Ibrahim Umar (Institute of Marine Research) 
 #' @import RstoxData data.table
 #' @export
 
 # Debugging parameters
-# lengthUnit = "cm"; weightUnit = "g"; removeEmpty = TRUE; coreDataOnly = FALSE; returnOriginal = TRUE; dataTable = TRUE; convertColumns = TRUE; missionidPrefix = NULL
-# lengthUnit = "m"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; dataTable = TRUE; convertColumns = FALSE; missionidPrefix = NULL
-processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = FALSE, convertColumns = TRUE, missionidPrefix = NULL) {
+# removeEmpty = TRUE; convertColumns = TRUE; returnOriginal = FALSE; missionidPrefix = NULL
+processBioticFile <- function(file, removeEmpty = TRUE, convertColumns = TRUE, returnOriginal = FALSE, missionidPrefix = NULL) {
   
   ## Checks
   
@@ -28,16 +25,12 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   ## Mission data ---
   
-  if (coreDataOnly) {
-    msn <- dt$mission[, coreDataList("mission"), with = FALSE]
-  } else {
-    msn <- data.table::setDT(dt$mission)
-  }
+  msn <- dt$mission
   
   if (convertColumns) {
-    date.cols <- grep("date", names(msn), value = TRUE) 
+    date.cols <- grep("date", names(msn), value = TRUE)
     msn[, eval(date.cols) := lapply(.SD, as.Date), .SDcols = eval(date.cols)]
-  } 
+  }
   
   if (is.null(missionidPrefix)) {
     msn$missionid <- rownames(msn)
@@ -47,74 +40,38 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   ## Station data ---
   
-  if (coreDataOnly) {
-    stn <- dt$fishstation[, coreDataList("fishstation"), with = FALSE]
-  } else {
-    stn <- setDT(dt$fishstation)
-  }
+  stn <- dt$fishstation
   
   stn[is.na(stationstarttime), stationstarttime := "00:00:00.000Z"]
+  stn[is.na(stationstoptime), stationstoptime := "00:00:00.000Z"]
   
   stn[, stationstartdate := as.POSIXct(paste(stn$stationstartdate, stn$stationstarttime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")]
+  stn[, stationstopdate := as.POSIXct(paste(stn$stationstopdate, stn$stationstoptime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")]
   
   stn[, stationstarttime := NULL]
-  
-  if (!coreDataOnly) {
-    stn[is.na(stationstoptime), stationstoptime := "00:00:00.000Z"]
-    stn[, stationstopdate := as.POSIXct(paste(stn$stationstopdate, stn$stationstoptime), format = "%Y-%m-%dZ %H:%M:%S", tz = "GMT")]
-    stn[, stationstoptime := NULL]
-  }
+  stn[, stationstoptime := NULL]
   
   if (convertColumns) {
-    date.cols <- grep("date", names(stn), value = TRUE) 
+    date.cols <- grep("date", names(stn), value = TRUE)
     stn[, eval(date.cols) := lapply(.SD, as.Date), .SDcols = eval(date.cols)]
   }
   
   ##________________
   ## Sample data ---
   
-  if (coreDataOnly) {
-    cth <- dt$catchsample[, coreDataList("catchsample"), with = FALSE]
-  } else {
-    cth <- dt$catchsample
-  }
+  cth <- dt$catchsample
   
   ##____________________
   ## Individual data ---
   
-  if (coreDataOnly) {
-    ind <- dt$individual[, coreDataList("individual"), with = FALSE]
-  } else {
-    ind <- setDT(dt$individual)
-  }
-  
-  ### Length conversion
-  
-  if (lengthUnit == "cm") {
-    ind[, length := length*100]
-  } else if (lengthUnit == "mm") {
-    ind[, length := length*1000]
-  } 
-  
-  ### Weigth conversion
-  
-  if (sum(is.na(ind$individualweight)) != nrow(ind)) {
-    
-    if (weightUnit == "g") {
-      ind[, individualweight := individualweight*1000]
-    }  
-  }
+  ind <- dt$individual
   
   ## Age data ---
   
-  if (coreDataOnly) {
-    age <- dt$agedetermination[, coreDataList("agedetermination"), with = FALSE]
-  } else {
-    age <- setDT(dt$agedetermination)
-  }
+  age <- dt$agedetermination
   
   if (convertColumns) {
-    date.cols <- grep("date", names(age), value = TRUE) 
+    date.cols <- grep("date", names(age), value = TRUE)
     age[, eval(date.cols) := lapply(.SD, as.Date), .SDcols = eval(date.cols)]
   }
   
@@ -124,15 +81,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   ## Compiled datasets ----
   
-  if (coreDataOnly) {
-    tmp <- coreDataList("fishstation")
-    tmp <- tmp[!tmp %in% "stationstarttime"]
-    
-    coredat <- merge(msn[, c("missionid", "missiontype", "missionnumber", "startyear", "platform", "platformname", "cruise")], stn[, tmp, with = FALSE], all = TRUE)
-    
-  } else {
-    coredat <- merge(msn, stn, by = names(msn)[names(msn) %in% names(stn)], all = TRUE)
-  }
+  coredat <- merge(msn[,!names(msn) %in% c("purpose"), with = FALSE], stn, by = names(msn)[names(msn) %in% names(stn)], all = TRUE)
   
   # Stndat
   
@@ -140,10 +89,12 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   # Inddat
   
-  inddat <- merge(stndat[,!names(stndat) %in% c("purpose", "stationcomment"), with = FALSE], ind, all.y = TRUE, by = names(stndat)[names(stndat) %in% names(ind)]) 
-  inddat <- rbindlist(list(inddat,age), fill=TRUE, use.names=TRUE)
+  inddat <- merge(stndat[,!names(stndat) %in% c("purpose", "stationcomment", "catchcomment"), with = FALSE], ind, all.y = TRUE, by = names(stndat)[names(stndat) %in% names(ind)])
   
-  # inddat[is.na(inddat$commonname), "commonname"] <- "Merging error due to missing data"
+  inddat[is.na(preferredagereading), preferredagereading := 1]
+  inddat <- merge(inddat, age, by.x=c(intersect(names(inddat), names(age)), "preferredagereading"), by.y= c(intersect(names(inddat), names(age)), "agedeterminationid"), all.x = TRUE)
+  
+  if(sum(is.na(inddat$commonname)) > 0) stop(paste(sum(is.na(inddat$commonname)), "missing commonname records. This is likely due to merging error between individual and agedetermination data tables. File a bug report."))
   
   ## Return ----
   
@@ -158,7 +109,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   ### Remove empty columns to save space
   
   if (removeEmpty) {
-    out <- lapply(out, function(k) {  
+    out <- lapply(out, function(k) {
       k[, which(unlist(lapply(k, function(x) !all(is.na(x))))), with = FALSE]
     })
   }
@@ -167,7 +118,7 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
   
   class(out) <- "bioticProcData"
   
-  ### Return 
+  ### Return
   
   out
   
@@ -176,33 +127,24 @@ processBioticFile <- function(file, lengthUnit = "cm", weightUnit = "g", removeE
 #' @title Read and process NMD Biotic xml files for further use in the BioticExplorer
 #' @description A wrapper for \code{\link{processBioticFile}} allowing processing multiple files simultaneously
 #' @param files character string specifying the file path to the xml file. Accepts only one file at the time.
-#' @param lengthUnit character string specifying the unit for length output. Alternatives: "mm", "cm" or "m".
-#' @param weightUnit character string specifying the unit for weigth output. Alternatives: "g" or "kg". 
-#' @param removeEmpty logical indicating whether empty columns should be removed from output. This option also influences "coreData" columns.
-#' @param coreDataOnly logical indicating whether only important core columns should be picked from data. See \code{\link{coreDataList}} for list of core columns for each data type.
+#' @param removeEmpty logical indicating whether empty columns should be removed from the output. 
+#' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function, but leads to problems with non-unicode characters.
 #' @param returnOriginal logical indicating whether the original data (\code{$mission} through \code{$agedetermination}) should be returned together with combined data.
-#' @param convertColumns logical indicating whether the column types should be converted. See \code{link{convertColumnTypes}}. Setting this to \code{FALSE} considerably speeds up the function.
-#' @return Returns a list of Biotic data with \code{$mission}, \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} data frames. The \code{$stnall} and \code{$indall} data frames are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
+#' @return Returns a list of Biotic data with \code{$mission}, \code{$stnall} and \code{$indall} data tables. The \code{$stnall} and \code{$indall} are merged from \code{$fishstation} and \code{$catchsample} (former) and  \code{$fishstation}, \code{$catchsample}, \code{$individual} and \code{$agedetermination} (latter). 
 #' @author Mikko Vihtakari (Institute of Marine Research) 
 #' @import RstoxData data.table
 #' @export
 
 # Debugging parameters
-# files = c("/Users/mvi023/Desktop/biotic_year_1982_species_172930.xml", "/Users/mvi023/Desktop/biotic_year_2016_species_172930.xml")
-# lengthUnit = "cm"; weightUnit = "g"; removeEmpty = FALSE; coreDataOnly = TRUE; returnOriginal = TRUE; convertColumns = FALSE; mcCores = 1L
-processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", removeEmpty = TRUE, coreDataOnly = FALSE, returnOriginal = FALSE, convertColumns = TRUE) {
+# removeEmpty = TRUE; convertColumns = TRUE; returnOriginal = FALSE
+processBioticFiles <- function(files, removeEmpty = TRUE, convertColumns = TRUE, returnOriginal = FALSE) {
   
   # Read xml files
   
-  
-  # Debug parameters: lengthUnit. = lengthUnit; weightUnit. = weightUnit; coreDataOnly. = coreDataOnly; returnOriginal. = returnOriginal
-  out <- lapply(seq_along(files), function(i, lengthUnit. = lengthUnit, weightUnit. = weightUnit, coreDataOnly. = coreDataOnly, returnOriginal. = returnOriginal, convertColumns. = convertColumns) {
+  out <- lapply(seq_along(files), function(i, returnOriginal. = returnOriginal, convertColumns. = convertColumns) {
     print(paste("i =", i, "file = ", files[i]))
     print(paste(round(100*i/length(files), 0), "%"))
-    processBioticFile(files[i], lengthUnit = lengthUnit., weightUnit = weightUnit., removeEmpty = FALSE, 
-                      coreDataOnly = coreDataOnly., returnOriginal = returnOriginal., dataTable = TRUE, 
-                      convertColumns = convertColumns., missionidPrefix = i
-                      )
+    processBioticFile(files[i], removeEmpty = FALSE, returnOriginal = returnOriginal., convertColumns = convertColumns., missionidPrefix = i)
   })
   
   
@@ -210,44 +152,12 @@ processBioticFiles <- function(files, lengthUnit = "cm", weightUnit = "g", remov
   
   out <- do.call(Map, c(f = rbind, out))
   
-  # Convert column classes
+  ### Remove empty columns to save space
   
-  # if (convertColumns) {
-  #   
-  #   out <- lapply(out, function(k) {
-  #     convertColumnTypes(k)
-  #   })
-  #   
-  # }
-  
-  # Convert to data.frames and/or remove empty columns
-  
-  if (!dataTable) {
+  if (removeEmpty) {
     out <- lapply(out, function(k) {
-      k <- as.data.frame(k)
+      k[, which(unlist(lapply(k, function(x) !all(is.na(x))))), with = FALSE]
     })
-    
-    if (removeEmpty) {
-      out <- lapply(out, function(k) {
-        if (is.null(k)) {
-          NULL
-        } else {
-          k[apply(k, 2, function(x) sum(is.na(x))) != nrow(k)] 
-        }
-      })
-    }
-  } else if (removeEmpty) {
-    
-    
-    out <- lapply(out, function(k) {
-      if (is.null(k)) {
-        NULL
-      } else {
-        k[, which(unlist(lapply(k, function(x) !all(is.na(x))))), with = FALSE]
-      }
-    })
-    
-    
   }
   
   # Define class

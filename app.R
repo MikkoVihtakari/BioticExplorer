@@ -118,7 +118,7 @@ dropdownMenu(type = "notifications", headerText = scan("VERSION", what = "charac
              notificationItem("Data fields", icon = icon("question-circle"), status = "info", href = "http://www.imr.no/formats/nmdbiotic/v3/nmdbioticv3_en.html"),
              notificationItem("Data types and codes", icon = icon("question-circle"), status = "info", href = "https://hinnsiden.no/tema/forskning/PublishingImages/Sider/SPD-gruppen/H%C3%A5ndbok%205.0%20juli%202019.pdf#search=h%C3%A5ndbok%20pr%C3%B8vetaking"),
              notificationItem("Download NMD data", icon = icon("download"), status = "info", href = "https://datasetexplorer.hi.no/"),
-             notificationItem("Data policy", icon = icon("creative-commons"), status = "info", href = "http://www.imr.no/filarkiv/2013/03/datapolitikk_nmd.pdf/nb-no")
+             notificationItem("Data policy", icon = icon("creative-commons"), status = "info", href = "https://www.hi.no/resources/Data-policy-HI.pdf")
 )
 )
 
@@ -233,7 +233,6 @@ body <-
                          
                          strong("Drop excess data:"),
                          checkboxInput("removeEmpty", "Remove empty columns", TRUE),
-                         checkboxInput("coreDataOnly", "Keep only important columns", FALSE),
                          
                          radioButtons("lengthUnit", "Fish length unit:",
                                       c("Millimeter" = "mm",
@@ -355,8 +354,7 @@ body <-
                            
                            strong("Drop excess data:"),
                            fluidRow(
-                             column(4, checkboxInput("removeEmpty", "Remove empty columns", TRUE)),
-                             column(4, checkboxInput("coreDataOnly", "Keep only important columns", FALSE))
+                             column(4, checkboxInput("removeEmpty", "Remove empty columns", TRUE))
                            ),
                            
                            fluidRow(
@@ -795,12 +793,12 @@ server <- shinyServer(function(input, output, session) {
     tryCatch({
       
       if (length(input$file1[[1]]) > 1) {
-        rv$inputData <- processBioticFiles(files = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
+        rv$inputData <- processBioticFiles(files = input$file1$datapath, removeEmpty = input$removeEmpty, convertColumns = TRUE, returnOriginal = FALSE)
       } else {
         if(tolower(gsub("^.+\\.", "", input$file1$name)) == "rds") {
           rv$inputData <- readRDS(file = input$file1$datapath)
         } else {
-          rv$inputData <- processBioticFile(file = input$file1$datapath, lengthUnit = input$lengthUnit, weightUnit = input$weightUnit, removeEmpty = input$removeEmpty, coreDataOnly = input$coreDataOnly, convertColumns = TRUE)
+          rv$inputData <- processBioticFile(file = input$file1$datapath, removeEmpty = input$removeEmpty, convertColumns = TRUE, returnOriginal = FALSE)
         }
       }
     },
