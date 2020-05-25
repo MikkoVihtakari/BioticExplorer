@@ -26,14 +26,6 @@ stationMap <- function(data) {
   }
 }
 
-
-
-# addRectangles(
-# lng1 = input$subLon[1], lat1 = input$subLat[1], lng2 = input$subLon[2], lat2 = input$subLat[2],
-# lng1 = rv$sub$lon[1], lat1 = rv$sub$lat[1], lng2 = rv$sub$lon[2], lat2 = rv$sub$lat[2],
-# fillColor = "transparent") %>% 
-
-
 #' @title Generate data for species overview plots
 #' @description Generates data required by species overview plots in Biotic Explorer
 #' @param data stnall data.table from \link[=processBioticFile]{bioticProcData} class. Typically \code{rv$stnall}.
@@ -616,4 +608,111 @@ indWeightPlot <- function(indall, nLimit = 10, unit = "kg", base_size = 14) {
       theme_bw(base_size = base_size) +
       theme(axis.text = element_blank())
   }
+}
+
+## 
+
+#' @title Generate data for individual plots
+#' @description Generates data required by individual plots in Biotic Explorer
+#' @param indall data.table from \link[=processBioticFile]{bioticProcData} class. Typically \code{rv$indall}.
+#' @param indSpecies character defining the species in \code{indall$commonname). Typically input$indSpecies.
+#' @param lengthUnit character defining the unit of length measurements for output. Options: "mm", "cm" or "m". The NMD standard is "m". 
+#' @param weightUnit character defining the unit of weight measurements for output. Options: "g", "kg". The NMD standard is "kg".
+#' @param useEggaSystem logical indicating whether "delnummer" (catchpartnumber) defines the sex of individuals. This has systematically been used for Greenland halibut collected during "EggaNord" and "EggaSør" surveys.  
+#' @return Returns a list of tibbles containing data required by various individual-based plots.
+#' @import dplyr data.table
+
+# indall = rv$indall; indSpecies = "snabeluer"; lengthUnit = "m"; weightUnit = "kg"; useEggaSystem = FALSE
+individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUnit = "m", weightUnit = "kg", useEggaSystem = FALSE) {
+  
+  ## Base data
+  
+  tmpBase <- indall[commonname == indSpecies, ] 
+  
+  if (indSpecies == "blåkveite" & useEggaSystem) {
+    
+    tmpTab <- data.table::dcast(tmpBase, cruise + startyear + serialnumber + longitudestart + latitudestart ~ catchpartnumber, fun.aggregate = length, value.var = "length")
+    
+    if(all(c(1, 2) %in% names(tmpTab))) {
+      
+      tmpTab$EggaSystem <- tmpTab$`1` > 0 & tmpTab$`2` > 0
+      
+      tmpBase <- dplyr::left_join(tmpBase, tmpTab[, !names(tmpTab) %in% 1:10, with = FALSE], by = c("startyear", "serialnumber", "cruise", "longitudestart", "latitudestart"))  
+      
+      tmpBase$sex <- ifelse(!is.na(tmpBase$sex), tmpBase$sex, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 1, 1, ifelse(is.na(tmpBase$sex) & tmpBase$EggaSystem & tmpBase$catchpartnumber == 2, 2, NA)))
+      
+      tmpBase <- as.data.table(tmpBase[, names(tmpBase) != "EggaSystem"])
+    }
+  }
+  
+    ## Length-weight data
+  
+  if(all(c("length", "individualweight") %in% names(tmpBase))) {
+    
+    lwDat <- tmpBase[!is.na(length) & !is.na(individualweight),]
+    
+    lwMod <- lm(log(individualweight*1000) ~ log(length*100), data = lwDat)
+    lwModA <- unname(exp(coef(lwMod)[1]))
+    lwModB <- unname(coef(lwMod)[2])
+    
+    if(lengthUnit == "cm") lwDat$length <- lwDat$length*100
+    if(lengthUnit == "mm") lwDat$length <- lwDat$length*1000
+    if(weightUnit == "g") lwDat$individualweight <- lwDat$individualweight*1000
+    
+    lwModTrans <- lm(log(individualweight) ~ log(length), data = lwDat)
+    lwModTransA <- unname(exp(coef(lwModTrans)[1]))
+    
+  } else {
+    
+    lwDat <- NULL
+    lwModA <- NULL
+    lwModB <- NULL
+    lwModTransA <- NULL
+  }
+  
+  ## Length-age data
+  
+  if (all(c("length", "age") %in% names(tmpBase))) {
+  
+  laDat <- tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
+  
+  } else {
+    
+    laDat <- NULL
+  }
+  ## Return
+  
+  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA))
+  
+}
+
+lwPlot <- function(data, lwPlotLogSwitch = input$lwPlotLogSwitch) {
+  
+  p <- suppressWarnings({
+    ggplot() +
+      geom_point(data = data$lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) + 
+      theme_classic(base_size = 12)
+  })
+  
+  if (lwPlotLogSwitch) {
+    p <- suppressMessages({
+      p + 
+        scale_x_log10(paste0("Length [log10(", data$units$length, ")]")) +
+        scale_y_log10(paste0("Weight [log10(", data$units$weight, ")]")) + 
+        geom_smooth(data = data$lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
+    })
+    
+  } else {
+    p <- suppressWarnings({
+      p + 
+        scale_x_continuous(paste0("Length (", data$units$length, ")")) +
+        scale_y_continuous(paste0("Weight (", data$units$weight, ")")) + 
+        stat_function(data = data.frame(x = range(data$lwDat$length)), aes(x),
+                      fun = function(a, b, x) {a*x^b},
+                      args = list(a = data$lwMod$aTrans, b = data$lwMod$b),
+                      color = "blue", size = 1)
+    })
+  }
+  
+  suppressMessages(print(p))
 }
