@@ -220,9 +220,6 @@ body <-
                          
                          p("Here you can open a local file from your computer. BioticExplorer accepts the standard NMD Biotic V3 xml files and R native rds files. The R files can be used to return to a previous data manipulation instance using this app. Use the 'R' download file type in the Download data tab to enable this feature."),
                          
-                         strong("Performance mode:"),
-                         checkboxInput("performanceMode", "For large (>200 Mb) files. Disables features that burden memory.", FALSE),
-                         
                          fileInput("file1",
                                    label = "Choose xml or rds input file",
                                    multiple = TRUE,
@@ -232,21 +229,7 @@ body <-
                          hr(),
                          
                          strong("Drop excess data:"),
-                         checkboxInput("removeEmpty", "Remove empty columns", TRUE),
-                         
-                         radioButtons("lengthUnit", "Fish length unit:",
-                                      c("Millimeter" = "mm",
-                                        "Centimeter" = "cm",
-                                        "Meter" = "m"),
-                                      selected = "m",
-                                      inline = TRUE),
-                         
-                         radioButtons("weightUnit", "Fish weight unit:",
-                                      c("Grams" = "g",
-                                        "Kilograms" = "kg"),
-                                      selected = "kg",
-                                      inline = TRUE)
-                         
+                         checkboxInput("removeEmpty", "Remove empty columns", TRUE)
                        ), 
                        
                        box(
@@ -308,15 +291,7 @@ body <-
                        ),
                        
                        box(title = "Station locations", status = "primary", width = NULL,
-                           conditionalPanel(
-                             condition = "input.performanceMode == false",
-                             leafletOutput(outputId = "stationMap")
-                           ),
-                           
-                           conditionalPanel(
-                             condition = "input.performanceMode == true",
-                             p("Performance mode. No map. Subset data and use 'Stations & catches' -> 'Map of catches' to examine station locations.", align = "center")
-                           )       
+                           leafletOutput(outputId = "stationMap")
                        )
                 )
                 
@@ -543,7 +518,19 @@ body <-
               fluidRow(
                 box(title = "Select species", width = 12, status = "info", 
                     solidHeader = TRUE, 
-                    selectInput("indSpecies", "Select species:", choices = NULL)
+                    selectInput("indSpecies", "Select species:", choices = NULL),
+                    radioButtons("lengthUnit", "Fish length unit:",
+                                 c("Millimeter" = "mm",
+                                   "Centimeter" = "cm",
+                                   "Meter" = "m"),
+                                 selected = "m",
+                                 inline = TRUE),
+                    
+                    radioButtons("weightUnit", "Fish weight unit:",
+                                 c("Grams" = "g",
+                                   "Kilograms" = "kg"),
+                                 selected = "kg",
+                                 inline = TRUE)
                 ),
                 
                 ### weightData
@@ -579,16 +566,27 @@ body <-
                     
                     conditionalPanel(
                       condition = "output.ageData == true",
+                      selectInput("growthModelSwitch", "Growth model:", choices = list("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout"), selected = "vout"),
+                      
                       plotlyOutput("laPlot"),
                       
                       br(),
-                      column(4,
-                             checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE)),
-                      column(8,
+                      column(2,
+                             checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE)
+                      ),
+                      column(3,
                              actionButton("laPlotExcludeSwitch", "Exclude points"),
-                             actionButton("laPlotResetSwitch", "Reset")),
+                             actionButton("laPlotResetSwitch", "Reset")
+                      ),
+                      column(3,
+                             numericInput("forceZeroGroupLength", "Force 0-group length", value = NA, min = 0)
+                      ),
+                      column(4,
+                             sliderInput("forceZeroGroupStrength", "Force 0-group strength (%)", min = 1, max = 100, value = 10)
+                      ),
                       column(12,
-                             verbatimTextOutput("laPlotText"))
+                             verbatimTextOutput("laPlotText")
+                      )
                     ),
                     
                     conditionalPanel(
@@ -669,6 +667,10 @@ body <-
               box(title = "1. Select the figures to export", width = 12, status = "info", 
                   solidHeader = TRUE,
                   
+                  p("This tab is still under development and does not work as intended yet."),
+                  
+                  br(),
+                  
                   checkboxGroupInput("cruiseMapExport", label = h4("Station map and cruise track (use only when the xml file consist of entire cruise)"), 
                                      choices = list("Cruise map" = 1),
                                      selected = NULL, inline = TRUE),
@@ -745,20 +747,29 @@ body <-
               fluidRow(
                 box(
                   title = "Download data", width = 12, status = "primary", solidHeader = TRUE,
-                  radioButtons("downloadFileType", "Download file type:",
-                               c("R" = ".rda",
-                                 "csv" = ".csv",
-                                 "Excel" = ".xlsx"),
-                               selected = ".rda"
-                  ),
                   
-                  checkboxGroupInput("downloadDataType", "Data to download:",
-                                     c("Cruise overview" = "mission",
-                                       "Stations & catches" = "stnall",
-                                       "Individuals & ages" = "indall"
-                                       #"Original format" = "original"
-                                     ),
-                                     selected = c("mission", "stnall", "indall")
+                  p("You can download data from your Biotic Explrer session here. If you want to reopen the data in Biotic Explorer or open the data in R, use the 'R' option without changing 'Data to download' options. This will save the data as an .rds file, which can be opened using the", a("'readRDS'", href = "https://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html"), "function in R and reopened using Biotic Explorer. Data can also be downloaded as .zip compressed .csv files or as an Excel file. The data are automatically placed to tabs in Excel files."),
+                  
+                  br(),
+                  
+                  splitLayout(
+                    
+                    radioButtons("downloadFileType", "Download file type:",
+                                 c("R" = ".rda",
+                                   "csv" = ".csv",
+                                   "Excel" = ".xlsx"),
+                                 selected = ".rda"
+                    ),
+                    
+                    checkboxGroupInput("downloadDataType", "Data to download:",
+                                       c("Cruise overview" = "mission",
+                                         "Stations & catches" = "stnall",
+                                         "Individuals & ages" = "indall"
+                                         #"Original format" = "original"
+                                       ),
+                                       selected = c("mission", "stnall", "indall")
+                    ), 
+                    cellArgs = list(style = "padding: 6px")
                   ),
                   
                   downloadButton(outputId = "downloadData")
@@ -1287,121 +1298,39 @@ server <- shinyServer(function(input, output, session) {
       
       ### Length-weight plot ####
       
-      if (all(c("length", "individualweight") %in% names(indOverviewDat$tmpBase))) {
+      if (!is.null(indOverviewDat$lwDat)) {
         
-        if(nrow(indOverviewDat$lwDat) > 0) {
+        output$weightData <- reactive(TRUE)
+        
+        output$lwPlot <- renderPlotly({
           
-          output$weightData <- reactive(TRUE)
+          plotly::ggplotly(lwPlot(data = indOverviewDat, lwPlotLogSwitch = input$lwPlotLogSwitch))
           
-          output$lwPlot <- renderPlotly({
-            
-            plotly::ggplotly(lwPlot(data = indOverviewDat, lwPlotLogSwitch = input$lwPlotLogSwitch))
-            
-          })
-          
-          output$lwPlotText <- renderText(paste0("Coefficients (calculated using cm and g): \n a = ", round(indOverviewDat$lwMod$a, 3), "; b = ", round(indOverviewDat$lwMod$b, 3), "\n Number of included specimens = ", nrow(indOverviewDat$lwDat), "\n Total number of measured = ", nrow(indOverviewDat$tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(indOverviewDat$tmpBase$length)), "; weight = ", sum(is.na(indOverviewDat$tmpBase$individualweight))))
-          
-        } 
+        })
+        
+        output$lwPlotText <- renderText(paste0("Coefficients (calculated using cm and g): \n a = ", round(indOverviewDat$lwMod$a, 3), "; b = ", round(indOverviewDat$lwMod$b, 3), "\n Number of included specimens = ", nrow(indOverviewDat$lwDat), "\n Total number of measured = ", nrow(indOverviewDat$tmpBase), "\n Excluded (length or weight missing): \n Length = ", sum(is.na(indOverviewDat$tmpBase$length)), "; weight = ", sum(is.na(indOverviewDat$tmpBase$individualweight))))
+        
       } 
       
       ### Age - length plot ####
       
-      if (all(c("length", "age") %in% names(indOverviewDat$tmpBase))) {
+      if (!is.null(indOverviewDat$laDat)) {
         
-        laDat <- indOverviewDat$tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
+        output$ageData <- reactive(TRUE)
         
-        if(FALSE) { #nrow(laDat) > 0
-          
-          output$ageData <- reactive(TRUE)
-          
-          if (input$laPlotSexSwitch) {
-            
-            laDat <- laDat %>% filter(!is.na(sex))
-            
-            laModF <- fishmethods::growth(age = laDat[laDat$sex == 1,]$age, size = laDat[laDat$sex == 1,]$length, Sinf = max(laDat[laDat$sex == 1,]$length), K = 0.1, t0 = 0, graph = FALSE)
-            
-            laModM <- fishmethods::growth(age = laDat[laDat$sex == 2,]$age, size = laDat[laDat$sex == 2,]$length, Sinf = max(laDat[laDat$sex == 2,]$length), K = 0.1, t0 = 0, graph = FALSE)
-            
-            laDat$sex <- as.factor(laDat$sex)
-            laDat$sex <- dplyr::recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
-            
-            output$laPlot <- renderPlotly({
-              
-              p <- ggplot() +
-                geom_point(data = laDat, aes(x = age, y = length, color = as.factor(sex), text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
-                expand_limits(x = 0) +
-                scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
-                geom_hline(yintercept = coef(laModF$vout)[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
-                geom_hline(yintercept = coef(laModM$vout)[1], linetype = 2, color = ColorPalette[1], alpha = 0.5) +
-                ylab(paste0("Total length (", input$lengthUnit, ")")) +
-                xlab("Age (years)") +
-                theme_classic(base_size = 14) + 
-                stat_function(data = data.frame(x = range(laDat$age)), aes(x),
-                              fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
-                              args = list(Sinf = coef(laModM$vout)[1], 
-                                          K = coef(laModM$vout)[2], 
-                                          t0 = coef(laModM$vout)[3]),
-                              color = ColorPalette[1], size = 1) +
-                stat_function(data = data.frame(x = range(laDat$age)), aes(x),
-                              fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
-                              args = list(Sinf = coef(laModF$vout)[1], 
-                                          K = coef(laModF$vout)[2], 
-                                          t0 = coef(laModF$vout)[3]),
-                              color = ColorPalette[4], size = 1)
-              
-              ggplotly(p) 
-            })
-            
-            output$laPlotText <- renderText(
-              paste0("von Bertalanffy growth function coefficients\n for females and males, respectively: \n Linf (asymptotic average length) = ", round(coef(laModF$vout)[1], 3), " and ", round(coef(laModM$vout)[1], 3), " ", input$lengthUnit, 
-                     "\n K (growth rate coefficient) = ", round(coef(laModF$vout)[2], 3), " and ", round(coef(laModM$vout)[2], 3), 
-                     "\n t0 (length at age 0) = ", round(coef(laModF$vout)[3], 3), " and ", round(coef(laModM$vout)[3], 3), " ", input$lengthUnit, 
-                     "\n tmax (life span; t0 + 3/K) = ", round(coef(laModF$vout)[3] + 3 / coef(laModF$vout)[2], 1), " and ", round(coef(laModM$vout)[3] + 3 / coef(laModM$vout)[2], 1), " years",
-                     "\n Number of included specimens = ", nrow(laDat), 
-                     "\n Total number of measured = ", nrow(tmpBase), 
-                     "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)), "; sex = ", sum(is.na(tmpBase$sex))))
-            
-          } else {
-            
-            laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
-            
-            
-            output$laPlot <- renderPlotly({
-              
-              p <- ggplot() +
-                geom_point(data = laDat, aes(x = age, y = length)) +
-                expand_limits(x = 0) +
-                geom_hline(yintercept = coef(laMod$vout)[1], linetype = 2, color = "grey") +
-                ylab(paste0("Total length (", input$lengthUnit, ")")) +
-                xlab("Age (years)") +
-                theme_classic(base_size = 14) + 
-                stat_function(data = 
-                                data.frame(x = range(laDat$age)), aes(x),
-                              fun = function(Sinf, K, t0, x) {Sinf*(1 - exp(-K*(x - t0)))},
-                              args = list(Sinf = coef(laMod$vout)[1], 
-                                          K = coef(laMod$vout)[2], 
-                                          t0 = coef(laMod$vout)[3]),
-                              color = "blue", size = 1)
-              
-              ggplotly(p) 
-            })
-            
-            output$laPlotText <- renderText(paste0(
-              "von Bertalanffy growth function coefficients: \n Linf (asymptotic average length) = ", round(coef(laMod$vout)[1], 3), " ", input$lengthUnit, 
-              "\n K (growth rate coefficient) = ", round(coef(laMod$vout)[2], 3), 
-              "\n t0 (length at age 0) = ", round(coef(laMod$vout)[3], 3), " ", input$lengthUnit, 
-              "\n tmax (life span; t0 + 3/K) = ", round(coef(laMod$vout)[3] + 3 / coef(laMod$vout)[2], 1), " years", 
-              "\n Number of included specimens = ", nrow(laDat), 
-              "\n Total number of measured = ", nrow(tmpBase), 
-              "\n Excluded (length or age missing): \n Length = ", sum(is.na(tmpBase$length)), "; age = ", sum(is.na(tmpBase$age)))
-            )
-          }  
-        } 
+        output$laTest <- renderText(paste(input$growthModelSwitch, collapse = "; "))
+        
+        tmp <- laPlot(data = indOverviewDat, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwitch = input$growthModelSwitch, forceZeroGroupLength = input$forceZeroGroupLength, forceZeroGroupStrength = input$forceZeroGroupStrength)
+        
+        output$laPlot <- renderPlotly(ggplotly(tmp$laPlot))
+        
+        output$laPlotText <- renderText(tmp$laText)
+        
       }
       
       ### L50 maturity plot  ####
       
-      if (all(c("sex", "maturationstage") %in% names(tmpBase))) {
+      if (FALSE) { # all(c("sex", "maturationstage") %in% names(tmpBase))
         
         l50Dat <- tmpBase[!is.na(tmpBase$sex) & !is.na(tmpBase$maturationstage), ]
         
@@ -1464,7 +1393,7 @@ server <- shinyServer(function(input, output, session) {
       
       ## Sex ratio map ####
       
-      if (c("sex") %in% names(tmpBase)) {
+      if (FALSE) { # c("sex") %in% names(tmpBase)
         
         srDat <- tmpBase %>% 
           dplyr::filter(!is.na(sex)) %>% 
@@ -1495,7 +1424,7 @@ server <- shinyServer(function(input, output, session) {
       
       ## Size distribution map ####
       
-      if (all(c("cruise", "startyear", "serialnumber", "longitudestart", "latitudestart", "length") %in% names(tmpBase))) {
+      if (FALSE) { # all(c("cruise", "startyear", "serialnumber", "longitudestart", "latitudestart", "length") %in% names(tmpBase))
         
         sdDat <- tmpBase %>% 
           dplyr::filter(!is.na(length)) %>% 

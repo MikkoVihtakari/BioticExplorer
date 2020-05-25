@@ -92,24 +92,21 @@ updateMap <- function(db = FALSE) {
     filter(!is.na(longitudestart) & !is.na(latitudestart)) %>% distinct() %>% collect()
   
   ## Station map ##
-  if (!input$performanceMode) {
-    if(db) {
-      output$stationMapDb <- renderLeaflet(stationMap(data = x) %>% 
-                                             addRectangles(
-                                               lng1 = input$selLonDb[1], lat1 = input$selLatDb[1], 
-                                               lng2 = input$selLonDb[2], lat2 = input$selLatDb[2],
-                                               fillColor = "transparent")
-      )
-    } else {
-      output$stationMap <- renderLeaflet(stationMap(data = x) %>% 
+  
+  if(db) {
+    output$stationMapDb <- renderLeaflet(stationMap(data = x) %>% 
                                            addRectangles(
-                                             lng1 = input$subLon[1], lat1 = input$subLat[1], 
-                                             lng2 = input$subLon[2], lat2 = input$subLat[2],
+                                             lng1 = input$selLonDb[1], lat1 = input$selLatDb[1], 
+                                             lng2 = input$selLonDb[2], lat2 = input$selLatDb[2],
                                              fillColor = "transparent")
-      )
-    }
+    )
   } else {
-    output$stationMap <- NULL
+    output$stationMap <- renderLeaflet(stationMap(data = x) %>% 
+                                         addRectangles(
+                                           lng1 = input$subLon[1], lat1 = input$subLat[1], 
+                                           lng2 = input$subLon[2], lat2 = input$subLat[2],
+                                           fillColor = "transparent")
+    )
   }
 }
 
