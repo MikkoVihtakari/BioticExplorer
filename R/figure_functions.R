@@ -672,7 +672,7 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
   
   ## Length-age data
   
-  if (nrow(na.omit(tmpBase[, .(length, age)])) > 0) {
+  if (nrow(na.omit(tmpBase[, .(length, age)])) > 10) {
     
     laDat <- tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
     if(lengthUnit == "cm") laDat$length <- laDat$length*100
@@ -777,7 +777,7 @@ laPlot <- function(data, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwi
       "\n K (growth rate coefficient) = ", round(laModFpars[2], 3), " and ", round(laModMpars[2], 3), 
       "\n t0 = ", round(laModFpars[3], 3), " and ", round(laModMpars[3], 3), " ", data$units$length, 
       "\n tmax (life span; t0 + 3/K) = ", round(laModFpars[3] + 3 / laModFpars[2], 1), " and ", round(laModMpars[3] + 3 / laModMpars[2], 1), " years",
-      "\n Number of included specimens = ", nrow(laDatF), "and", nrow(laDatM),
+      "\n Number of included specimens = ", nrow(laDatF), " and ", nrow(laDatM),
       "\n Total number of measured = ", nrow(data$tmpBase), 
       "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(data$tmpBase$length)), "; age = ", sum(is.na(data$tmpBase$age)), "; sex = ", sum(is.na(data$tmpBase$sex))
       )

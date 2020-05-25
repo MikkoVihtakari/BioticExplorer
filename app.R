@@ -566,32 +566,36 @@ body <-
                     
                     conditionalPanel(
                       condition = "output.ageData == true",
-                      selectInput("growthModelSwitch", "Growth model:", choices = list("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout"), selected = "vout"),
+                      
+                      p("Here you can estimate a growth model for a species. The growth models are fitted using the fishmethods::growth function. Select the desired growth model from the drop-down menu. If you have enough data, you can separate these models by sex. If there are not enough data for small individuals, you can try to force the model to a certain 0-group length. The strength of the forcing is defined using the 'Force 0-group strength' slider, which produces a number of age-0 fish of given length relative to the total number of all age-determined fish in the dataset."),
+                      p("Please note that running this function with too little data or using non-sense 0-group lengths will make the app to crash."),
+                      
+                      splitLayout(
+                        
+                        selectInput("growthModelSwitch", "Growth model:", choices = list("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout"), selected = "vout"),
+                        checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE),
+                        numericInput("forceZeroGroupLength", "Force 0-group length", value = NA, min = 0, step = 0.01),
+                        sliderInput("forceZeroGroupStrength", "Force 0-group strength (%)", min = 1, max = 100, value = 10),
+                        
+                        cellWidths = c("25%", "15%", "30%", "30%"), cellArgs = list(style = "padding: 6px")
+                        
+                      ),
                       
                       plotlyOutput("laPlot"),
                       
-                      br(),
-                      column(2,
-                             checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE)
-                      ),
-                      column(3,
-                             actionButton("laPlotExcludeSwitch", "Exclude points"),
-                             actionButton("laPlotResetSwitch", "Reset")
-                      ),
-                      column(3,
-                             numericInput("forceZeroGroupLength", "Force 0-group length", value = NA, min = 0)
-                      ),
-                      column(4,
-                             sliderInput("forceZeroGroupStrength", "Force 0-group strength (%)", min = 1, max = 100, value = 10)
-                      ),
                       column(12,
-                             verbatimTextOutput("laPlotText")
+                      actionButton("laPlotExcludeSwitch", "Exclude points"),
+                      actionButton("laPlotResetSwitch", "Reset"),
+                      ),
+                      
+                      column(12,
+                      verbatimTextOutput("laPlotText")
                       )
                     ),
                     
                     conditionalPanel(
                       condition = "output.ageData == false",
-                      h4("Age data not available for the species.", align = "center")
+                      h4("Not enough age data available for the species.", align = "center")
                     )
                     
                 ),
