@@ -1344,33 +1344,11 @@ server <- shinyServer(function(input, output, session) {
       
       ## Sex ratio map ####
       
-      if (FALSE) { # c("sex") %in% names(tmpBase)
+      if (!is.null(indOverviewDat$srDat)) { 
         
-        srDat <- tmpBase %>% 
-          dplyr::filter(!is.na(sex)) %>% 
-          dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% 
-          dplyr::summarise(Female = sum(sex == 1), Male = sum(sex == 2), total = length(sex))
-        
-        if (nrow(srDat) > 0) {
-          
           output$sexData <- reactive(TRUE)
-          
-          output$sexRatioMap <- renderLeaflet({
-            
-            leaflet::leaflet() %>% 
-              addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                       attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-              addMinicharts(
-                srDat$longitudestart, srDat$latitudestart,
-                type = "pie", chartdata = srDat[,c("Female", "Male")],
-                colorPalette = c(ColorPalette[4], ColorPalette[1]),
-                width = 40 * log10(srDat$total) / log10(max(srDat$total)), 
-                transitionTime = 0
-              )
-            
-          })
-          
-        } 
+        
+          output$sexRatioMap <- renderLeaflet(sexRatioMap(data = indOverviewDat))
       } 
       
       ## Size distribution map ####

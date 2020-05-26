@@ -710,9 +710,27 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     
   }
   
+  ## Sex ratio data
+  
+  if(nrow(na.omit(tmpBase[, .(sex)])) > 5) {
+    
+    srDat <- tmpBase %>% as_tibble() %>% 
+      dplyr::filter(!is.na(sex)) %>% 
+      dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% 
+      dplyr::summarise(Female = sum(sex == "Female"), Male = sum(sex == "Male")) %>% 
+      dplyr::mutate(Total = Female + Male) %>% 
+      dplyr::filter(Total > 0)
+    
+  } else {
+    
+    srDat <- NULL
+    
+  }
+  
+  
   ## Return
   
-  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat)
+  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat, srDat = srDat)
   
 }
 
@@ -924,4 +942,19 @@ l50Plot <- function(data) {
   
   return(list(Plot = Plot, Text = Text))
   
+}
+
+## Sex ratio map ####
+
+sexRatioMap <- function(data) {
+  leaflet::leaflet() %>% 
+    addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+             attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+    addMinicharts(
+      data$srDat$longitudestart, data$srDat$latitudestart,
+      type = "pie", chartdata = data$srDat[,c("Female", "Male")],
+      colorPalette = c(ColorPalette[4], ColorPalette[1]),
+      width = 40 * log10(data$srDat$Total) / log10(max(data$srDat$Total)), 
+      transitionTime = 0
+    )
 }
