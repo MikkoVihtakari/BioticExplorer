@@ -546,9 +546,9 @@ body <-
                       br(),
                       column(4,
                              checkboxInput("lwPlotLogSwitch", "Logarithmic axes", FALSE)),
-                      column(8,
-                             actionButton("lwPlotExcludeSwitch", "Exclude points"),
-                             actionButton("lwPlotResetSwitch", "Reset")),
+                      # column(8,
+                      #        actionButton("lwPlotExcludeSwitch", "Exclude points"),
+                      #        actionButton("lwPlotResetSwitch", "Reset")),
                       column(12,
                              verbatimTextOutput("lwPlotText"))
                     ),
@@ -583,10 +583,10 @@ body <-
                       
                       plotlyOutput("laPlot"),
                       
-                      column(12,
-                      actionButton("laPlotExcludeSwitch", "Exclude points"),
-                      actionButton("laPlotResetSwitch", "Reset"),
-                      ),
+                      # column(12,
+                      # actionButton("laPlotExcludeSwitch", "Exclude points"),
+                      # actionButton("laPlotResetSwitch", "Reset"),
+                      # ),
                       
                       column(12,
                       verbatimTextOutput("laPlotText")
@@ -1322,77 +1322,24 @@ server <- shinyServer(function(input, output, session) {
         
         output$ageData <- reactive(TRUE)
         
-        output$laTest <- renderText(paste(input$growthModelSwitch, collapse = "; "))
+        LAPlot <- laPlot(data = indOverviewDat, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwitch = input$growthModelSwitch, forceZeroGroupLength = input$forceZeroGroupLength, forceZeroGroupStrength = input$forceZeroGroupStrength)
         
-        tmp <- laPlot(data = indOverviewDat, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwitch = input$growthModelSwitch, forceZeroGroupLength = input$forceZeroGroupLength, forceZeroGroupStrength = input$forceZeroGroupStrength)
-        
-        output$laPlot <- renderPlotly(ggplotly(tmp$laPlot))
-        
-        output$laPlotText <- renderText(tmp$laText)
+        output$laPlot <- renderPlotly(ggplotly(LAPlot$laPlot))
+        output$laPlotText <- renderText(LAPlot$laText)
         
       }
       
       ### L50 maturity plot  ####
       
-      if (FALSE) { # all(c("sex", "maturationstage") %in% names(tmpBase))
+      if (!is.null(indOverviewDat$l50Dat)) {  
         
-        l50Dat <- tmpBase[!is.na(tmpBase$sex) & !is.na(tmpBase$maturationstage), ]
-        
-        # l50Dat <- tmpBase %>% dplyr::filter(!is.na(sex) & !is.na(maturationstage))
-        
-        if(nrow(l50Dat) > 10) {
-          
           output$maturityData <- reactive(TRUE)
           
-          l50Dat$sex <- factor(l50Dat$sex)
-          l50Dat$sex <- dplyr::recode_factor(l50Dat$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified", "4" = "Unidentified")
+          L50Plot <- l50Plot(data = indOverviewDat)
           
-          l50Dat$maturity <- ifelse(l50Dat$maturationstage < 2, 0, ifelse(l50Dat$maturationstage >= 2, 1, NA))
+          output$l50Plot <- renderPlot(L50Plot$Plot)
+          output$l50PlotText <- renderText(L50Plot$Text)
           
-          modF <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Female",], family = binomial(link = "logit"))
-          modM <- glm(maturity ~ length, data = l50Dat[l50Dat$sex == "Male",], family = binomial(link = "logit"))
-          
-          Fdat <- unlogit(0.5, modF)
-          Fdat$sex <- "Female"
-          Mdat <- unlogit(0.5, modM)
-          Mdat$sex <- "Male"
-          modDat <- rbind(Fdat, Mdat)
-          
-          output$l50Plot <- renderPlot({
-            
-            ggplot(l50Dat, aes(x = length, y = maturity, shape = sex)) + 
-              geom_point() + 
-              geom_segment(data = modDat, 
-                           aes(x = mean, xend = mean, y = 0, yend = 0.5, color = sex),
-                           linetype = 2) +
-              geom_segment(data = modDat, 
-                           aes(x = -Inf, xend = mean, y = 0.5, yend = 0.5, color = sex),
-                           linetype = 2) +
-              geom_text(data = modDat, 
-                        aes(x = mean, y = -0.03, label = paste(round(mean, 2), input$lengthUnit),
-                            color = sex), size = 3) +
-              stat_smooth(aes(color = sex), method="glm", 
-                          method.args=list(family="binomial")) +
-              ylab(paste0("Total length (", input$lengthUnit, ")")) +
-              ylab("Maturity") + 
-              scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
-              scale_shape("Sex", solid = FALSE) + 
-              theme_bw(base_size = 14) + 
-              guides(color=guide_legend(override.aes=list(fill=NA))) + 
-              theme(legend.position = c(0.9, 0.25), 
-                    legend.background = element_blank(), legend.key = element_blank())
-            
-          })
-          
-          output$l50PlotText <- renderText({
-            paste0("50% maturity at length (L50) based on logit regressions and assuming maturitystage >= 2 as mature:",
-                   "\n\n Females: ", round(modDat[modDat$sex == "Female", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Female", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Female", "ci.max"], 3),
-                   "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Female",]),
-                   "\n\n Males: ", round(modDat[modDat$sex == "Male", "mean"], 3), " ", input$lengthUnit, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Male", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Male", "ci.max"], 3),
-                   "\n  Number of specimens: ", nrow(l50Dat[l50Dat$sex == "Male",]))
-          })
-        } 
-        
       } 
       
       ## Sex ratio map ####

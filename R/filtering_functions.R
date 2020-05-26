@@ -14,7 +14,7 @@ updateSelectors <- function() {
   
   rv$all$indSpecies <- rv$indall %>% lazy_dt() %>% 
     filter(!is.na(length) & !is.na(individualweight)) %>%
-    group_by(commonname) %>% tally() %>% filter(n > 1) %>%
+    group_by(commonname) %>% tally() %>% filter(n > 5) %>%
     select(commonname) %>% distinct() %>% pull() %>% sort()
   
   lon <- rv$stnall %>% lazy_dt() %>% filter(!is.na(longitudestart)) %>% summarise(min = suppressWarnings(min(longitudestart)), max = suppressWarnings(max(longitudestart))) %>% collect()

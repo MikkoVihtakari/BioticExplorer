@@ -1,5 +1,5 @@
 ##############################
-# File version 2020-05-13 ####
+# File version 2020-05-25 ####
 # Author and contact: mikko.vihtakari@hi.no
 
 #' @title Station overview map using leaflet
@@ -645,6 +645,9 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     }
   }
   
+  tmpBase$sex <- factor(tmpBase$sex)
+  tmpBase$sex <- dplyr::recode_factor(tmpBase$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified", "4" = "Unidentified")
+  
   ## Length-weight data
   
   if(nrow(na.omit(tmpBase[, .(length, individualweight)])) > 0) {
@@ -683,9 +686,33 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     laDat <- NULL
     
   }
+  
+  ## L50 maturity data
+  
+  if (nrow(na.omit(tmpBase[, .(length, sex, maturationstage)])) > 20) { 
+    
+    l50Dat <- tmpBase[!is.na(tmpBase$length) & !is.na(tmpBase$sex) & !is.na(tmpBase$maturationstage) & (tmpBase$sex == "Female" | tmpBase$sex == "Male"), ]
+    
+    tmp <- table(l50Dat$sex)
+    
+    if(tmp[names(tmp) == "Female"] < 10 | tmp[names(tmp) == "Male"] < 10) {
+      
+      l50Dat <- NULL
+      
+    } else {
+      
+      l50Dat$maturity <- ifelse(l50Dat$maturationstage < 2, 0, ifelse(l50Dat$maturationstage >= 2, 1, NA))
+      
+    } 
+  } else {
+    
+    l50Dat <- NULL
+    
+  }
+  
   ## Return
   
-  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat)
+  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat)
   
 }
 
@@ -704,7 +731,7 @@ lwPlot <- function(data, lwPlotLogSwitch = input$lwPlotLogSwitch) {
       p + 
         scale_x_log10(paste0("Length [log10(", data$units$length, ")]")) +
         scale_y_log10(paste0("Weight [log10(", data$units$weight, ")]")) + 
-        geom_smooth(data = data$lwDat, aes(x = length, y = individualweight), method = "lm", se = TRUE) 
+        geom_smooth(data = data$lwDat, aes(x = length, y = individualweight), method = "lm", formula = y ~ x, se = TRUE) 
     })
     
   } else {
@@ -724,65 +751,79 @@ lwPlot <- function(data, lwPlotLogSwitch = input$lwPlotLogSwitch) {
 
 ## laPlot ####
 
-# data = indOverviewDat; laPlotSexSwitch = input$laPlotSexSwitch; growthModelSwitch = input$growthModelSwitch
-laPlot <- function(data, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwitch = input$growthModelSwitch, forceZeroGroupLength = NA, forceZeroGroupStrength = 10) {
+# data = indOverviewDat; laPlotSexSwitch = input$laPlotSexSwitch; growthModelSwitch = input$growthModelSwitch; forceZeroGroupLength = 0.1; forceZeroGroupStrength = 10
+laPlot <- function(data, laPlotSexSwitch, growthModelSwitch, forceZeroGroupLength = NA, forceZeroGroupStrength = 10) {
   
   modName <- c("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout")
   modName <- names(modName[modName == growthModelSwitch])
   
   if (laPlotSexSwitch) {
     
-    laDat <- data$laDat %>% lazy_dt() %>% filter(!is.na(sex)) %>% select(cruise, serialnumber, catchpartnumber, specimenid, sex, age, length) %>% collect()
-    laDat$sex <- as.factor(laDat$sex)
-    laDat$sex <- dplyr::recode_factor(laDat$sex, "1" = "Female", "2" = "Male")
+    laDat <- data$laDat %>% lazy_dt() %>% filter(!is.na(sex) & (sex == "Female" | sex == "Male")) %>% select(cruise, serialnumber, catchpartnumber, specimenid, sex, age, length) %>% collect()
     
     laDatF <- laDat %>% filter(sex == "Female") %>% select(age, length)
     laDatM <- laDat %>% filter(sex == "Male") %>% select(age, length)
     
-    if(!is.na(forceZeroGroupLength)) {
-      laDatF <- rbind(laDatF, tibble(age = rep(0, ceiling(nrow(laDatF)*(forceZeroGroupStrength/100))), length = rep(forceZeroGroupLength, ceiling(nrow(laDatF)*(forceZeroGroupStrength/100)))))
-      laDatM <- rbind(laDatM, tibble(age = rep(0, ceiling(nrow(laDatM)*(forceZeroGroupStrength/100))), length = rep(forceZeroGroupLength, ceiling(nrow(laDatM)*(forceZeroGroupStrength/100)))))
-    } 
-    
-    laModF <- fishmethods::growth(age = laDatF$age, size = laDatF$length, Sinf = max(laDatF$length), K = 0.1, t0 = 0, graph = FALSE)
-    laModM <- fishmethods::growth(age = laDatM$age, size = laDatM$length, Sinf = max(laDatM$length), K = 0.1, t0 = 0, graph = FALSE)
-    
-    laModFpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laModF$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
-    laModMpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laModM$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
-    
-    laModFpars <- coef(eval(parse(text = paste0("laModF$", growthModelSwitch))))
-    laModMpars <- coef(eval(parse(text = paste0("laModM$", growthModelSwitch))))
-    
-    ## Plot 
-    
-    Plot <- suppressWarnings({
-      ggplot() +
-        geom_point(data = laDat, aes(x = age, y = length, color = as.factor(sex), text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
-        expand_limits(x = c(0, round_any(max(laDat$age), 10, ceiling)), y = c(0, max(pretty(c(0, max(laDat$length)))))) +
-        scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
-        geom_hline(yintercept = laModFpars[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
-        geom_hline(yintercept = laModMpars[1], linetype = 2, color = ColorPalette[1], alpha = 0.5) +
-        geom_path(data = laModFpred, aes(x = age, y = length), color = ColorPalette[4]) + 
-        geom_path(data = laModMpred, aes(x = age, y = length), color = ColorPalette[1]) + 
+    if(nrow(laDatM) < 10 | nrow(laDatF) < 10) {
+      
+      Plot <- ggplot() +
+        geom_blank() +
+        annotate("text", x = 1, y = 1, label = "Not enough age data for\nsex separated growth models", size = 6) +
         ylab(paste0("Total length (", data$units$length, ")")) +
         xlab("Age (years)") +
         coord_cartesian(expand = FALSE, clip = "off") +
         theme_classic(base_size = 14)
-    })
-    
-    ## Text
-    
-    Text <- paste0(
-      modName, " growth function coefficients\n for females and males, respectively: \n Linf (asymptotic average length) = ", round(laModFpars[1], 3), " and ", round(laModMpars[1], 3), " ", data$units$length, 
-      "\n K (growth rate coefficient) = ", round(laModFpars[2], 3), " and ", round(laModMpars[2], 3), 
-      "\n t0 = ", round(laModFpars[3], 3), " and ", round(laModMpars[3], 3), " ", data$units$length, 
-      "\n tmax (life span; t0 + 3/K) = ", round(laModFpars[3] + 3 / laModFpars[2], 1), " and ", round(laModMpars[3] + 3 / laModMpars[2], 1), " years",
-      "\n Number of included specimens = ", nrow(laDatF), " and ", nrow(laDatM),
-      "\n Total number of measured = ", nrow(data$tmpBase), 
-      "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(data$tmpBase$length)), "; age = ", sum(is.na(data$tmpBase$age)), "; sex = ", sum(is.na(data$tmpBase$sex))
+      
+      Text <- paste0(
+        "Not enough age data:",
+        "\n Number of included specimens = ", nrow(laDatF), " and ", nrow(laDatM)
       )
-    
-    
+      
+    } else {
+      
+      if(!is.na(forceZeroGroupLength)) {
+        laDatF <- rbind(laDatF, tibble(age = rep(0, ceiling(nrow(laDatF)*(forceZeroGroupStrength/100))), length = rep(forceZeroGroupLength, ceiling(nrow(laDatF)*(forceZeroGroupStrength/100)))))
+        laDatM <- rbind(laDatM, tibble(age = rep(0, ceiling(nrow(laDatM)*(forceZeroGroupStrength/100))), length = rep(forceZeroGroupLength, ceiling(nrow(laDatM)*(forceZeroGroupStrength/100)))))
+      } 
+      
+      laModF <- fishmethods::growth(age = laDatF$age, size = laDatF$length, Sinf = max(laDatF$length), K = 0.1, t0 = 0, graph = FALSE)
+      laModM <- fishmethods::growth(age = laDatM$age, size = laDatM$length, Sinf = max(laDatM$length), K = 0.1, t0 = 0, graph = FALSE)
+      
+      laModFpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laModF$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
+      laModMpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laModM$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
+      
+      laModFpars <- coef(eval(parse(text = paste0("laModF$", growthModelSwitch))))
+      laModMpars <- coef(eval(parse(text = paste0("laModM$", growthModelSwitch))))
+      
+      ## Plot 
+      
+      Plot <- suppressWarnings({
+        ggplot() +
+          geom_point(data = laDat, aes(x = age, y = length, color = as.factor(sex), text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
+          expand_limits(x = c(0, round_any(max(laDat$age), 10, ceiling)), y = c(0, max(pretty(c(0, max(laDat$length)))))) +
+          scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) + 
+          geom_hline(yintercept = laModFpars[1], linetype = 2, color = ColorPalette[4], alpha = 0.5) +
+          geom_hline(yintercept = laModMpars[1], linetype = 2, color = ColorPalette[1], alpha = 0.5) +
+          geom_path(data = laModFpred, aes(x = age, y = length), color = ColorPalette[4]) + 
+          geom_path(data = laModMpred, aes(x = age, y = length), color = ColorPalette[1]) + 
+          ylab(paste0("Total length (", data$units$length, ")")) +
+          xlab("Age (years)") +
+          coord_cartesian(expand = FALSE, clip = "off") +
+          theme_classic(base_size = 14)
+      })
+      
+      ## Text
+      
+      Text <- paste0(
+        modName, " growth function coefficients\n for females and males, respectively: \n Linf (asymptotic average length) = ", round(laModFpars[1], 3), " and ", round(laModMpars[1], 3), " ", data$units$length, 
+        "\n K (growth rate coefficient) = ", round(laModFpars[2], 3), " and ", round(laModMpars[2], 3), 
+        "\n t0 = ", round(laModFpars[3], 3), " and ", round(laModMpars[3], 3), " ", data$units$length, 
+        "\n tmax (life span; t0 + 3/K) = ", round(laModFpars[3] + 3 / laModFpars[2], 1), " and ", round(laModMpars[3] + 3 / laModMpars[2], 1), " years",
+        "\n Number of included specimens = ", nrow(laDatF), " and ", nrow(laDatM),
+        "\n Total number of measured = ", nrow(data$tmpBase), 
+        "\n Excluded (length, age or sex missing): \n Length = ", sum(is.na(data$tmpBase$length)), "; age = ", sum(is.na(data$tmpBase$age)), "; sex = ", sum(is.na(data$tmpBase$sex))
+      )
+    }
   } else {
     
     laDat <- data$laDat %>% lazy_dt() %>% select(cruise, serialnumber, catchpartnumber, specimenid, sex, age, length) %>% collect()
@@ -821,10 +862,66 @@ laPlot <- function(data, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwi
       "\n Number of included specimens = ", nrow(data$laDat), 
       "\n Total number of measured = ", nrow(data$tmpBase), 
       "\n Excluded (length or age missing): \n Length = ", sum(is.na(data$tmpBase$length)), "; age = ", sum(is.na(data$tmpBase$age))
-      )
+    )
   }
   
   ## Return
   
   return(list(laPlot = Plot, laText = Text))
+}
+
+## l50Plot ####
+
+l50Plot <- function(data) {
+  
+  modF <- glm(maturity ~ length, data = data$l50Dat[data$l50Dat$sex == "Female",], family = binomial(link = "logit"))
+  modM <- glm(maturity ~ length, data = data$l50Dat[data$l50Dat$sex == "Male",], family = binomial(link = "logit"))
+  
+  Fdat <- unlogit(0.5, modF)
+  Fdat$sex <- "Female"
+  Mdat <- unlogit(0.5, modM)
+  Mdat$sex <- "Male"
+  modDat <- rbind(Fdat, Mdat)
+  
+  ### Plot
+  
+  Plot <- suppressMessages({
+    
+    ggplot(data$l50Dat, aes(x = length, y = maturity, shape = sex)) + 
+      geom_point() + 
+      geom_segment(data = modDat, 
+                   aes(x = mean, xend = mean, y = 0, yend = 0.5, color = sex),
+                   linetype = 2) +
+      geom_segment(data = modDat, 
+                   aes(x = -Inf, xend = mean, y = 0.5, yend = 0.5, color = sex),
+                   linetype = 2) +
+      geom_text(data = modDat, 
+                aes(x = mean, y = -0.03, label = paste(round(mean, 2), data$units$length),
+                    color = sex), size = 3) +
+      stat_smooth(aes(color = sex), method="glm", 
+                  method.args=list(family="binomial")) +
+      ylab(paste0("Total length (", data$units$length, ")")) +
+      ylab("Maturity") + 
+      scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
+      scale_shape("Sex", solid = FALSE) + 
+      theme_bw(base_size = 14) + 
+      guides(color=guide_legend(override.aes=list(fill=NA))) + 
+      theme(legend.position = c(0.9, 0.25), 
+            legend.background = element_blank(), legend.key = element_blank())
+  })
+  
+  ### Text
+  
+  Text <- paste0(
+    "50% maturity at length (L50) based on logit regressions and assuming maturitystage >= 2 as mature:",
+    "\n\n Females: ", round(modDat[modDat$sex == "Female", "mean"], 3), " ", data$units$length, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Female", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Female", "ci.max"], 3),
+    "\n  Number of specimens: ", nrow(data$l50Dat[data$l50Dat$sex == "Female",]),
+    "\n\n Males: ", round(modDat[modDat$sex == "Male", "mean"], 3), " ", data$units$length, ". 95% confidence intervals: ", round(modDat[modDat$sex == "Male", "ci.min"], 3), " - ", round(modDat[modDat$sex == "Male", "ci.max"], 3),
+    "\n  Number of specimens: ", nrow(data$l50Dat[data$l50Dat$sex == "Male",])
+  )
+  
+  ### Return
+  
+  return(list(Plot = Plot, Text = Text))
+  
 }
