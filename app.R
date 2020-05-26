@@ -569,7 +569,7 @@ body <-
                       
                       p("Here you can estimate a growth model for a species. The growth models are fitted using the fishmethods::growth function. Select the desired growth model from the drop-down menu. If you have enough data, you can separate these models by sex. If there are not enough data for small individuals, you can try to force the model to a certain 0-group length. The strength of the forcing is defined using the 'Force 0-group strength' slider, which produces a number of age-0 fish of given length relative to the total number of all age-determined fish in the dataset."),
                       p("Please note that running this function with too little data or using non-sense 0-group lengths will make the app to crash."),
-                      
+                      br(),
                       splitLayout(
                         
                         selectInput("growthModelSwitch", "Growth model:", choices = list("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout"), selected = "vout"),
@@ -580,7 +580,7 @@ body <-
                         cellWidths = c("25%", "15%", "30%", "30%"), cellArgs = list(style = "padding: 6px")
                         
                       ),
-                      
+                      br(),
                       plotlyOutput("laPlot"),
                       
                       # column(12,
@@ -589,7 +589,7 @@ body <-
                       # ),
                       
                       column(12,
-                      verbatimTextOutput("laPlotText")
+                             verbatimTextOutput("laPlotText")
                       )
                     ),
                     
@@ -1333,60 +1333,27 @@ server <- shinyServer(function(input, output, session) {
       
       if (!is.null(indOverviewDat$l50Dat)) {  
         
-          output$maturityData <- reactive(TRUE)
-          
-          L50Plot <- l50Plot(data = indOverviewDat)
-          
-          output$l50Plot <- renderPlot(L50Plot$Plot)
-          output$l50PlotText <- renderText(L50Plot$Text)
-          
+        output$maturityData <- reactive(TRUE)
+        
+        L50Plot <- l50Plot(data = indOverviewDat)
+        
+        output$l50Plot <- renderPlot(L50Plot$Plot)
+        output$l50PlotText <- renderText(L50Plot$Text)
+        
       } 
       
       ## Sex ratio map ####
       
-      if (!is.null(indOverviewDat$srDat)) { 
-        
-          output$sexData <- reactive(TRUE)
-        
-          output$sexRatioMap <- renderLeaflet(sexRatioMap(data = indOverviewDat))
+      if (!is.null(indOverviewDat$srDat)) {
+        output$sexData <- reactive(TRUE)
+        output$sexRatioMap <- renderLeaflet(sexRatioMap(data = indOverviewDat))
       } 
       
       ## Size distribution map ####
       
-      if (FALSE) { # all(c("cruise", "startyear", "serialnumber", "longitudestart", "latitudestart", "length") %in% names(tmpBase))
-        
-        sdDat <- tmpBase %>% 
-          dplyr::filter(!is.na(length)) %>% 
-          dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% 
-          dplyr::mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% 
-          dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% 
-          dplyr::summarise(count = n())
-        
-        if(nrow(sdDat) > 0) {
-          
-          output$lengthData <- reactive(TRUE)
-          
-          sdDatW <- spread(sdDat, interval, count)
-          
-          sdDatW$total <- rowSums(sdDatW[,levels(sdDat$interval)])
-          
-          output$sizeDistributionMap <- renderLeaflet({
-            
-            leaflet::leaflet() %>% 
-              addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
-                       attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
-              addMinicharts(
-                sdDatW$longitudestart, sdDatW$latitudestart,
-                type = "pie", chartdata = sdDatW[,levels(sdDat$interval)],
-                colorPalette = viridis::viridis(5),
-                width = 40 * log10(sdDatW$total) / log10(max(sdDatW$total)), 
-                transitionTime = 0
-              )
-            
-          })
-          
-        }
-        
+      if (!is.null(indOverviewDat$sdDat)) { 
+        output$lengthData <- reactive(TRUE)
+        output$sizeDistributionMap <- renderLeaflet(sizeDistributionMap(data = indOverviewDat))
       }
       
       # 

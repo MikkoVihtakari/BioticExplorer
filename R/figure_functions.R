@@ -713,24 +713,34 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
   ## Sex ratio data
   
   if(nrow(na.omit(tmpBase[, .(sex)])) > 5) {
-    
-    srDat <- tmpBase %>% as_tibble() %>% 
+    srDat <- tmpBase %>% lazy_dt() %>% 
       dplyr::filter(!is.na(sex)) %>% 
       dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% 
       dplyr::summarise(Female = sum(sex == "Female"), Male = sum(sex == "Male")) %>% 
       dplyr::mutate(Total = Female + Male) %>% 
-      dplyr::filter(Total > 0)
-    
+      dplyr::filter(Total > 0) %>% 
+      dplyr::collect()
   } else {
-    
     srDat <- NULL
-    
   }
   
+  ## Size distribution data
+  
+  if(nrow(na.omit(tmpBase[, .(length)])) > 20) {
+    sdDat <- tmpBase %>% lazy_dt() %>% 
+      dplyr::filter(!is.na(length)) %>% 
+      dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% 
+      dplyr::mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% 
+      dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% 
+      dplyr::summarise(count = n()) %>% 
+      dplyr::collect()
+  } else {
+    sdDat <- NULL
+  }
   
   ## Return
   
-  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat, srDat = srDat)
+  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat, srDat = srDat, sdDat = sdDat)
   
 }
 
@@ -916,8 +926,8 @@ l50Plot <- function(data) {
       geom_text(data = modDat, 
                 aes(x = mean, y = -0.03, label = paste(round(mean, 2), data$units$length),
                     color = sex), size = 3) +
-      stat_smooth(aes(color = sex), method="glm", 
-                  method.args=list(family="binomial")) +
+      stat_smooth(aes(color = sex), method = "glm", formula = y ~ x,
+                  method.args = list(family = "binomial")) +
       ylab(paste0("Total length (", data$units$length, ")")) +
       ylab("Maturity") + 
       scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
@@ -957,4 +967,22 @@ sexRatioMap <- function(data) {
       width = 40 * log10(data$srDat$Total) / log10(max(data$srDat$Total)), 
       transitionTime = 0
     )
+}
+
+## Size distribution map ####
+
+sizeDistributionMap <- function(data) {
+  sdDatW <- tidyr::spread(data$sdDat, interval, count, fill = 0)
+  sdDatW$total <- rowSums(sdDatW[,levels(data$sdDat$interval)])
+  
+  leaflet::leaflet() %>% 
+    addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+             attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
+    addMinicharts(
+      sdDatW$longitudestart, sdDatW$latitudestart,
+      type = "pie", chartdata = sdDatW[,levels(data$sdDat$interval)],
+      colorPalette = viridis::viridis(5),
+      width = 40 * log10(sdDatW$total) / log10(max(sdDatW$total)), 
+      transitionTime = 0
+    ) 
 }
