@@ -78,15 +78,24 @@ tagList(
   )
 )
 
-stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlot", "Total catch weight" = "catchweightSumPlot",
-                                  "Mean catch weight" = "catchweightMeanPlot", "Catch weight range" = "catchweightRangePlot",
-                                  "Mean weight of specimen" = "catchIndMeanWeightPlot", "Mean number in catch" = "catchcountMeanPlot", 
-                                  "Range of number in catch" = "catchcountRangePlot", "Total catch by gear type" = "gearCatchPlot", 
-                                  "Station depth" = "stationDepthPlot", "Fishing depth of the six most dominant species" = "catchSpeciesWeightPlot"
+stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlot",
+                                  "Total catch weight" = "catchweightSumPlot",
+                                  "Mean catch weight" = "catchweightMeanPlot",
+                                  "Catch weight range" = "catchweightRangePlot",
+                                  "Mean weight of specimen" = "catchIndMeanWeightPlot",
+                                  "Mean number in catch" = "catchcountMeanPlot", 
+                                  "Range of number in catch" = "catchcountRangePlot",
+                                  "Total catch by gear type" = "gearCatchPlot", 
+                                  "Station depth" = "stationDepthPlot", 
+                                  "Fishing depth of the six most dominant species" = "catchSpeciesWeightPlot"
 )
 
 
 stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" = "catchCompMap")
+
+individualOverviewFigureList <- list("Length distribution of species" = "indLengthPlot", "Weight distribution of species" = "indWeightPlot")
+
+speciesFigureList <- list("Length-weight" = "lwPlot", "Growth" = "laPlot", "Maturity" = "l50Plot", "Sex ratio map" = "sexRatioMap", "Length distribution map" = "sizeDistributionMap", "Length/sex disrtibution" = "lengthDistributionPlot", "Length/stage distribution" = "stageDistributionPlot")
 
 dbPath <- "~/Desktop/IMR_db.monetdb" 
 dbIndexPath <- "~/Desktop/dbIndex.rda"
@@ -705,86 +714,6 @@ body <-
       tabItem("individualExamine", DT::dataTableOutput("individualTable")),
       tabItem("agedeterminationExamine", DT::dataTableOutput("agedeterminationTable")),
       
-      ##........................
-      ## Export figures tab ####
-      
-      tabItem("exportFigures",
-              box(title = "1. Select the figures to export", width = 12, status = "info", 
-                  solidHeader = TRUE,
-                  
-                  p("This tab is still under development and does not work as intended yet."),
-                  
-                  br(),
-                  
-                  checkboxGroupInput("cruiseMapExport", label = h4("Station map and cruise track (use only when the xml file consist of entire cruise)"), 
-                                     choices = list("Cruise map" = 1),
-                                     selected = NULL, inline = TRUE),
-                  
-                  radioButtons("plotCruiseTrack", "Cruise track:", 
-                               choices = list("Do not plot" = "No", "From station sequence" = "Stations", "From file" = "File"),
-                               selected = "No",
-                               inline = TRUE
-                  ),
-                  
-                  conditionalPanel(condition = "input.plotCruiseTrack == 'File'",
-                                   fileInput("cruiseTrackFile",
-                                             label = "Upload cruise track",
-                                             multiple = TRUE,
-                                             accept = NA)
-                  ),
-                  
-                  checkboxGroupInput("stationOverviewExport", label = h4("Station overview figures"), 
-                                     choices = stationOverviewFigureList,
-                                     selected = NA, inline = TRUE),
-                  
-                  actionLink("selectAllStationOverviewExport", "Select/deselect all"),
-                  
-                  h4("Station based maps"),
-                  
-                  splitLayout(cellWidths = c("25%", "40%"),
-                              checkboxGroupInput("stationCatchMapExport", label = NULL, choices = stationMapList[1]),
-                              selectInput("catchMapExportSpecies", NULL, choices = NULL)
-                  ),
-                  
-                  checkboxGroupInput("stationMapExport", label = NULL, 
-                                     choices = stationMapList[-1],
-                                     selected = NA, inline = TRUE),
-                  
-                  
-                  actionLink("selectAllStationMapExport", "Select/deselect all")
-                  
-              ),
-              
-              box(title = "2. Download selected figures", width = 12, status = "info", 
-                  solidHeader = TRUE,
-                  
-                  numericInput("figureWidth", "Figure width in cm (the height will be scaled automatically)", value = 18), 
-                  
-                  radioButtons("downloadFiguresAs", "Download as:", 
-                               choices = list("Figure files" = "File", "Cruise report template" = "Report"),
-                               selected = "File",
-                               inline = TRUE
-                  ),
-                  
-                  
-                  conditionalPanel(condition = "input.downloadFiguresAs == 'File'",
-                                   radioButtons("downloadFigureFormat", "File format:",
-                                                choices = list("Png" = ".png", "Jpeg" = ".jpeg", "Pdf" = ".pdf"),
-                                                selected = ".png",
-                                                inline = TRUE)
-                  ),
-                  
-                  conditionalPanel(condition = "input.downloadFiguresAs == 'Report'",
-                                   radioButtons("downloadReportFormat", "File format:",
-                                                choices = list("Rmarkdown" = "Rmd", "Word" = "Doc", "Pdf" = "Pdf"),
-                                                selected = "Rmd",
-                                                inline = TRUE)
-                  ),
-                  
-                  downloadButton(outputId = "downloadFigures")
-              )
-      ),
-      
       ##...................
       ## Download tab ####
       
@@ -820,6 +749,97 @@ body <-
                   downloadButton(outputId = "downloadData")
                   # verbatimTextOutput("test")
                 ) 
+              )
+      ),
+      
+      ##........................
+      ## Export figures tab ####
+      
+      tabItem("exportFigures",
+              box(title = "1. Select the figures to export", width = 12, status = "info", 
+                  solidHeader = TRUE,
+                  
+                  p("This tab is still under development and does not work as intended yet."),
+                  
+                  checkboxGroupInput("cruiseMapExport", label = h4("Station map and cruise track (use only when the xml file consist of entire cruise)"), 
+                                     choices = list("Cruise map" = 1),
+                                     selected = NULL, inline = TRUE),
+                  
+                  radioButtons("plotCruiseTrack", "Cruise track:", 
+                               choices = list("Do not plot" = "No", "From station sequence" = "Stations", "From file" = "File"),
+                               selected = "No",
+                               inline = TRUE
+                  ),
+                  
+                  conditionalPanel(condition = "input.plotCruiseTrack == 'File'",
+                                   fileInput("cruiseTrackFile",
+                                             label = "Upload cruise track",
+                                             multiple = TRUE,
+                                             accept = NA)
+                  ),
+                  
+                  checkboxGroupInput("stationOverviewExport", 
+                                     label = h4("Station overview figures"), 
+                                     choices = stationOverviewFigureList,
+                                     selected = NA, inline = TRUE),
+                  
+                  actionLink("selectAllStationOverviewExport", "Select/deselect all"),
+                  
+                  h4("Station based maps"),
+                  
+                  splitLayout(cellWidths = c("25%", "40%"),
+                              checkboxGroupInput("stationCatchMapExport", label = NULL, choices = stationMapList[1]),
+                              selectInput("catchMapExportSpecies", NULL, choices = NULL)
+                  ),
+                  
+                  checkboxGroupInput("stationMapExport", label = NULL, 
+                                     choices = stationMapList[-1],
+                                     selected = NA, inline = TRUE),
+                  
+                  
+                  actionLink("selectAllStationMapExport", "Select/deselect all"),
+                  
+                  checkboxGroupInput("individualOverviewExport", 
+                                     label = h4("Individuals overview"), 
+                                     choices = individualOverviewFigureList,
+                                     selected = NA, inline = TRUE),
+                  
+                  h4("Species plots"),
+                  
+                  checkboxGroupInput("speciesFigureExport", 
+                                     label = NULL, 
+                                     choices = speciesFigureList,
+                                     selected = NA, inline = TRUE)
+                  
+              ),
+              
+              box(title = "2. Download selected figures", width = 12, status = "info", 
+                  solidHeader = TRUE,
+                  
+                  numericInput("figureWidth", "Figure width in cm (the height will be scaled automatically)", value = 18), 
+                  
+                  radioButtons("downloadFiguresAs", "Download as:", 
+                               choices = list("Figure files" = "File", "Cruise report template (not implemented)" = "Report"),
+                               selected = "File",
+                               inline = TRUE
+                  ),
+                  
+                  
+                  conditionalPanel(condition = "input.downloadFiguresAs == 'File'",
+                                   radioButtons("downloadFigureFormat", "File format:",
+                                                choices = list("Png" = ".png", "Jpeg" = ".jpeg", "Pdf" = ".pdf"),
+                                                selected = ".png",
+                                                inline = TRUE)
+                  ),
+                  
+                  conditionalPanel(condition = "input.downloadFiguresAs == 'Report'",
+                                   radioButtons("downloadReportFormat", "File format:",
+                                                choices = list("Rmarkdown" = "Rmd", "Word" = "Doc", "Pdf" = "Pdf"),
+                                                selected = "Rmd",
+                                                inline = TRUE)
+                  ),
+                  
+                  downloadButton(outputId = "downloadFigures")
               )
       )
     )
