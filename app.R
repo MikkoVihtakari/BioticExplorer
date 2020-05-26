@@ -570,19 +570,22 @@ body <-
                       p("Here you can estimate a growth model for a species. The growth models are fitted using the fishmethods::growth function. Select the desired growth model from the drop-down menu. If you have enough data, you can separate these models by sex. If there are not enough data for small individuals, you can try to force the model to a certain 0-group length. The strength of the forcing is defined using the 'Force 0-group strength' slider, which produces a number of age-0 fish of given length relative to the total number of all age-determined fish in the dataset."),
                       p("Please note that running this function with too little data or using non-sense 0-group lengths will make the app to crash."),
                       br(),
-                      splitLayout(
-                        
-                        selectInput("growthModelSwitch", "Growth model:", choices = list("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout"), selected = "vout"),
-                        checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE),
-                        numericInput("forceZeroGroupLength", "Force 0-group length", value = NA, min = 0, step = 0.01),
-                        sliderInput("forceZeroGroupStrength", "Force 0-group strength (%)", min = 1, max = 100, value = 10),
-                        
-                        cellWidths = c("25%", "15%", "30%", "30%"), cellArgs = list(style = "padding: 6px")
-                        
+                      column(12,
+                             splitLayout(
+                               
+                               selectInput("growthModelSwitch", "Growth model:", choices = list("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout"), selected = "vout"),
+                               checkboxInput("laPlotSexSwitch", "Separate by sex", FALSE),
+                               numericInput("forceZeroGroupLength", "Force 0-group length", value = NA, min = 0, step = 0.01),
+                               sliderInput("forceZeroGroupStrength", "Force 0-group strength (%)", min = 1, max = 100, value = 10),
+                               
+                               cellWidths = c("25%", "15%", "30%", "30%"), cellArgs = list(style = "padding: 6px")
+                               
+                             )
                       ),
                       br(),
-                      plotlyOutput("laPlot"),
-                      
+                      column(12,
+                             plotlyOutput("laPlot"),
+                      ),
                       # column(12,
                       # actionButton("laPlotExcludeSwitch", "Exclude points"),
                       # actionButton("laPlotResetSwitch", "Reset"),
@@ -637,7 +640,7 @@ body <-
                 
                 ### lengthData
                 
-                box(title = "Size distribution", width = 12, status = "info", 
+                box(title = "Geographic length distribution", width = 12, status = "info", 
                     solidHeader = TRUE, height = 760,
                     
                     conditionalPanel(
@@ -648,6 +651,44 @@ body <-
                     conditionalPanel(
                       condition = "output.lengthData == false",
                       h4("Length data not available for the species.", align = "center")
+                    )
+                ),
+                
+                ### lengthDistributionData
+                
+                box(title = "Sex specific length distribution", width = 12, status = "info", 
+                    solidHeader = TRUE, 
+                    
+                    conditionalPanel(
+                      condition = "output.lengthDistributionData == true",
+                      plotOutput(outputId = "lengthDistributionPlot")
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.lengthDistributionData == false",
+                      h4("Not enough sex specific length data available for the species.", align = "center")
+                    )
+                ),
+                
+                ### stageDistributionData
+                
+                box(title = "Stage specific length distribution", width = 12, status = "info", 
+                    solidHeader = TRUE, 
+                    
+                    conditionalPanel(
+                      condition = "output.stageDistributionData == true",
+                      column(12,
+                             radioButtons("stageSelectionSwitch", "Select stage", choices = list("Maturation stage" = "maturationstage", "Special stage" = "specialstage"),
+                                          selected = "maturationstage", inline = TRUE)
+                      ),
+                      column(12,
+                             plotOutput(outputId = "stageDistributionPlot")
+                      )
+                    ),
+                    
+                    conditionalPanel(
+                      condition = "output.stageDistributionData == false",
+                      h4("Not enough stage specific length data available for the species.", align = "center")
                     )
                 )
               )
@@ -1287,12 +1328,16 @@ server <- shinyServer(function(input, output, session) {
     output$maturityData <- reactive(FALSE)
     output$sexData <- reactive(FALSE)
     output$lengthData <- reactive(FALSE)
+    output$lengthDistributionData <- reactive(FALSE)
+    output$stageDistributionData <- reactive(FALSE)
     
     outputOptions(output, "ageData", suspendWhenHidden = FALSE)
     outputOptions(output, "weightData", suspendWhenHidden = FALSE)
     outputOptions(output, "maturityData", suspendWhenHidden = FALSE)
     outputOptions(output, "sexData", suspendWhenHidden = FALSE)
     outputOptions(output, "lengthData", suspendWhenHidden = FALSE)
+    outputOptions(output, "lengthDistributionData", suspendWhenHidden = FALSE)
+    outputOptions(output, "stageDistributionData", suspendWhenHidden = FALSE)
     
     if (input$tabs == "indallSpecies" & input$indSpecies != "" & !input$indSpecies %in% c("Select a species to generate the plots", "No species with sufficient data")) {
       
@@ -1322,7 +1367,10 @@ server <- shinyServer(function(input, output, session) {
         
         output$ageData <- reactive(TRUE)
         
-        LAPlot <- laPlot(data = indOverviewDat, laPlotSexSwitch = input$laPlotSexSwitch, growthModelSwitch = input$growthModelSwitch, forceZeroGroupLength = input$forceZeroGroupLength, forceZeroGroupStrength = input$forceZeroGroupStrength)
+        LAPlot <- laPlot(data = indOverviewDat, laPlotSexSwitch = input$laPlotSexSwitch, 
+                         growthModelSwitch = input$growthModelSwitch, forceZeroGroupLength = input$forceZeroGroupLength, 
+                         forceZeroGroupStrength = input$forceZeroGroupStrength
+        )
         
         output$laPlot <- renderPlotly(ggplotly(LAPlot$laPlot))
         output$laPlotText <- renderText(LAPlot$laText)
@@ -1356,41 +1404,21 @@ server <- shinyServer(function(input, output, session) {
         output$sizeDistributionMap <- renderLeaflet(sizeDistributionMap(data = indOverviewDat))
       }
       
-      # 
-      # tmp3 <- tmpBase %>% filter(!is.na(length)) %>% replace_na(list(sex = 3)) %>% mutate(sex = factor(sex)) 
-      # tmp3$sex <- recode_factor(tmp3$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified")
-      # 
-      # ggplot(tmp3, aes(x = length, color = sex)) +
-      #   geom_density(adjust = 0.5) +
-      #   xlab(paste0("Total length (", input$lengthUnit, ")")) +
-      #   ylab("Count density") +
-      #   #facet_wrap(~sex, ncol = 3, scales = "free_y") +
-      #   scale_color_discrete("Sex") +
-      #   theme_classic(base_size = 14)
-      # 
-      # tmp4 <- tmp3 %>% filter(sex != "Unidentified" & !is.na(maturationstage))
-      # 
-      # ggplot(tmp4, aes(x = length, stat(count),color = as.factor(maturationstage))) +
-      #   geom_density(adjust = 0.5) +
-      #   xlab(paste0("Total length (", input$lengthUnit, ")")) +
-      #   ylab("Count density") +
-      #   facet_wrap(~sex, ncol = 2, scales = "free_y") +
-      #   scale_color_discrete("Maturation stage") +
-      #   theme_classic(base_size = 14)
-      # 
-      # ggplot(tmp4, aes(x = length, stat(count), color = as.factor(specialstage))) +
-      #   geom_density(adjust = 0.5) +
-      #   xlab(paste0("Total length (", input$lengthUnit, ")")) +
-      #   ylab("Count density") +
-      #   facet_wrap(~sex, ncol = 2, scales = "free_y") +
-      #   scale_color_discrete("Special stage") +
-      #   theme_classic(base_size = 14)
-      # 
-      # Add stage & special stage
+      ## Length distribution plot ####
       
-      # Add depth preference
+      if (!is.null(indOverviewDat$ldDat)) { 
+        output$lengthDistributionData <- reactive(TRUE)
+        output$lengthDistributionPlot <- renderPlot(lengthDistributionPlot(data = indOverviewDat))
+      }
       
+      ## Stage distribution plot ####
       
+      if (!is.null(indOverviewDat$ldDat)) { 
+        if(nrow(na.omit(indOverviewDat$ldDat[input$stageSelectionSwitch])) > 10) {
+          output$stageDistributionData <- reactive(TRUE)
+          output$stageDistributionPlot <- renderPlot(stageDistributionPlot(data = indOverviewDat, selectedStage = input$stageSelectionSwitch))
+        }
+      }
     } 
     
   }) 

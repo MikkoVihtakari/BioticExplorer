@@ -724,7 +724,7 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     srDat <- NULL
   }
   
-  ## Size distribution data
+  ## Geographic size distribution data
   
   if(nrow(na.omit(tmpBase[, .(length)])) > 20) {
     sdDat <- tmpBase %>% lazy_dt() %>% 
@@ -738,9 +738,20 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     sdDat <- NULL
   }
   
+  ## Length distribution data
+  
+  if(nrow(na.omit(tmpBase[, .(length, sex)])) > 10) {
+    ldDat <- tmpBase %>% as_tibble() %>% 
+      filter(!is.na(length)) %>% 
+      replace_na(list(sex = "Unidentified")) %>% 
+      select(sex, length, maturationstage, specialstage) 
+  } else {
+    ldDat <- NULL
+  }
+  
   ## Return
   
-  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat, srDat = srDat, sdDat = sdDat)
+  list(units = list(length = lengthUnit, weight = weightUnit), tmpBase = tmpBase, lwDat = lwDat, lwMod = list(a = lwModA, b = lwModB, aTrans = lwModTransA), laDat = laDat, l50Dat = l50Dat, srDat = srDat, sdDat = sdDat, ldDat = ldDat)
   
 }
 
@@ -985,4 +996,35 @@ sizeDistributionMap <- function(data) {
       width = 40 * log10(sdDatW$total) / log10(max(sdDatW$total)), 
       transitionTime = 0
     ) 
+}
+
+## Length distribution plot ####
+
+lengthDistributionPlot <- function(data) {
+  ggplot(data$ldDat, aes(x = length, after_stat(count), color = sex)) +
+    geom_density(adjust = 0.5) +
+    xlab(paste0("Total length (", data$units$length, ")")) +
+    ylab("Count density") +
+    scale_color_manual("Sex", values = c("Female" = ColorPalette[4], "Male" = ColorPalette[1], "Unidentified" = ColorPalette[2])) +
+    coord_cartesian(expand = FALSE) +
+    theme_classic(base_size = 14)
+}
+
+## Stage distribution plot ####
+
+stageDistributionPlot <- function(data, selectedStage) {
+  
+  stageName <- c("maturationstage" = "Maturation stage", "specialstage" = "Special stage")
+  stageName <- unname(stageName[names(stageName) == selectedStage])
+  tmp <- data$ldDat %>% rename(stage = all_of(selectedStage)) %>% filter(sex != "Unidentified" & !is.na(stage))
+  
+  
+  ggplot(tmp, aes(x = length, fill = as.factor(stage))) +
+    geom_histogram(bins = 30) +
+    xlab(paste0("Total length (", data$units$length, ")")) +
+    ylab("Count") +
+    facet_wrap(~sex, ncol = 2, scales = "free_y") +
+    scale_fill_discrete(stageName) +
+    coord_cartesian(expand = FALSE) +
+    theme_classic(base_size = 14)
 }
