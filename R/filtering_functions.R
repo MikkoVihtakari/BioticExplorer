@@ -1,11 +1,10 @@
 #' @title Update subset selectors
 
-updateSelectors <- function() {
+updateSelectors <- function(db = FALSE) {
   
   # Update selectors
   rv$all <- list()
   rv$all$startyear <- rv$mission %>% lazy_dt() %>% select(startyear) %>% distinct() %>% pull() %>% sort()
-  rv$all$missiontypename <- rv$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
   rv$all$commonname <- rv$stnall %>% lazy_dt() %>% select(commonname) %>% distinct() %>% pull() %>% sort()
   rv$all$cruise <- rv$mission %>% lazy_dt() %>% select(cruise) %>% distinct() %>% pull() %>% sort()
   rv$all$platformname <- rv$stnall %>% lazy_dt() %>% select(platformname) %>% distinct() %>% pull() %>% sort()
@@ -37,6 +36,15 @@ updateSelectors <- function() {
   }
   
   rv$all$date <- rv$stnall %>% lazy_dt() %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
+  
+  if(db) {
+    rv$all$missiontypename <- rv$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
+    rv$all$gearcategory <- rv$stnall %>% lazy_dt() %>% select(gearcategory) %>% distinct() %>% pull() %>% sort()
+    rv$all$cruiseseries <- rv$mission %>% lazy_dt() %>% select(cruiseseriescode) %>% distinct() %>% pull() %>% sort()
+    rv$all$icesarea <- rv$stnall %>% lazy_dt() %>% select(icesarea) %>% distinct() %>% pull() %>% sort()
+    rv$all$area <- rv$stnall %>% lazy_dt() %>% select(area) %>% distinct() %>% pull() %>% sort()
+  }
+  
 }
 
 #' @title Update data selection filters
@@ -47,12 +55,16 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
   
   if(loadDb) {
     updateSelectizeInput(session, "selMissionTypeDb", choices = index$missiontypename, server = TRUE)
+    # updateSelectizeInput(session, "selCruiseSeriesDb", choices = index$cruiseseries, server = TRUE) # Uncomment when implemented
     updateSelectizeInput(session, "selCruiseDb", choices = index$cruise, server = TRUE)
     updateSelectizeInput(session, "selYearDb", choices = index$year, server = TRUE)
     updateSelectizeInput(session, "selSpeciesDb", choices = index$commonname, server = TRUE)
     updateSelectizeInput(session, "selPlatformDb", choices = index$platformname, server = TRUE)
+    updateSelectizeInput(session, "selFDIRAreaDb", choices = index$fdirarea, server = TRUE)
+    updateSelectizeInput(session, "selICESAreaDb", choices = index$icesarea, server = TRUE)
     updateSelectizeInput(session, "selSerialnumberDb", choices = index$serialnumber, server = TRUE)
     updateSelectizeInput(session, "selGearDb", choices = index$gear, server = TRUE)
+    updateSelectizeInput(session, "selGearCategoryDb", choices = index$gearcategory, server = TRUE)
   } else if(db) {
     updateSelectizeInput(session, "selMissionTypeDb", choices = rv$all$missiontypename, server = TRUE)
     updateSelectizeInput(session, "selYearDb", choices = rv$all$startyear, server = TRUE)
@@ -60,7 +72,10 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
     updateSelectizeInput(session, "selCruiseDb", choices = rv$all$cruise, server = TRUE)
     updateSelectizeInput(session, "selPlatformDb", choices = rv$all$platformname, server = TRUE)
     updateSelectizeInput(session, "selSerialnumberDb", choices = rv$all$serialnumber, server = TRUE)
+    updateSelectizeInput(session, "selFDIRAreaDb", choices = rv$all$area, server = TRUE)
+    updateSelectizeInput(session, "selICESAreaDb", choices = rv$all$icesarea, server = TRUE)
     updateSelectizeInput(session, "selGearDb", choices = rv$all$gear, server = TRUE)
+    updateSelectizeInput(session, "selGearCategoryDb", choices = rv$all$gearcategory, server = TRUE)
     updateDateRangeInput(session, "selDateDb", start = rv$all$date[[1]], end = rv$all$date[[2]])
     updateSelectInput(session, "catchMapSpecies", choices = c("All", rv$all$commonname))
     updateSelectInput(session, "catchMapExportSpecies", choices = c("All", rv$all$commonname))
@@ -203,7 +218,7 @@ obsPopulatePanel <- function(db = FALSE) {
   # rv$substart <- FALSE
   
   # Update selectors
-  updateSelectors()
+  updateSelectors(db = db)
   
   # Reset some specific subsets as this is the first run
   rv$sub$lon <- c(rv$all$min.lon, rv$all$max.lon)
@@ -351,12 +366,61 @@ makeFilterChain <- function(db = FALSE) {
   if(db) {
     sub$missiontypename <- input$selMissionTypeDb
   } else {
-    sub$missiontypename <- NULL#input$subGear
+    sub$missiontypename <- NULL
   }
   
   if (!is.null(sub$missiontypename)) {
     filterChain <- append(filterChain, paste0("missiontypename %in% c('", paste0(sub$missiontypename, collapse = "', '"), "')"))
   }
+  
+  ## Gear category
+  
+  if(db) {
+    sub$gearcategory <- input$selGearCategoryDb
+  } else {
+    sub$gearcategory <- NULL
+  }
+  
+  if (!is.null(sub$gearcategory)) {
+    filterChain <- append(filterChain, paste0("gearcategory %in% c('", paste0(sub$gearcategory, collapse = "', '"), "')"))
+  }
+  
+  ## FDIR area
+  
+  if(db) {
+    sub$area <- input$selFDIRAreaDb
+  } else {
+    sub$area <- NULL
+  }
+  
+  if (!is.null(sub$area)) {
+    filterChain <- append(filterChain, paste0("area %in% c('", paste0(sub$area, collapse = "', '"), "')"))
+  }
+  
+  ## ICES area
+  
+  if(db) {
+    sub$icesarea <- input$selICESAreaDb
+  } else {
+    sub$icesarea <- NULL
+  }
+  
+  if (!is.null(sub$icesarea)) {
+    filterChain <- append(filterChain, paste0("icesarea %in% c('", paste0(sub$icesarea, collapse = "', '"), "')"))
+  }
+  
+  ## Cruise series, uncomment when implemented
+  
+  # if(db) {
+  #   sub$cruiseseries <- input$selCruiseSeriesDb
+  # } else {
+  #   sub$cruiseseries <- NULL
+  # }
+  # 
+  # if (!is.null(sub$cruiseseries)) {
+  #   filterChain <- append(filterChain, paste0("cruiseseriescode %in% c('", paste0(sub$cruiseseries, collapse = "', '"), "')"))
+  # }
+  
   
   ## Longitude
   

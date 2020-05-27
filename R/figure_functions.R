@@ -623,6 +623,7 @@ indWeightPlot <- function(indall, nLimit = 10, unit = "kg", base_size = 14) {
 #' @import dplyr data.table
 
 # indall = rv$indall; indSpecies = "snabeluer"; lengthUnit = "m"; weightUnit = "kg"; useEggaSystem = FALSE
+# indall = rv$indall; indSpecies = input$indSpecies; lengthUnit = input$lengthUnit; weightUnit = input$weightUnit; useEggaSystem = FALSE
 individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUnit = "m", weightUnit = "kg", useEggaSystem = FALSE) {
   
   ## Base data
@@ -645,6 +646,7 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     }
   }
   
+  tmpBase$sex[is.na(tmpBase$sex)] <- "Unidentified"
   tmpBase$sex <- factor(tmpBase$sex)
   tmpBase$sex <- dplyr::recode_factor(tmpBase$sex, "1" = "Female", "2" = "Male", "3" = "Unidentified", "4" = "Unidentified")
   
@@ -673,19 +675,20 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     lwModTransA <- NULL
   }
   
+  ## Transform tmpBase units (untransformed needed above)
+  
+  if(lengthUnit == "cm") tmpBase$length <- tmpBase$length*100
+  if(lengthUnit == "mm") tmpBase$length <- tmpBase$length*1000
+  if(weightUnit == "g") tmpBase$individualweight <- tmpBase$individualweight*1000
+  
   ## Length-age data
   
-  if (nrow(na.omit(tmpBase[, .(length, age)])) > 10) {
+  if (all(c("length", "age") %in% names(tmpBase))) {
+  if (nrow(na.omit(tmpBase[, c("length", "age"), with = FALSE])) > 10) {
     
     laDat <- tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
-    if(lengthUnit == "cm") laDat$length <- laDat$length*100
-    if(lengthUnit == "mm") laDat$length <- laDat$length*1000
     
-  } else {
-    
-    laDat <- NULL
-    
-  }
+  } else {laDat <- NULL}} else {laDat <- NULL}
   
   ## L50 maturity data
   
