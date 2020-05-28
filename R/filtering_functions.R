@@ -44,9 +44,12 @@ updateSelectors <- function(db = FALSE) {
     tmpCS <- names(index$cruiseseries)
     names(tmpCS) <- index$cruiseseries
     rv$all$cruiseseries <- unique(unlist(strsplit(rv$mission %>% lazy_dt() %>% select(cruiseseriescode) %>% distinct() %>% pull(), "[,]")))
-    if(length(rv$all$cruiseseries) > 0)
-       names(rv$all$cruiseseries) <- tmpCS[rv$all$cruiseseries]
-
+    rv$all$cruiseseries <- sort(as.integer(rv$all$cruiseseries[rv$all$cruiseseries != "NA"]))
+    
+    if(length(rv$all$cruiseseries) > 0) {
+      names(rv$all$cruiseseries) <- tmpCS[rv$all$cruiseseries]
+    }
+       
     rv$all$icesarea <- rv$stnall %>% lazy_dt() %>% select(icesarea) %>% distinct() %>% pull() %>% sort()
     rv$all$area <- rv$stnall %>% lazy_dt() %>% select(area) %>% distinct() %>% pull() %>% sort()
   }
