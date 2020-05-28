@@ -364,7 +364,7 @@ body <-
                                                    choices = NULL, multiple = TRUE),
                                     
                                     dateRangeInput(inputId = "selDateDb", label = "Date:",
-                                                   start = "1900-01-01", startview = "decade", weekstart = 1)
+                                                   startview = "decade", weekstart = 1)
                              ),
                              
                              column(6,

@@ -65,6 +65,7 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
     updateSelectizeInput(session, "selSerialnumberDb", choices = index$serialnumber, server = TRUE)
     updateSelectizeInput(session, "selGearDb", choices = index$gear, server = TRUE)
     updateSelectizeInput(session, "selGearCategoryDb", choices = index$gearcategory, server = TRUE)
+    updateDateRangeInput(session, "selDateDb", start = index$date[[1]], end = index$date[[2]])
   } else if(db) {
     updateSelectizeInput(session, "selMissionTypeDb", choices = rv$all$missiontypename, server = TRUE)
     updateSelectizeInput(session, "selYearDb", choices = rv$all$startyear, server = TRUE)

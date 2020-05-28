@@ -610,7 +610,7 @@ indWeightPlot <- function(indall, nLimit = 10, unit = "kg", base_size = 14) {
   }
 }
 
-## 
+## individualFigureData ####
 
 #' @title Generate data for individual plots
 #' @description Generates data required by individual plots in Biotic Explorer
@@ -652,11 +652,15 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
   
   ## Length-weight data
   
-  if(nrow(na.omit(tmpBase[, .(length, individualweight)])) > 0) {
+  if(nrow(na.omit(tmpBase[, .(length, individualweight)])) > 10) {
     
     lwDat <- tmpBase[!is.na(length) & !is.na(individualweight),]
+    lwDat$weightMod <- log(lwDat$individualweight*1000)
+    lwDat$lengthMod <- log(lwDat$length*100)
     
-    lwMod <- lm(log(individualweight*1000) ~ log(length*100), data = lwDat)
+    lwMod <- lm(weightMod ~ lengthMod, 
+                data = lwDat[!is.infinite(lengthMod) & !is.infinite(weightMod)]
+    )
     lwModA <- unname(exp(coef(lwMod)[1]))
     lwModB <- unname(coef(lwMod)[2])
     
@@ -664,7 +668,12 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     if(lengthUnit == "mm") lwDat$length <- lwDat$length*1000
     if(weightUnit == "g") lwDat$individualweight <- lwDat$individualweight*1000
     
-    lwModTrans <- lm(log(individualweight) ~ log(length), data = lwDat)
+    lwDat$weightModTrans <- log(lwDat$individualweight)
+    lwDat$lengthModTrans <- log(lwDat$length)
+    
+    lwModTrans <- lm(weightModTrans ~ lengthModTrans, 
+                     data = lwDat[!is.infinite(lengthModTrans) & !is.infinite(weightModTrans)]
+    )
     lwModTransA <- unname(exp(coef(lwModTrans)[1]))
     
   } else {
@@ -684,11 +693,11 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
   ## Length-age data
   
   if (all(c("length", "age") %in% names(tmpBase))) {
-  if (nrow(na.omit(tmpBase[, c("length", "age"), with = FALSE])) > 10) {
-    
-    laDat <- tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
-    
-  } else {laDat <- NULL}} else {laDat <- NULL}
+    if (nrow(na.omit(tmpBase[, c("length", "age"), with = FALSE])) > 10) {
+      
+      laDat <- tmpBase[!is.na(tmpBase$age) & !is.na(tmpBase$length), ]
+      
+    } else {laDat <- NULL}} else {laDat <- NULL}
   
   ## L50 maturity data
   
