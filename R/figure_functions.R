@@ -78,15 +78,21 @@ speciesOverviewData <- function(data) {
   # Catch by gear
   
   catchGBase <- data[!is.na(data$catchweight),]
-  catchG <- catchGBase %>% lazy_dt() %>% group_by(gear, commonname) %>% 
-    summarise(sum = sum(catchweight)) %>% collect()
+  
+  if("gearcategory" %in% colnames(catchGBase)) {
+    catchG <- catchGBase %>% lazy_dt() %>% group_by(gearcategory, commonname) %>% 
+      summarise(sum = sum(catchweight)) %>% collect() %>% rename(gear = gearcategory)
+  } else {
+    catchG <- catchGBase %>% lazy_dt() %>% group_by(gear, commonname) %>% 
+      summarise(sum = sum(catchweight)) %>% collect()
+  }
   
   catchG$commonname <- factor(catchG$commonname, catchS$commonname)
   
   # Bottom depth and fishing depth by station
   
   stnD <- data %>% lazy_dt() %>% group_by(cruise, startyear, serialnumber) %>% 
-    summarise(bdepth = unique(bottomdepthstart), fdepth = unique(fishingdepthmin)) %>% 
+    summarise(bdepth = unique(bottomdepthstart), fdepth = unique(fishingdepthmin)) %>%
     collect()
   
   stnD <- data.table::melt(data.table::as.data.table(stnD), id.vars = 1:3)
@@ -340,7 +346,7 @@ gearCatchPlot <- function(data, base_size = 14) {
   if(nrow(x) == 0) {
     ggplot(x, aes(x = commonname, y = gear)) +
       annotate("text", x = 1, y = 1, label = "No gear information") +
-      ylab("Gear code") +
+      ylab("Gear") +
       xlab("Species database name") +
       theme_bw(base_size = base_size) +
       theme(axis.text = element_blank())
@@ -350,12 +356,12 @@ gearCatchPlot <- function(data, base_size = 14) {
       geom_point() +
       scale_color_distiller(name = "Total catch [log10(kg)]",
                             palette = "Spectral", trans = "log10",
-                            breaks = c(1 %o% 10^(-4:4))
+                            breaks = c(1 %o% 10^(-4:6))
       ) +
-      scale_size(name = "Total catch [log10(kg)]", trans = "log10",
-                 breaks = c(1 %o% 10^(-4:4), range = c(1,8))
+      scale_size(name = "Total catch [log10(kg)]", trans = "log10"#,
+                 #breaks = c(1 %o% 10^(-4:4), range = c(1,8))
       ) +
-      ylab("Gear code") +
+      ylab("Gear") +
       xlab("Species database name") +
       theme_bw(base_size = base_size) +
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) 

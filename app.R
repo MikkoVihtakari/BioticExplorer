@@ -1475,7 +1475,7 @@ server <- shinyServer(function(input, output, session) {
           
           fileName <- paste0(input$stationOverviewExport[i], input$downloadFigureFormat)
           
-          ggplot2::ggsave(fileName, plot = get(input$stationOverviewExport[i])(spOverviewDat, base_size = 8), width = input$figureWidth, height = 0.8*input$figureWidth, units = "cm")
+          ggplot2::ggsave(fileName, plot = get(input$stationOverviewExport[i])(spOverviewDat, base_size = 8), width = input$figureWidth, height = 0.7*input$figureWidth, units = "cm")
           
           files <- c(fileName,files)
         }
@@ -1489,7 +1489,7 @@ server <- shinyServer(function(input, output, session) {
           
           fileName <- paste0(input$stationMapExport[i], input$downloadFigureFormat)
           
-          mapview::mapshot(get(input$stationMapExport[i])(spOverviewDat), file = fileName)
+          mapview::mapshot(get(input$stationMapExport[i])(spOverviewDat), file = fileName, vwidth = 1323)
           
           files <- c(fileName,files)
           
