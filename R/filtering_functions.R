@@ -40,7 +40,13 @@ updateSelectors <- function(db = FALSE) {
   if(db) {
     rv$all$missiontypename <- rv$mission %>% lazy_dt() %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
     rv$all$gearcategory <- rv$stnall %>% lazy_dt() %>% select(gearcategory) %>% distinct() %>% pull() %>% sort()
-    rv$all$cruiseseries <- rv$mission %>% lazy_dt() %>% select(cruiseseriescode) %>% distinct() %>% pull() %>% sort()
+
+    tmpCS <- names(index$cruiseseries)
+    names(tmpCS) <- index$cruiseseries
+    rv$all$cruiseseries <- unique(unlist(strsplit(rv$mission %>% lazy_dt() %>% select(cruiseseriescode) %>% distinct() %>% pull(), "[,]")))
+    if(length(rv$all$cruiseseries) > 0)
+       names(rv$all$cruiseseries) <- tmpCS[rv$all$cruiseseries]
+
     rv$all$icesarea <- rv$stnall %>% lazy_dt() %>% select(icesarea) %>% distinct() %>% pull() %>% sort()
     rv$all$area <- rv$stnall %>% lazy_dt() %>% select(area) %>% distinct() %>% pull() %>% sort()
   }
@@ -55,7 +61,7 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
   
   if(loadDb) {
     updateSelectizeInput(session, "selMissionTypeDb", choices = index$missiontypename, server = TRUE)
-    # updateSelectizeInput(session, "selCruiseSeriesDb", choices = index$cruiseseries, server = TRUE) # Uncomment when implemented
+    updateSelectizeInput(session, "selCruiseSeriesDb", choices = index$cruiseseries, server = TRUE)
     updateSelectizeInput(session, "selCruiseDb", choices = index$cruise, server = TRUE)
     updateSelectizeInput(session, "selYearDb", choices = index$year, server = TRUE)
     updateSelectizeInput(session, "selSpeciesDb", choices = index$commonname, server = TRUE)
@@ -68,6 +74,7 @@ updateFilterform <- function(db = FALSE, loadDb = FALSE) {
     updateDateRangeInput(session, "selDateDb", start = index$date[[1]], end = index$date[[2]])
   } else if(db) {
     updateSelectizeInput(session, "selMissionTypeDb", choices = rv$all$missiontypename, server = TRUE)
+    updateSelectizeInput(session, "selCruiseSeriesDb", choices = rv$all$cruiseseries, server = TRUE)
     updateSelectizeInput(session, "selYearDb", choices = rv$all$startyear, server = TRUE)
     updateSelectizeInput(session, "selSpeciesDb", choices = rv$all$commonname, server = TRUE)
     updateSelectizeInput(session, "selCruiseDb", choices = rv$all$cruise, server = TRUE)
@@ -323,7 +330,20 @@ makeFilterChain <- function(db = FALSE) {
   if (!is.null(sub$cruise)) {
     filterChain <- append(filterChain, paste0("cruise %in% c('", paste0(sub$cruise, collapse = "', '"), "')"))
   }
-  
+
+  ## Cruise Series
+  if(db) {
+    sub$cruiseseries <- input$selCruiseSeriesDb
+  } else {
+    sub$cruiseseries <- NULL
+  }
+
+  for(xx in seq_len(length(sub$cruiseseries))) {
+    yy <- sub$cruiseseries[[xx]]
+    filterChain <- append(filterChain, paste0("cruiseseriescode %like% '", yy, ",%' | cruiseseriescode %like% '%,", yy,"' | cruiseseriescode %in% c(", yy,")"))
+    print(filterChain)
+  }
+
   ## Platform
   
   if(db) {
@@ -409,19 +429,6 @@ makeFilterChain <- function(db = FALSE) {
   if (!is.null(sub$icesarea)) {
     filterChain <- append(filterChain, paste0("icesarea %in% c('", paste0(sub$icesarea, collapse = "', '"), "')"))
   }
-  
-  ## Cruise series, uncomment when implemented
-  
-  # if(db) {
-  #   sub$cruiseseries <- input$selCruiseSeriesDb
-  # } else {
-  #   sub$cruiseseries <- NULL
-  # }
-  # 
-  # if (!is.null(sub$cruiseseries)) {
-  #   filterChain <- append(filterChain, paste0("cruiseseriescode %in% c('", paste0(sub$cruiseseries, collapse = "', '"), "')"))
-  # }
-  
   
   ## Longitude
   
