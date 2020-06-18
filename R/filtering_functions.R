@@ -363,9 +363,17 @@ makeFilterChain <- function(db = FALSE) {
   ## Serial number
   
   if(db) {
-    sub$serialnumber <- input$selSerialnumberDb
+    if(input$toggleSerialnumberDb == TRUE) {
+      sub$serialnumber <- processRangeInput(input$selSerialnumberDbRange, index$serialnumber)
+    } else {
+      sub$serialnumber <- input$selSerialnumberDb
+    }
   } else {
-    sub$serialnumber <- input$subSerialnumber   
+    if(input$toggleSerialnumber == TRUE) {
+      sub$serialnumber <- processRangeInput(input$subSerialnumberRange, rv$all$serialnumber)
+    } else {
+      sub$serialnumber <- input$subSerialnumber
+    }
   }
   
   if (!is.null(sub$serialnumber)) {
@@ -376,9 +384,17 @@ makeFilterChain <- function(db = FALSE) {
   ## Gear
   
   if(db) {
-    sub$gear <- input$selGearDb
+    if(input$toggleGearDb == TRUE) {
+      sub$gear <- processRangeInput(input$selGearDbRange, index$gear)
+    } else {
+      sub$gear <- input$selGearDb
+    }
   } else {
-    sub$gear <- input$subGear
+    if(input$toggleGear == TRUE) {
+      sub$gear <- processRangeInput(input$subGearRange, rv$all$gear)
+    } else {
+      sub$gear <- input$subGear
+    }
   }
   
   if (!is.null(sub$gear)) {
