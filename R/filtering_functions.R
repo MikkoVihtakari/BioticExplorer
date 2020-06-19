@@ -344,7 +344,6 @@ makeFilterChain <- function(db = FALSE) {
   for(xx in seq_len(length(sub$cruiseseries))) {
     yy <- sub$cruiseseries[[xx]]
     filterChain <- append(filterChain, paste0("cruiseseriescode %like% '", yy, ",%' | cruiseseriescode %like% '%,", yy,"' | cruiseseriescode %in% c(", yy,")"))
-    print(filterChain)
   }
 
   ## Platform
@@ -363,17 +362,9 @@ makeFilterChain <- function(db = FALSE) {
   ## Serial number
   
   if(db) {
-    if(input$toggleSerialnumberDb == TRUE) {
-      sub$serialnumber <- processRangeInput(input$selSerialnumberDbRange, index$serialnumber)
-    } else {
-      sub$serialnumber <- input$selSerialnumberDb
-    }
+    sub$serialnumber <- processRangeInput(input$selSerialnumberDb, index$serialnumber)
   } else {
-    if(input$toggleSerialnumber == TRUE) {
-      sub$serialnumber <- processRangeInput(input$subSerialnumberRange, rv$all$serialnumber)
-    } else {
-      sub$serialnumber <- input$subSerialnumber
-    }
+    sub$serialnumber <- processRangeInput(input$subSerialnumber, rv$all$serialnumber)
   }
   
   if (!is.null(sub$serialnumber)) {
@@ -384,17 +375,9 @@ makeFilterChain <- function(db = FALSE) {
   ## Gear
   
   if(db) {
-    if(input$toggleGearDb == TRUE) {
-      sub$gear <- processRangeInput(input$selGearDbRange, index$gear)
-    } else {
-      sub$gear <- input$selGearDb
-    }
+    sub$gear <- processRangeInput(input$selGearDb, index$gear)
   } else {
-    if(input$toggleGear == TRUE) {
-      sub$gear <- processRangeInput(input$subGearRange, rv$all$gear)
-    } else {
-      sub$gear <- input$subGear
-    }
+    sub$gear <- processRangeInput(input$subGear, rv$all$gear)
   }
   
   if (!is.null(sub$gear)) {
@@ -456,11 +439,16 @@ makeFilterChain <- function(db = FALSE) {
   } else {
     sub$lon <- as.numeric(input$subLon)
   }
-  
+ 
   if(all(sub$lon == c(-180, 180))) sub$lon <- NULL
   
   if (!is.null(sub$lon)) {
-    filterChain <- append(filterChain, paste0("longitudestart >= ",sub$lon[1], " & longitudestart <= ", sub$lon[2])) 
+    if(sub$lon[1] > rv$all$min.lon) {
+      filterChain <- append(filterChain, paste0("longitudestart > ",sub$lon[1]))
+    }
+    if(sub$lon[2] < rv$all$max.lon) {
+      filterChain <- append(filterChain, paste0("longitudestart < ",sub$lon[2]))
+    }
   }
   
   ## Latitude
@@ -474,7 +462,12 @@ makeFilterChain <- function(db = FALSE) {
   if(all(sub$lat == c(-90, 90))) sub$lat <- NULL
   
   if (!is.null(sub$lat)) {
-    filterChain <- append(filterChain, paste0("latitudestart >= ", sub$lat[1], " & latitudestart <= ", sub$lat[2]))
+    if(sub$lat[1] > rv$all$min.lat) {
+      filterChain <- append(filterChain, paste0("latitudestart > ",sub$lat[1]))
+    }
+    if(sub$lat[2] < rv$all$max.lat) {
+      filterChain <- append(filterChain, paste0("latitudestart < ",sub$lat[2]))
+    }
   }
   
   # if (!identical(as.numeric(input$subLon), c(rv$all$min.lon, rv$all$max.lon))) {
@@ -490,7 +483,10 @@ makeFilterChain <- function(db = FALSE) {
   # } else {
   #   sub$lat <- NULL
   # }
-  
+
+  print("We have filter:") 
+  print(filterChain)
+ 
   list(filterChain = filterChain, sub = sub)
 }
 

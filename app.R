@@ -22,7 +22,7 @@ if(os == "Linux") {
 
 ### Install missing packages
 
-required.packages <- c("shiny" = TRUE, "shinyjs" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = TRUE, "DT" = TRUE, 
+required.packages <- c("shiny" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = TRUE, "DT" = TRUE, 
                        "data.table" = TRUE,  "tidyverse" = TRUE, "dtplyr" = TRUE, "devtools" = FALSE,
                        "leaflet" = TRUE, "leaflet.minicharts" = TRUE, "plotly" = TRUE, 
                        "openxlsx" = FALSE, "scales" = FALSE, "fishmethods" = FALSE, "viridis" = FALSE,
@@ -181,7 +181,6 @@ sidebar <- dashboardSidebar(sidebarMenu(
 
 body <- 
   dashboardBody(
-    useShinyjs(),
     tabItems(
       
       ## Info tab ####   
@@ -278,24 +277,11 @@ body <-
                            column(6,
                                   selectizeInput(inputId = "subSpecies", label = "Species:", 
                                                  choices = NULL, multiple = TRUE),
-                                  div(
-                                    div(style="display:inline-block", selectizeInput(inputId = "subSerialnumber",
+                                  selectizeInput(inputId = "subSerialnumber", 
                                                  label = "Serial number:",
-                                                 choices = NULL, multiple = TRUE)),
-                                    div(style="display:inline-block", shinyjs::hidden(
-                                         textInput("subSerialnumberRange", "Serial number range:", character(0))
-                                    )),
-                                    div(style="display:inline-block", checkboxInput("toggleSerialnumber", "Use range", FALSE))
-                                  ),
-                                  div(
-                                    div(style="display:inline-block", selectizeInput(inputId = "subGear",
-                                                  label = "Gear code:",
-                                                  choices = NULL, multiple = TRUE)),
-                                    div(style="display:inline-block", shinyjs::hidden(
-                                         textInput("subGearRange", "Gear range:", character(0))
-                                    )),
-                                    div(style="display:inline-block", checkboxInput("toggleGear", "Use range", FALSE))
-                                  ),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                  selectizeInput(inputId = "subGear", label = "Gear code:",
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
                                   selectizeInput(inputId = "subMissionType", label = "Mission type:",
                                                  choices = NULL, multiple = TRUE)
                            )),
@@ -394,25 +380,13 @@ body <-
                                                    label = "Platform name:",
                                                    choices = NULL, multiple = TRUE),
                                     
-                                    div(
-                                      div(style="display:inline-block", selectizeInput(inputId = "selSerialnumberDb",
-                                                  label = "Serial number:",
-                                                  choices = NULL, multiple = TRUE)),
-                                      div(style="display:inline-block", shinyjs::hidden(
-                                          textInput("selSerialnumberDbRange", "Serial number range:", character(0))
-                                      )),
-                                      div(style="display:inline-block", checkboxInput("toggleSerialnumberDb", "Use range", FALSE))
-                                    ),
-
-                                    div(
-                                      div(style="display:inline-block", selectizeInput(inputId = "selGearDb",
-                                                    label = "Gear code:",
-                                                    choices = NULL, multiple = TRUE)),
-                                      div(style="display:inline-block", shinyjs::hidden(
-                                          textInput("selGearDbRange", "Gear range:", character(0))
-                                      )),
-                                      div(style="display:inline-block", checkboxInput("toggleGearDb", "Use range", FALSE))
-                                    ),
+                                    selectizeInput(inputId = "selSerialnumberDb", 
+                                                   label = "Serial number:",
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                    
+                                    selectizeInput(inputId = "selGearDb", 
+                                                   label = "Gear code:",
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
                                     
                                     selectizeInput(inputId = "selGearCategoryDb", 
                                                    label = "Gear category:",
@@ -884,43 +858,7 @@ ui <- dashboardPage(header, sidebar, body)
 ## Server ####
 
 server <- shinyServer(function(input, output, session) {
-
-  shinyjs::onevent("change", "toggleGearDb",
-            {
-              shinyjs::toggle(id = "selGearDbRange", condition = input$toggleGearDb)
-              shinyjs::reset("selGearDbRange")
-              shinyjs::toggle(id = "selGearDb", condition = !input$toggleGearDb)
-              shinyjs::reset("selGearDb")
-            }
-  )
-
-  shinyjs::onevent("change", "toggleSerialnumberDb",
-            {
-              shinyjs::toggle(id = "selSerialnumberDbRange", condition = input$toggleSerialnumberDb)
-              shinyjs::reset("selSerialnumberDbRange")
-              shinyjs::toggle(id = "selSerialnumberDb", condition = !input$toggleSerialnumberDb)
-              shinyjs::reset("selSerialnumberDb")
-            }
-  )
-  shinyjs::onevent("change", "toggleGear",
-            {
-              shinyjs::toggle(id = "subGearRange", condition = input$toggleGear)
-              shinyjs::reset("subGearRange")
-              shinyjs::toggle(id = "subGear", condition = !input$toggleGear)
-              shinyjs::reset("subGear")
-            }
-  )
-
-  shinyjs::onevent("change", "toggleSerialnumber",
-            {
-              shinyjs::toggle(id = "subSerialnumberRange", condition = input$toggleSerialnumber)
-              shinyjs::reset("subSerialnumberRange")
-              shinyjs::toggle(id = "subSerialnumber", condition = !input$toggleSerialnumber)
-              shinyjs::reset("subSerialnumber")
-            }
-  )
-
-
+  
   ## Options ####
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
@@ -1078,15 +1016,17 @@ server <- shinyServer(function(input, output, session) {
     output$fetchedDb <- reactive(TRUE)
     
     tmp <- makeFilterChain(db = TRUE)
-    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
-    rv$sub <- tmp$sub
     
-    rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
+    if(length(tmp$filterChain) > 0) {
+      rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+      rv$sub <- tmp$sub
     
-    obsPopulatePanel(db = TRUE)
+      rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
+      obsPopulatePanel(db = TRUE)
+    }
   })
   
   #.................
