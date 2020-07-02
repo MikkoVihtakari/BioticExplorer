@@ -104,3 +104,9 @@ processRangeInput <- function(inp, idx) {
   return(ret)
 }
 
+# Pretty decimal for csv writing (might be slow for large data.table)
+prettyDec <- function(dt) {
+  cols <- names(dt)[sapply(dt, class) == "numeric"]
+  for (j in cols) suppressWarnings(set(dt, j = j, value = as.numeric(format(dt[[j]]))))
+  return(dt)
+}

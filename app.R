@@ -1537,8 +1537,8 @@ server <- shinyServer(function(input, output, session) {
           
           fileName <- paste0(input$downloadDataType[i], ".csv")
           write.csv(
-            eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))),
-            fileName, row.names = FALSE) 
+            prettyDec(eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$")))),
+            fileName, row.names = FALSE, na = "") 
           files <- c(fileName,files)
         }
         #create the zip file
@@ -1567,11 +1567,11 @@ server <- shinyServer(function(input, output, session) {
         
       } else {
         tmp <- switch(input$downloadDataType,
-                      "mission" = rv$mission,
-                      "stnall" = rv$stnall,
-                      "indall" = rv$indall)
+                      "mission" = prettyDec(rv$mission),
+                      "stnall" = prettyDec(rv$stnall),
+                      "indall" = prettyDec(rv$indall))
         
-        write.csv(tmp, file, row.names = FALSE) 
+        write.csv(tmp, file, row.names = FALSE, na = "") 
       }
     }
   )
