@@ -26,7 +26,7 @@ required.packages <- c("shiny" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = T
                        "data.table" = TRUE,  "tidyverse" = TRUE, "dtplyr" = TRUE, "devtools" = FALSE,
                        "leaflet" = TRUE, "leaflet.minicharts" = TRUE, "plotly" = TRUE, 
                        "openxlsx" = FALSE, "scales" = FALSE, "fishmethods" = FALSE, "viridis" = FALSE,
-                       "mapview" = FALSE, "DBI" = FALSE) ## TRUE means that the package should be loaded. FALSE that the functions are used without loading the package
+                       "mapview" = FALSE, "DBI" = FALSE, "bsplus" = TRUE) ## TRUE means that the package should be loaded. FALSE that the functions are used without loading the package
 
 new.packages <- names(required.packages)[!(names(required.packages) %in% installed.packages()[,"Package"])]
 if (length(new.packages) > 0) install.packages(new.packages)
@@ -119,7 +119,7 @@ header <- dashboardHeader(title = div(
            loadingLogo("https://www.hi.no", "logo.png", "logo_bw.png", 
                        height = "40px")), 
     column(width = 10, p("Biotic Explorer", align = "center"))
-  )
+  ), use_bs_tooltip()
 ),
 dropdownMenu(type = "notifications", headerText = scan("VERSION", what = "character", quiet = TRUE),
              icon = icon("cog"), badgeStatus = NULL,
@@ -186,7 +186,6 @@ body <-
       ## Info tab ####   
       
       tabItem("info", 
-              
               fluidRow(
                 column(width = 12,
                        h1("Welcome to the Biotic Explorer", align = "center"),
@@ -265,7 +264,8 @@ body <-
                          fluidRow(
                            column(6, 
                                   selectizeInput(inputId = "subYear", label = "Year:",
-                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subCruise", label = "Cruise number:",
                                                  choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subPlatform", label = "Platform name:",
@@ -279,9 +279,11 @@ body <-
                                                  choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subSerialnumber", 
                                                  label = "Serial number:",
-                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subGear", label = "Gear code:",
-                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subMissionType", label = "Mission type:",
                                                  choices = NULL, multiple = TRUE)
                            )),
@@ -370,8 +372,8 @@ body <-
                              column(6,
                                     selectizeInput(inputId = "selYearDb", 
                                                    label = "Year:",
-                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
-                                    
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
                                     selectizeInput(inputId = "selSpeciesDb", 
                                                    label = "Species:", 
                                                    choices = NULL, multiple = TRUE),
@@ -382,11 +384,13 @@ body <-
                                     
                                     selectizeInput(inputId = "selSerialnumberDb", 
                                                    label = "Serial number:",
-                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
                                     
                                     selectizeInput(inputId = "selGearDb", 
                                                    label = "Gear code:",
-                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
                                     
                                     selectizeInput(inputId = "selGearCategoryDb", 
                                                    label = "Gear category:",
@@ -858,7 +862,7 @@ ui <- dashboardPage(header, sidebar, body)
 ## Server ####
 
 server <- shinyServer(function(input, output, session) {
-  
+
   ## Options ####
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
