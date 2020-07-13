@@ -265,7 +265,7 @@ body <-
                          fluidRow(
                            column(6, 
                                   selectizeInput(inputId = "subYear", label = "Year:",
-                                                 choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
                                   selectizeInput(inputId = "subCruise", label = "Cruise number:",
                                                  choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subPlatform", label = "Platform name:",
@@ -370,7 +370,7 @@ body <-
                              column(6,
                                     selectizeInput(inputId = "selYearDb", 
                                                    label = "Year:",
-                                                   choices = NULL, multiple = TRUE),
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$")),
                                     
                                     selectizeInput(inputId = "selSpeciesDb", 
                                                    label = "Species:", 

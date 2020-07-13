@@ -301,9 +301,9 @@ makeFilterChain <- function(db = FALSE) {
   ## Year
   
   if(db) {
-    sub$year <- input$selYearDb
+    sub$year <- processRangeInput(input$selYearDb, index$year)
   } else {
-    sub$year <- input$subYear
+    sub$year <- processRangeInput(input$subYear, rv$all$startyear)
   }
   
   if (!is.null(sub$year)) { 
