@@ -295,7 +295,14 @@ body <-
                                      max = 90, value = c(-90, 90)),
                          
                          actionButton(inputId = "Subset", label = "Subset"),
-                         actionButton(inputId = "Reset", label = "Reset")
+                         actionButton(inputId = "Reset", label = "Reset"),
+                         bs_button("Show active filter", button_type = "info") %>% bs_attach_collapse("ex_collapse2"),
+                         br(),
+                         bs_collapse(
+                           id = "ex_collapse2",
+                           content = tags$div(textOutput("activeFilter2"))
+                         )
+
                          
                          #, verbatimTextOutput("test") # For debugging
                          
@@ -412,9 +419,14 @@ body <-
                            
                            conditionalPanel(condition = "output.fetchedDb == true",
                                             actionButton(inputId = "SubsetDB", label = "Subset"),
-                                            actionButton(inputId = "ResetDB", label = "Reset")
-                           )
-                           
+                                            actionButton(inputId = "ResetDB", label = "Reset"),
+                                            bs_button("Show active filter", button_type = "info") %>% bs_attach_collapse("ex_collapse"),
+                                            br(),
+                                            bs_collapse(
+                                              id = "ex_collapse",
+                                              content = tags$div(textOutput("activeFilter"))
+                                            )
+                           ),
                          ),
                          
                          conditionalPanel(
@@ -1017,12 +1029,13 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$doFetchDB, {
     
-    output$fetchedDb <- reactive(TRUE)
-    
     tmp <- makeFilterChain(db = TRUE)
-    
+
     if(length(tmp$filterChain) > 0) {
+      output$fetchedDb <- reactive(TRUE)
       rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+      output$activeFilter <- renderText({rv$filterChain})
+
       rv$sub <- tmp$sub
     
       rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
@@ -1081,6 +1094,7 @@ server <- shinyServer(function(input, output, session) {
     
     tmp <- makeFilterChain()
     rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+    output$activeFilter2 <- renderText({rv$filterChain})
     rv$sub <- tmp$sub
     
     rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
@@ -1094,15 +1108,18 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$SubsetDB, {
     
     tmp <- makeFilterChain(db = TRUE)
-    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
-    rv$sub <- tmp$sub
+
+    if(length(tmp$filterChain) > 0) {
+      rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+      output$activeFilter <- renderText({rv$filterChain})
+      rv$sub <- tmp$sub
     
-    rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
+      rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
-    obsPopulatePanel(db = TRUE)
-    
+      obsPopulatePanel(db = TRUE)
+    }
   })
   
   ##...............
@@ -1110,6 +1127,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$Reset, {
     
+    output$activeFilter2 <- renderText({""})
     rv$stnall <- rv$inputData$stnall
     rv$indall <- rv$inputData$indall
     rv$mission <- rv$inputData$mission
@@ -1121,6 +1139,7 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$ResetDB, {
     
     output$fetchedDb <- reactive(FALSE)
+    output$activeFilter <- renderText({""})
     
     rv$stnall <- NULL
     rv$indall <- NULL
