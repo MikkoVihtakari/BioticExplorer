@@ -939,7 +939,7 @@ server <- shinyServer(function(input, output, session) {
         
         # Copy the indexing script from BioticExplorerServer::indexDatabase. 
         if(!exists("index")) {
-          index <<- list()
+          index <- list()
           index$missiontypename <- rv$inputData$mission %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
           index$cruise <- rv$inputData$mission %>% select(cruise) %>% distinct() %>% pull() %>% sort()
           index$year <- rv$inputData$mission %>% select(startyear) %>% distinct() %>% pull() %>% sort()
@@ -952,6 +952,9 @@ server <- shinyServer(function(input, output, session) {
           index$nmeasured <- rv$inputData$indall %>% select(length) %>% count() %>% pull()
           index$downloadstart <- rv$inputData$meta %>% select(timestart) %>% pull()
           index$downloadend <- rv$inputData$meta %>% select(timeend) %>% pull()
+
+          # Make index as global
+          index <<- index
         }
         
         updateFilterform(loadDb = TRUE)
