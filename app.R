@@ -360,7 +360,7 @@ body <-
                                                    choices = NULL, multiple = TRUE),
                                     
                                     selectizeInput(inputId = "selICESAreaDb", 
-                                                   label = "ICES area:",
+                                                   label = "FAO area:",
                                                    choices = NULL, multiple = TRUE),
                                     
                                     dateRangeInput(inputId = "selDateDb", label = "Date:",
