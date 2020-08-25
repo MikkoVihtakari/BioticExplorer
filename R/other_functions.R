@@ -88,3 +88,17 @@ round_any <- function(x, accuracy, f = round) {
   f(x / accuracy) * accuracy
 }
 
+#' @title Process range text input
+
+processRangeInput <- function(inp, idx) {
+  # Sanitize input
+  spl <- trimws(unlist(strsplit(inp, "[,]")))
+  toEval <- grep("^\\d+:\\d+$", spl, perl = TRUE, value = TRUE)
+  gearRange <- try(eval(parse(text = paste0("c(", paste(toEval, collapse = ","), ")"))))
+  if(class(gearRange ) != "try-error")
+    ret <- intersect(idx, gearRange)
+  else
+    ret <- NULL
+  return(ret)
+}
+
