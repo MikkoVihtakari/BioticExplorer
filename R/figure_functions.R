@@ -21,7 +21,7 @@ stationMap <- function(data) {
                        popup = ~as.character(platformname), 
                        label = ~as.character(serialnumber), 
                        color = "red", fillOpacity = 0.5,
-                       clusterOptions = markerClusterOptions()
+                       clusterOptions = markerClusterOptions(disableClusteringAtZoom = 10, spiderfyOnMaxZoom = FALSE)
       )
   }
 }

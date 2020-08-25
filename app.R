@@ -22,11 +22,11 @@ if(os == "Linux") {
 
 ### Install missing packages
 
-required.packages <- c("shiny" = TRUE, "shinyjs" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = TRUE, "DT" = TRUE, 
+required.packages <- c("shiny" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = TRUE, "DT" = TRUE, 
                        "data.table" = TRUE,  "tidyverse" = TRUE, "dtplyr" = TRUE, "devtools" = FALSE,
                        "leaflet" = TRUE, "leaflet.minicharts" = TRUE, "plotly" = TRUE, 
                        "openxlsx" = FALSE, "scales" = FALSE, "fishmethods" = FALSE, "viridis" = FALSE,
-                       "mapview" = FALSE, "DBI" = FALSE) ## TRUE means that the package should be loaded. FALSE that the functions are used without loading the package
+                       "mapview" = FALSE, "DBI" = FALSE, "bsplus" = TRUE) ## TRUE means that the package should be loaded. FALSE that the functions are used without loading the package
 
 new.packages <- names(required.packages)[!(names(required.packages) %in% installed.packages()[,"Package"])]
 if (length(new.packages) > 0) install.packages(new.packages)
@@ -119,7 +119,7 @@ header <- dashboardHeader(title = div(
            loadingLogo("https://www.hi.no", "logo.png", "logo_bw.png", 
                        height = "40px")), 
     column(width = 10, p("Biotic Explorer", align = "center"))
-  )
+  ), use_bs_tooltip()
 ),
 dropdownMenu(type = "notifications", headerText = scan("VERSION", what = "character", quiet = TRUE),
              icon = icon("cog"), badgeStatus = NULL,
@@ -181,13 +181,11 @@ sidebar <- dashboardSidebar(sidebarMenu(
 
 body <- 
   dashboardBody(
-    useShinyjs(),
     tabItems(
       
       ## Info tab ####   
       
       tabItem("info", 
-              
               fluidRow(
                 column(width = 12,
                        h1("Welcome to the Biotic Explorer", align = "center"),
@@ -266,7 +264,8 @@ body <-
                          fluidRow(
                            column(6, 
                                   selectizeInput(inputId = "subYear", label = "Year:",
-                                                 choices = NULL, multiple = TRUE),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subCruise", label = "Cruise number:",
                                                  choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subPlatform", label = "Platform name:",
@@ -278,24 +277,13 @@ body <-
                            column(6,
                                   selectizeInput(inputId = "subSpecies", label = "Species:", 
                                                  choices = NULL, multiple = TRUE),
-                                  div(
-                                    div(style="display:inline-block", selectizeInput(inputId = "subSerialnumber",
+                                  selectizeInput(inputId = "subSerialnumber", 
                                                  label = "Serial number:",
-                                                 choices = NULL, multiple = TRUE)),
-                                    div(style="display:inline-block", shinyjs::hidden(
-                                         textInput("subSerialnumberRange", "Serial number range:", character(0))
-                                    )),
-                                    div(style="display:inline-block", checkboxInput("toggleSerialnumber", "Use range", FALSE))
-                                  ),
-                                  div(
-                                    div(style="display:inline-block", selectizeInput(inputId = "subGear",
-                                                  label = "Gear code:",
-                                                  choices = NULL, multiple = TRUE)),
-                                    div(style="display:inline-block", shinyjs::hidden(
-                                         textInput("subGearRange", "Gear range:", character(0))
-                                    )),
-                                    div(style="display:inline-block", checkboxInput("toggleGear", "Use range", FALSE))
-                                  ),
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
+                                  selectizeInput(inputId = "subGear", label = "Gear code:",
+                                                 choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subMissionType", label = "Mission type:",
                                                  choices = NULL, multiple = TRUE)
                            )),
@@ -307,7 +295,14 @@ body <-
                                      max = 90, value = c(-90, 90)),
                          
                          actionButton(inputId = "Subset", label = "Subset"),
-                         actionButton(inputId = "Reset", label = "Reset")
+                         actionButton(inputId = "Reset", label = "Reset"),
+                         bs_button("Show active filter", button_type = "info") %>% bs_attach_collapse("ex_collapse2"),
+                         br(),
+                         bs_collapse(
+                           id = "ex_collapse2",
+                           content = tags$div(textOutput("activeFilter2"))
+                         )
+
                          
                          #, verbatimTextOutput("test") # For debugging
                          
@@ -384,8 +379,8 @@ body <-
                              column(6,
                                     selectizeInput(inputId = "selYearDb", 
                                                    label = "Year:",
-                                                   choices = NULL, multiple = TRUE),
-                                    
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
                                     selectizeInput(inputId = "selSpeciesDb", 
                                                    label = "Species:", 
                                                    choices = NULL, multiple = TRUE),
@@ -394,25 +389,15 @@ body <-
                                                    label = "Platform name:",
                                                    choices = NULL, multiple = TRUE),
                                     
-                                    div(
-                                      div(style="display:inline-block", selectizeInput(inputId = "selSerialnumberDb",
-                                                  label = "Serial number:",
-                                                  choices = NULL, multiple = TRUE)),
-                                      div(style="display:inline-block", shinyjs::hidden(
-                                          textInput("selSerialnumberDbRange", "Serial number range:", character(0))
-                                      )),
-                                      div(style="display:inline-block", checkboxInput("toggleSerialnumberDb", "Use range", FALSE))
-                                    ),
-
-                                    div(
-                                      div(style="display:inline-block", selectizeInput(inputId = "selGearDb",
-                                                    label = "Gear code:",
-                                                    choices = NULL, multiple = TRUE)),
-                                      div(style="display:inline-block", shinyjs::hidden(
-                                          textInput("selGearDbRange", "Gear range:", character(0))
-                                      )),
-                                      div(style="display:inline-block", checkboxInput("toggleGearDb", "Use range", FALSE))
-                                    ),
+                                    selectizeInput(inputId = "selSerialnumberDb", 
+                                                   label = "Serial number:",
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
+                                    
+                                    selectizeInput(inputId = "selGearDb", 
+                                                   label = "Gear code:",
+                                                   choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
+                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
                                     
                                     selectizeInput(inputId = "selGearCategoryDb", 
                                                    label = "Gear category:",
@@ -434,9 +419,14 @@ body <-
                            
                            conditionalPanel(condition = "output.fetchedDb == true",
                                             actionButton(inputId = "SubsetDB", label = "Subset"),
-                                            actionButton(inputId = "ResetDB", label = "Reset")
-                           )
-                           
+                                            actionButton(inputId = "ResetDB", label = "Reset"),
+                                            bs_button("Show active filter", button_type = "info") %>% bs_attach_collapse("ex_collapse"),
+                                            br(),
+                                            bs_collapse(
+                                              id = "ex_collapse",
+                                              content = tags$div(textOutput("activeFilter"))
+                                            )
+                           ),
                          ),
                          
                          conditionalPanel(
@@ -885,42 +875,6 @@ ui <- dashboardPage(header, sidebar, body)
 
 server <- shinyServer(function(input, output, session) {
 
-  shinyjs::onevent("change", "toggleGearDb",
-            {
-              shinyjs::toggle(id = "selGearDbRange", condition = input$toggleGearDb)
-              shinyjs::reset("selGearDbRange")
-              shinyjs::toggle(id = "selGearDb", condition = !input$toggleGearDb)
-              shinyjs::reset("selGearDb")
-            }
-  )
-
-  shinyjs::onevent("change", "toggleSerialnumberDb",
-            {
-              shinyjs::toggle(id = "selSerialnumberDbRange", condition = input$toggleSerialnumberDb)
-              shinyjs::reset("selSerialnumberDbRange")
-              shinyjs::toggle(id = "selSerialnumberDb", condition = !input$toggleSerialnumberDb)
-              shinyjs::reset("selSerialnumberDb")
-            }
-  )
-  shinyjs::onevent("change", "toggleGear",
-            {
-              shinyjs::toggle(id = "subGearRange", condition = input$toggleGear)
-              shinyjs::reset("subGearRange")
-              shinyjs::toggle(id = "subGear", condition = !input$toggleGear)
-              shinyjs::reset("subGear")
-            }
-  )
-
-  shinyjs::onevent("change", "toggleSerialnumber",
-            {
-              shinyjs::toggle(id = "subSerialnumberRange", condition = input$toggleSerialnumber)
-              shinyjs::reset("subSerialnumberRange")
-              shinyjs::toggle(id = "subSerialnumber", condition = !input$toggleSerialnumber)
-              shinyjs::reset("subSerialnumber")
-            }
-  )
-
-
   ## Options ####
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
@@ -985,7 +939,7 @@ server <- shinyServer(function(input, output, session) {
         
         # Copy the indexing script from BioticExplorerServer::indexDatabase. 
         if(!exists("index")) {
-          index <<- list()
+          index <- list()
           index$missiontypename <- rv$inputData$mission %>% select(missiontypename) %>% distinct() %>% pull() %>% sort()
           index$cruise <- rv$inputData$mission %>% select(cruise) %>% distinct() %>% pull() %>% sort()
           index$year <- rv$inputData$mission %>% select(startyear) %>% distinct() %>% pull() %>% sort()
@@ -998,6 +952,9 @@ server <- shinyServer(function(input, output, session) {
           index$nmeasured <- rv$inputData$indall %>% select(length) %>% count() %>% pull()
           index$downloadstart <- rv$inputData$meta %>% select(timestart) %>% pull()
           index$downloadend <- rv$inputData$meta %>% select(timeend) %>% pull()
+
+          # Make index as global
+          index <<- index
         }
         
         updateFilterform(loadDb = TRUE)
@@ -1075,18 +1032,21 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$doFetchDB, {
     
-    output$fetchedDb <- reactive(TRUE)
-    
     tmp <- makeFilterChain(db = TRUE)
-    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
-    rv$sub <- tmp$sub
+
+    if(length(tmp$filterChain) > 0) {
+      output$fetchedDb <- reactive(TRUE)
+      rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+      output$activeFilter <- renderText({rv$filterChain})
+
+      rv$sub <- tmp$sub
     
-    rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
+      rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
-    obsPopulatePanel(db = TRUE)
-    
+      obsPopulatePanel(db = TRUE)
+    }
   })
   
   #.................
@@ -1137,6 +1097,7 @@ server <- shinyServer(function(input, output, session) {
     
     tmp <- makeFilterChain()
     rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+    output$activeFilter2 <- renderText({rv$filterChain})
     rv$sub <- tmp$sub
     
     rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
@@ -1150,15 +1111,18 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$SubsetDB, {
     
     tmp <- makeFilterChain(db = TRUE)
-    rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
-    rv$sub <- tmp$sub
+
+    if(length(tmp$filterChain) > 0) {
+      rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
+      output$activeFilter <- renderText({rv$filterChain})
+      rv$sub <- tmp$sub
     
-    rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
-    rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
+      rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
+      rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
     
-    obsPopulatePanel(db = TRUE)
-    
+      obsPopulatePanel(db = TRUE)
+    }
   })
   
   ##...............
@@ -1166,6 +1130,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$Reset, {
     
+    output$activeFilter2 <- renderText({""})
     rv$stnall <- rv$inputData$stnall
     rv$indall <- rv$inputData$indall
     rv$mission <- rv$inputData$mission
@@ -1177,6 +1142,7 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$ResetDB, {
     
     output$fetchedDb <- reactive(FALSE)
+    output$activeFilter <- renderText({""})
     
     rv$stnall <- NULL
     rv$indall <- NULL
@@ -1597,8 +1563,8 @@ server <- shinyServer(function(input, output, session) {
           
           fileName <- paste0(input$downloadDataType[i], ".csv")
           write.csv(
-            eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$"))),
-            fileName, row.names = FALSE) 
+            prettyDec(eval(parse(text = paste("rv", input$downloadDataType[i], sep = "$")))),
+            fileName, row.names = FALSE, na = "") 
           files <- c(fileName,files)
         }
         #create the zip file
@@ -1627,11 +1593,11 @@ server <- shinyServer(function(input, output, session) {
         
       } else {
         tmp <- switch(input$downloadDataType,
-                      "mission" = rv$mission,
-                      "stnall" = rv$stnall,
-                      "indall" = rv$indall)
+                      "mission" = prettyDec(rv$mission),
+                      "stnall" = prettyDec(rv$stnall),
+                      "indall" = prettyDec(rv$indall))
         
-        write.csv(tmp, file, row.names = FALSE) 
+        write.csv(tmp, file, row.names = FALSE, na = "") 
       }
     }
   )
