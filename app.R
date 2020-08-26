@@ -432,7 +432,7 @@ body <-
                          conditionalPanel(
                            condition = "output.serverVersion == false",
                            h4("Desktop version. The database is not available", align = "center"),
-                           p("If you are trying to run the app as a server version, check make sure that the dbPath argument is defined correctly.", align = "center")
+                           p("If you are trying to run the app as a server version, make sure that the dbPath argument is defined correctly.", align = "center")
                          )
                          
                        )
