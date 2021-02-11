@@ -51,10 +51,10 @@ processBioticFile <- function(file, removeEmpty = TRUE, convertColumns = TRUE, r
   stn[, stationstarttime := NULL]
   stn[, stationstoptime := NULL]
   
-  if (convertColumns) {
-    date.cols <- grep("date", names(stn), value = TRUE)
-    stn[, eval(date.cols) := lapply(.SD, as.Date), .SDcols = eval(date.cols)]
-  }
+  # if (convertColumns) { # This fixed the time issue. Left here in case there are unforseen consequences.
+    # date.cols <- grep("date", names(stn), value = TRUE)
+    # stn[, eval(date.cols) := lapply(.SD, as.Date), .SDcols = eval(date.cols)]
+  # }
   
   ##________________
   ## Sample data ---
