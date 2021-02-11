@@ -1,3 +1,19 @@
+#' @title Process range text input
+
+processRangeInput <- function(inp, idx) {
+  # Sanitize input
+  if(is.null(inp))
+    return(NULL)
+  spl <- trimws(unlist(strsplit(inp, "[,]")))
+  toEval <- grep("^\\d+$|^\\d+:\\d+$", spl, perl = TRUE, value = TRUE)
+  gearRange <- try(eval(parse(text = paste0("c(", paste(toEval, collapse = ","), ")"))))
+  if(class(gearRange ) != "try-error")
+    ret <- intersect(idx, gearRange)
+  else
+    ret <- NULL
+  return(ret)
+}
+
 #' @title Update subset selectors
 
 updateSelectors <- function(db = FALSE) {
@@ -13,7 +29,7 @@ updateSelectors <- function(db = FALSE) {
   
   rv$all$indSpecies <- rv$indall %>% lazy_dt() %>% 
     filter(!is.na(length) & !is.na(individualweight)) %>%
-    group_by(commonname) %>% tally() %>% filter(n > 5) %>%
+    group_by(commonname) %>% summarize(n = n()) %>% filter(n > 5) %>%
     select(commonname) %>% distinct() %>% pull() %>% sort()
   
   lon <- rv$stnall %>% lazy_dt() %>% filter(!is.na(longitudestart)) %>% summarise(min = suppressWarnings(min(longitudestart)), max = suppressWarnings(max(longitudestart))) %>% collect()
@@ -486,8 +502,8 @@ makeFilterChain <- function(db = FALSE) {
   #   sub$lat <- NULL
   # }
 
-  print("We have filter:") 
-  print(filterChain)
+  # print("We have filter:") 
+  # print(filterChain)
  
   list(filterChain = filterChain, sub = sub)
 }

@@ -88,22 +88,6 @@ round_any <- function(x, accuracy, f = round) {
   f(x / accuracy) * accuracy
 }
 
-#' @title Process range text input
-
-processRangeInput <- function(inp, idx) {
-  # Sanitize input
-  if(is.null(inp))
-    return(NULL)
-  spl <- trimws(unlist(strsplit(inp, "[,]")))
-  toEval <- grep("^\\d+$|^\\d+:\\d+$", spl, perl = TRUE, value = TRUE)
-  gearRange <- try(eval(parse(text = paste0("c(", paste(toEval, collapse = ","), ")"))))
-  if(class(gearRange ) != "try-error")
-    ret <- intersect(idx, gearRange)
-  else
-    ret <- NULL
-  return(ret)
-}
-
 # Pretty decimal for csv writing (might be slow for large data.table)
 prettyDec <- function(dt) {
   cols <- names(dt)[sapply(dt, class) == "numeric"]
