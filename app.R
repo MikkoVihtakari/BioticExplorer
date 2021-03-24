@@ -40,11 +40,11 @@ if (!"RstoxData" %in% installed.packages()[,"Package"]) {
   install.packages("RstoxData", repo="https://stoxproject.github.io/repo")
 }
 
-#### MonetDBLite
+#### DuckDB
 # (not loaded, use pointer when using the functions)
 
-if (!"MonetDBLite" %in% installed.packages()[,"Package"]) {
-  devtools::install_github("hannesmuehleisen/MonetDBLite-R")
+if (!"duckdb" %in% installed.packages()[,"Package"]) {
+  install.packages("duckdb")
 }
 
 ## Source functions used by the app
@@ -97,8 +97,8 @@ individualOverviewFigureList <- list("Length distribution of species" = "indLeng
 
 speciesFigureList <- list("Length-weight" = "lwPlot", "Growth" = "laPlot", "Maturity" = "l50Plot", "Sex ratio map" = "sexRatioMap", "Length distribution map" = "sizeDistributionMap", "Length/sex disrtibution" = "lengthDistributionPlot", "Length/stage distribution" = "stageDistributionPlot")
 
-dbPath <- "~/Desktop/IMR_db.monetdb" 
-dbIndexPath <- "~/Desktop/dbIndex.rda"
+dbPath <- "/data/IMR_db.duckdb"
+dbIndexPath <- "/data/dbIndex.rda"
 
 if(file.exists(dbPath)) {
   message("dbPath found. Enabling server version.")
@@ -931,7 +931,7 @@ server <- shinyServer(function(input, output, session) {
         
         rv$uploadDbclicked <- TRUE
         
-        con_db <- DBI::dbConnect(MonetDBLite::MonetDBLite(), dbPath)
+        con_db <- DBI::dbConnect(duckdb::duckdb(), dbPath, read_only = TRUE)
         
         rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
         rv$inputData$indall <- dplyr::tbl(con_db, "indall")
