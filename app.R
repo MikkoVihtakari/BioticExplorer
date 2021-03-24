@@ -936,7 +936,12 @@ server <- shinyServer(function(input, output, session) {
         rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
         rv$inputData$indall <- dplyr::tbl(con_db, "indall")
         rv$inputData$mission <- dplyr::tbl(con_db, "mission")
-        
+        if(DBI::dbExistsTable(con_db, "meta")) {
+	  rv$inputData$meta <- dplyr::tbl(con_db, "meta")
+        } else {
+          rv$inputData$meta <- NULL
+        }
+ 
         # Copy the indexing script from BioticExplorerServer::indexDatabase. 
         if(!exists("index")) {
           index <- list()
@@ -950,8 +955,13 @@ server <- shinyServer(function(input, output, session) {
           index$gear <- rv$inputData$stnall %>% select(gear) %>% distinct() %>% pull() %>% sort()
           index$date <- rv$inputData$stnall %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
           index$nmeasured <- rv$inputData$indall %>% select(length) %>% count() %>% pull()
-          index$downloadstart <- rv$inputData$meta %>% select(timestart) %>% pull()
-          index$downloadend <- rv$inputData$meta %>% select(timeend) %>% pull()
+          if(!is.null(rv$inputData$meta)) {
+            index$downloadstart <- rv$inputData$meta %>% select(timestart) %>% pull()
+            index$downloadend <- rv$inputData$meta %>% select(timeend) %>% pull()
+          } else {
+            index$downloadstart <- NA
+            index$downloadend <- NA
+          }
 
           # Make index as global
           index <<- index
