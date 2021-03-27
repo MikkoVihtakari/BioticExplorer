@@ -73,17 +73,22 @@ individualOverviewFigureList <- list("Length distribution of species" = "indLeng
 
 speciesFigureList <- list("Length-weight" = "lwPlot", "Growth" = "laPlot", "Maturity" = "l50Plot", "Sex ratio map" = "sexRatioMap", "Length distribution map" = "sizeDistributionMap", "Length/sex disrtibution" = "lengthDistributionPlot", "Length/stage distribution" = "stageDistributionPlot")
 
-dbPath <- "/data/IMR_db.duckdb"
 dbIndexPath <- "/data/dbIndex.rda"
+dbFound <- FALSE
 
-if(file.exists(dbPath)) {
-  message("dbPath found. Enabling server version.")
+if(DBI::dbCanConnect(MonetDB.R::MonetDB(), host="dbserver", dbname="bioticexplorer", user="monetdb", password="monetdb")) {
+  con_db <- DBI::dbConnect(MonetDB.R::MonetDB(), host="dbserver", dbname="bioticexplorer", user="monetdb", password="monetdb")
+  dbFound <- TRUE
+}
+
+if(dbFound) {
+  message("Database found. Enabling server version.")
   if(file.exists(dbIndexPath)) {
     load(dbIndexPath, envir = .GlobalEnv)
     message("dbIndexPath found. Loading the database index.")
   }
 } else {
-  message("dbPath not found. Enabling desktop version.")
+  message("Database not found. Enabling desktop version.")
 }
 
 ##............
@@ -408,7 +413,7 @@ body <-
                          conditionalPanel(
                            condition = "output.serverVersion == false",
                            h4("Desktop version. The database is not available", align = "center"),
-                           p("If you are trying to run the app as a server version, make sure that the dbPath argument is defined correctly.", align = "center")
+                           p("If you are trying to run the app as a server version, make sure that the database is defined correctly.", align = "center")
                          )
                          
                        )
@@ -855,7 +860,7 @@ server <- shinyServer(function(input, output, session) {
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
   
-  output$serverVersion <- reactive(file.exists(dbPath)) 
+  output$serverVersion <- reactive(dbFound) 
   outputOptions(output, "serverVersion", suspendWhenHidden = FALSE)
   
   output$singleCruise <- reactive(FALSE) 
@@ -898,7 +903,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$tabs, {
     if(input$tabs == "uploadDb") {
-      if(file.exists(dbPath)) {
+      if(dbFound) {
         
         if(!rv$uploadDbclicked) {
           output$fetchedDb <- reactive(FALSE)
@@ -906,8 +911,6 @@ server <- shinyServer(function(input, output, session) {
         }
         
         rv$uploadDbclicked <- TRUE
-        
-        con_db <- DBI::dbConnect(duckdb::duckdb(), dbPath, read_only = TRUE)
         
         rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
         rv$inputData$indall <- dplyr::tbl(con_db, "indall")
