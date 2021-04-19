@@ -361,7 +361,7 @@ makeFilterChain <- function(db = FALSE) {
 
   for(xx in seq_len(length(sub$cruiseseries))) {
     yy <- sub$cruiseseries[[xx]]
-    filterChain <- append(filterChain, paste0("cruiseseriescode %like% '", yy, ",%' | cruiseseriescode %like% '%,", yy,"' | cruiseseriescode %in% c(", yy,")"))
+    filterChain <- append(filterChain, paste0("cruiseseriescode %like% '", yy, ",%' | cruiseseriescode %like% '%,", yy,"' | cruiseseriescode %in% c('", yy,"')"))
   }
 
   ## Platform

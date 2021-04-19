@@ -20,32 +20,8 @@ if(os == "Linux") {
   }
 }
 
-### Install missing packages
-
-required.packages <- c("shiny" = TRUE, "shinyFiles" = TRUE, "shinydashboard" = TRUE, "DT" = TRUE, 
-                       "data.table" = TRUE,  "tidyverse" = TRUE, "dtplyr" = TRUE, "devtools" = FALSE,
-                       "leaflet" = TRUE, "leaflet.minicharts" = TRUE, "plotly" = TRUE, 
-                       "openxlsx" = FALSE, "scales" = FALSE, "fishmethods" = FALSE, "viridis" = FALSE,
-                       "mapview" = FALSE, "DBI" = FALSE, "bsplus" = TRUE) ## TRUE means that the package should be loaded. FALSE that the functions are used without loading the package (by refering ::)
-
-new.packages <- names(required.packages)[!(names(required.packages) %in% installed.packages()[,"Package"])]
-if (length(new.packages) > 0) install.packages(new.packages)
-
-sapply(names(required.packages)[required.packages], require, character.only = TRUE)
-
-#### RstoxData
-# (not loaded, use pointer when using the functions)
-
-if (!"RstoxData" %in% installed.packages()[,"Package"]) {
-  install.packages("RstoxData", repo="https://stoxproject.github.io/repo")
-}
-
-#### MonetDBLite
-# (not loaded, use pointer when using the functions)
-
-if (!"MonetDBLite" %in% installed.packages()[,"Package"]) {
-  devtools::install_github("hannesmuehleisen/MonetDBLite-R")
-}
+## Install pre-requisites
+source("install_requirements.R")
 
 ## Source functions used by the app
 
@@ -97,17 +73,22 @@ individualOverviewFigureList <- list("Length distribution of species" = "indLeng
 
 speciesFigureList <- list("Length-weight" = "lwPlot", "Growth" = "laPlot", "Maturity" = "l50Plot", "Sex ratio map" = "sexRatioMap", "Length distribution map" = "sizeDistributionMap", "Length/sex disrtibution" = "lengthDistributionPlot", "Length/stage distribution" = "stageDistributionPlot")
 
-dbPath <- "~/Desktop/IMR_db.monetdb" 
-dbIndexPath <- "~/Desktop/dbIndex.rda"
+dbIndexPath <- "/data/dbIndex.rda"
+dbFound <- FALSE
 
-if(file.exists(dbPath)) {
-  message("dbPath found. Enabling server version.")
+if(DBI::dbCanConnect(MonetDB.R::MonetDB(), host="dbserver", dbname="bioticexplorer", user="monetdb", password="monetdb")) {
+  con_db <- DBI::dbConnect(MonetDB.R::MonetDB(), host="dbserver", dbname="bioticexplorer", user="monetdb", password="monetdb")
+  dbFound <- TRUE
+}
+
+if(dbFound) {
+  message("Database found. Enabling server version.")
   if(file.exists(dbIndexPath)) {
     load(dbIndexPath, envir = .GlobalEnv)
     message("dbIndexPath found. Loading the database index.")
   }
 } else {
-  message("dbPath not found. Enabling desktop version.")
+  message("Database not found. Enabling desktop version.")
 }
 
 ##............
@@ -432,7 +413,7 @@ body <-
                          conditionalPanel(
                            condition = "output.serverVersion == false",
                            h4("Desktop version. The database is not available", align = "center"),
-                           p("If you are trying to run the app as a server version, make sure that the dbPath argument is defined correctly.", align = "center")
+                           p("If you are trying to run the app as a server version, make sure that the database is defined correctly.", align = "center")
                          )
                          
                        )
@@ -879,7 +860,7 @@ server <- shinyServer(function(input, output, session) {
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
   
-  output$serverVersion <- reactive(file.exists(dbPath)) 
+  output$serverVersion <- reactive(dbFound) 
   outputOptions(output, "serverVersion", suspendWhenHidden = FALSE)
   
   output$singleCruise <- reactive(FALSE) 
@@ -922,7 +903,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$tabs, {
     if(input$tabs == "uploadDb") {
-      if(file.exists(dbPath)) {
+      if(dbFound) {
         
         if(!rv$uploadDbclicked) {
           output$fetchedDb <- reactive(FALSE)
@@ -931,12 +912,15 @@ server <- shinyServer(function(input, output, session) {
         
         rv$uploadDbclicked <- TRUE
         
-        con_db <- DBI::dbConnect(MonetDBLite::MonetDBLite(), dbPath)
-        
         rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
         rv$inputData$indall <- dplyr::tbl(con_db, "indall")
         rv$inputData$mission <- dplyr::tbl(con_db, "mission")
-        
+        if(DBI::dbExistsTable(con_db, "meta")) {
+	  rv$inputData$meta <- dplyr::tbl(con_db, "meta")
+        } else {
+          rv$inputData$meta <- NULL
+        }
+ 
         # Copy the indexing script from BioticExplorerServer::indexDatabase. 
         if(!exists("index")) {
           index <- list()
@@ -950,8 +934,13 @@ server <- shinyServer(function(input, output, session) {
           index$gear <- rv$inputData$stnall %>% select(gear) %>% distinct() %>% pull() %>% sort()
           index$date <- rv$inputData$stnall %>% summarise(min = min(stationstartdate, na.rm = TRUE), max = max(stationstartdate, na.rm = TRUE)) %>% collect()
           index$nmeasured <- rv$inputData$indall %>% select(length) %>% count() %>% pull()
-          index$downloadstart <- rv$inputData$meta %>% select(timestart) %>% pull()
-          index$downloadend <- rv$inputData$meta %>% select(timeend) %>% pull()
+          if(!is.null(rv$inputData$meta)) {
+            index$downloadstart <- rv$inputData$meta %>% select(timestart) %>% pull()
+            index$downloadend <- rv$inputData$meta %>% select(timeend) %>% pull()
+          } else {
+            index$downloadstart <- NA
+            index$downloadend <- NA
+          }
 
           # Make index as global
           index <<- index
