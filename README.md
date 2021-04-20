@@ -2,7 +2,7 @@
 # Biotic Explorer
 
 **A Shiny app to explore Biotic data within the Institute of Marine
-Research Norway (IMR) database. Version 0.6.60 (alpha), 2021-04-20.**
+Research Norway (IMR) database. Version 0.6.61 (alpha), 2021-04-20.**
 
 This is the developmental version of the **Biotic Explorer**
 [Shiny](https://shiny.rstudio.com/) app intended for examination and
@@ -14,15 +14,16 @@ at the IMR.
 <!-- The official, stable, version of the app can be found from their [GitHub site](https://github.com/StoXProject).  -->
 
 The app can be run on a desktop (i.e. your computer) for local files and
-on a [server](http://astarte.imr.no/shiny) for both local files and the
-entire IMR Biotic database.
+on a [server](http://eucleia.hi.no:8080/bioticexplorer/) for both local
+files and the entire IMR Biotic database.
 
 ## The server version
 
 A server version of [Biotic Explorer is located on IMR
-servers](http://astarte.imr.no/shiny/) and can be run through any modern
-web browser given that **you access it inside the firewall of the
-institute** (i.e. in the institute intranet or through a VPN).
+servers](http://eucleia.hi.no:8080/bioticexplorer/) and can be run
+through any modern web browser given that **you access it inside the
+firewall of the institute** (i.e. in the institute intranet or through a
+VPN).
 
 ## Installation of the desktop version
 
@@ -220,8 +221,8 @@ Running the app automatically installs following packages:
     Provides viridis color scale for Leaflet maps.
 -   [DBI](https://cran.r-project.org/web/packages/DBI/index.html): Used
     for database operations
--   [MonetDBLite](https://github.com/MonetDB/MonetDBLite-R): The
-    database interface package for the BioticExplorer database
+-   [MonetDB.R](https://cran.r-project.org/web/packages/MonetDB.R/index.html):
+    The database interface package for the BioticExplorer database
 
 ## News
 

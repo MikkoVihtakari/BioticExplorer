@@ -21,7 +21,7 @@ if(os == "Linux") {
 }
 
 ## Install pre-requisites
-source("install_requirements.R")
+source("R/install_requirements.R")
 
 ## Source functions used by the app
 
