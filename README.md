@@ -2,7 +2,7 @@
 # Biotic Explorer
 
 **A Shiny app to explore Biotic data within the Institute of Marine
-Research Norway (IMR) database. Version 0.6.5 (alpha), 2020-05-28.**
+Research Norway (IMR) database. Version 0.6.60 (alpha), 2021-04-20.**
 
 This is the developmental version of the **Biotic Explorer**
 [Shiny](https://shiny.rstudio.com/) app intended for examination and
@@ -44,7 +44,7 @@ maintainer.
 
 ### Running the app from your hard drive
 
-Click “Clone or download” -\> “Download ZIP”. Find the zip file
+Click “Clone or download” -&gt; “Download ZIP”. Find the zip file
 (typically in your Downloads folder) and extract it to a desired
 location. Open the app.R file in RStudio and [click “Run
 app”](https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/).
@@ -71,15 +71,12 @@ overview, and subset buttons.
 <div class="figure">
 
 <img src="man/figures/README-interface.png" alt="Figure 1. The Biotic Explorer interface consists of the sidebar (1), main panel (2), process symbol (3), and help button (4). The sidebar consists of tabs (1a). The main panel consists of different elements depending on tab selection. The data interface consists of data selection fields (2a), data overview (2b), and subset buttons (2c)." width="2127" />
-
 <p class="caption">
-
 Figure 1. The Biotic Explorer interface consists of the sidebar (1),
 main panel (2), process symbol (3), and help button (4). The sidebar
 consists of tabs (1a). The main panel consists of different elements
 depending on tab selection. The data interface consists of data
 selection fields (2a), data overview (2b), and subset buttons (2c).
-
 </p>
 
 </div>
@@ -97,13 +94,10 @@ behind each processing step.
 <div class="figure">
 
 <img src="www/logo.png" alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" /><img src="www/logo_bw.png" alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" />
-
 <p class="caption">
-
 Figure 2. Process symbol states. The app is ready to receive orders when
 the IMR logo is shown (left). The app is busy when the BUSY icon is
 shown (right). Avoid clicking anything while the app is busy.
-
 </p>
 
 </div>
@@ -112,7 +106,7 @@ shown (right). Avoid clicking anything while the app is busy.
 
 #### Download data from the database
 
-Click ‘Load data & filter -\> From the database’. Select the desired
+Click ‘Load data & filter -&gt; From the database’. Select the desired
 data and click ‘Send inquiry’. The ‘BUSY’ symbol on the left top corner
 will disappear when the operation is done. This may take time depending
 on the size of the selected dataset. You will get an overview of
@@ -122,18 +116,18 @@ dataset using the ‘Subset’ button and reset the data selection using the
 
 #### Read NMD Biotic xml files
 
-Click ‘Load data & filter -\> From files -\> Browse..’ and select one or
-multiple .xml files from your computer. An overview of data and sampling
-station locations will be shown below. Use the ‘Filter data by’ options
-to select data you want to keep. Click the ‘Subset’ button once you are
-ready and see how the overview will change based on the information you
-selected. The ‘Reset’ button will reset the selection
+Click ‘Load data & filter -&gt; From files -&gt; Browse..’ and select
+one or multiple .xml files from your computer. An overview of data and
+sampling station locations will be shown below. Use the ‘Filter data by’
+options to select data you want to keep. Click the ‘Subset’ button once
+you are ready and see how the overview will change based on the
+information you selected. The ‘Reset’ button will reset the selection
 
 #### Resume a previous session
 
-Click ‘Load data & filter -\> From files -\> Browse..’ and open an .rds
-file saved using the app (see ‘Download’). You can now continue working
-on data from an earlier Biotic Explorer session.
+Click ‘Load data & filter -&gt; From files -&gt; Browse..’ and open an
+.rds file saved using the app (see ‘Download’). You can now continue
+working on data from an earlier Biotic Explorer session.
 
 ### Examine data
 
@@ -152,17 +146,17 @@ the data in a tabular form.
 #### Individual data
 
 The ‘Overview’ tab shows a general overview of the ‘individual’ and
-‘agedetermination’ elements in NMD Biotic files. The ‘Species plots’
-tab can be used to generate plots describing basic life-history
-parameters of a species with sufficient data and the ‘Examine data’ tab
-shows the data in a tabular form.
+‘agedetermination’ elements in NMD Biotic files. The ‘Species plots’ tab
+can be used to generate plots describing basic life-history parameters
+of a species with sufficient data and the ‘Examine data’ tab shows the
+data in a tabular form.
 
 ### Download
 
 #### Export data
 
 Data from a Biotic Explorer session can be downloaded using the
-‘Download -\> Data’ tab. If you want to reopen the data in Biotic
+‘Download -&gt; Data’ tab. If you want to reopen the data in Biotic
 Explorer or open the data in R, use the ‘R’ option without changing
 ‘Data to download’ options. This will save the data as an .rds file,
 which can be opened using the
@@ -174,7 +168,7 @@ are automatically placed to tabs in Excel files.
 #### Export figures
 
 You can select which Biotic Explorer figures to download and in which
-format using the ‘Download -\> Figures’ tab. If you want to modify the
+format using the ‘Download -&gt; Figures’ tab. If you want to modify the
 figures beyond the options given in the app, you may download Biotic
 Explorernd modify the figure functions listed under
 ‘R/figure\_functions.R’.
@@ -189,44 +183,44 @@ ideas on improving the app.
 
 Running the app automatically installs following packages:
 
-  - [shiny](https://cran.r-project.org/web/packages/shiny/index.html):
+-   [shiny](https://cran.r-project.org/web/packages/shiny/index.html):
     The app has been written om Shiny.
-  - [shinyFiles](https://cran.r-project.org/web/packages/shinyFiles/index.html):
+-   [shinyFiles](https://cran.r-project.org/web/packages/shinyFiles/index.html):
     Used to up- and download files.  
-  - [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html):
+-   [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html):
     Used for the dashboard.
-  - [DT](https://cran.r-project.org/web/packages/%20DT/index.html): Used
+-   [DT](https://cran.r-project.org/web/packages/%20DT/index.html): Used
     for data tables.
-  - [data.table](https://cran.r-project.org/web/packages/data.table/index.html):
+-   [data.table](https://cran.r-project.org/web/packages/data.table/index.html):
     Used to make data processing quicker.
-  - [dtplyr](https://cran.r-project.org/web/packages/dtplyr/index.html):
+-   [dtplyr](https://cran.r-project.org/web/packages/dtplyr/index.html):
     Used for dplyr syntax applied to data.tables as well as quick
     database management.
-  - [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html):
+-   [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html):
     Used for data manipulation and plots.
-  - [RstoxData](https://github.com/StoXProject/RstoxData): Used to read
+-   [RstoxData](https://github.com/StoXProject/RstoxData): Used to read
     NMD .xml files.
-  - [devtools](https://cran.r-project.org/web/packages/devtools/index.html):
+-   [devtools](https://cran.r-project.org/web/packages/devtools/index.html):
     Used to download the dependencies only available on GitHub.
-  - [leaflet](https://cran.r-project.org/web/packages/leaflet/index.html):
+-   [leaflet](https://cran.r-project.org/web/packages/leaflet/index.html):
     Used for interactive maps.
-  - [leaflet.minicharts](https://cran.r-project.org/web/packages/leaflet.minicharts/index.html):
+-   [leaflet.minicharts](https://cran.r-project.org/web/packages/leaflet.minicharts/index.html):
     Used for interactive maps.
-  - [mapview](https://cran.r-project.org/web/packages/mapview/index.html):
+-   [mapview](https://cran.r-project.org/web/packages/mapview/index.html):
     Used for interactive maps.
-  - [plotly](https://cran.r-project.org/web/packages/plotly/index.html):
+-   [plotly](https://cran.r-project.org/web/packages/plotly/index.html):
     Used for interactive plots.
-  - [openxlsx](https://cran.r-project.org/web/packages/openxlsx/index.html):
+-   [openxlsx](https://cran.r-project.org/web/packages/openxlsx/index.html):
     Used to write MS Excel files.
-  - [scales](https://cran.r-project.org/web/packages/scales/index.html):
+-   [scales](https://cran.r-project.org/web/packages/scales/index.html):
     Used to scale ggplot axes.
-  - [fishmethods](https://cran.r-project.org/web/packages/fishmethods/index.html):
+-   [fishmethods](https://cran.r-project.org/web/packages/fishmethods/index.html):
     Used to fit growth models
-  - [viridis](https://cran.r-project.org/web/packages/viridis/index.html):
+-   [viridis](https://cran.r-project.org/web/packages/viridis/index.html):
     Provides viridis color scale for Leaflet maps.
-  - [DBI](https://cran.r-project.org/web/packages/DBI/index.html): Used
+-   [DBI](https://cran.r-project.org/web/packages/DBI/index.html): Used
     for database operations
-  - [MonetDBLite](https://github.com/MonetDB/MonetDBLite-R): The
+-   [MonetDBLite](https://github.com/MonetDB/MonetDBLite-R): The
     database interface package for the BioticExplorer database
 
 ## News
