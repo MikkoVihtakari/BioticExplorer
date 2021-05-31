@@ -1,6 +1,14 @@
 ## Set the database alternative ("local" for locally run MonetDB, "server" for the MonetDB on Eucleia, "desktop" for no database connection)
 
-dbType <- "local"
+if(Sys.getenv(c("SERVER_MODE"))=="") {
+  dbHost <- "localhost"
+  dbIndexPath <- "~/Desktop/dbIndex.rda"
+} else {
+  dbHost <- "dbserver"
+  dbIndexPath <- "/data/dbIndex.rda"
+}
+
+dbFound <- FALSE
 
 ## Libraries required to run the app ####
 
@@ -76,15 +84,7 @@ individualOverviewFigureList <- list("Length distribution of species" = "indLeng
 
 speciesFigureList <- list("Length-weight" = "lwPlot", "Growth" = "laPlot", "Maturity" = "l50Plot", "Sex ratio map" = "sexRatioMap", "Length distribution map" = "sizeDistributionMap", "Length/sex disrtibution" = "lengthDistributionPlot", "Length/stage distribution" = "stageDistributionPlot")
 
-if(dbType == "server") {
-  dbIndexPath <- "/data/dbIndex.rda"
-  dbHost <- "dbserver"
-} else {
-  dbIndexPath <- "~/Desktop/dbIndex.rda"
-  dbHost <- "localhost"
-}
-
-dbFound <- FALSE
+## Find the database
 
 if(DBI::dbCanConnect(MonetDB.R::MonetDB(), host=dbHost, dbname="bioticexplorer", user="monetdb", password="monetdb")) {
   con_db <- DBI::dbConnect(MonetDB.R::MonetDB(), host=dbHost, dbname="bioticexplorer", user="monetdb", password="monetdb")
