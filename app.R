@@ -1,3 +1,7 @@
+## Set the database alternative ("local" for locally run MonetDB, "server" for the MonetDB on Eucleia, "desktop" for no database connection)
+
+dbType <- "local"
+
 ## Libraries required to run the app ####
 
 require(shiny)
@@ -66,18 +70,24 @@ stationOverviewFigureList <- list("Species composition" = "speciesCompositionPlo
                                   "Fishing depth of the six most dominant species" = "catchSpeciesWeightPlot"
 )
 
-
 stationMapList <- list("Total catch map" = "catchMap", "Catch composition map" = "catchCompMap")
 
 individualOverviewFigureList <- list("Length distribution of species" = "indLengthPlot", "Weight distribution of species" = "indWeightPlot")
 
 speciesFigureList <- list("Length-weight" = "lwPlot", "Growth" = "laPlot", "Maturity" = "l50Plot", "Sex ratio map" = "sexRatioMap", "Length distribution map" = "sizeDistributionMap", "Length/sex disrtibution" = "lengthDistributionPlot", "Length/stage distribution" = "stageDistributionPlot")
 
-dbIndexPath <- "/data/dbIndex.rda"
+if(dbType == "server") {
+  dbIndexPath <- "/data/dbIndex.rda"
+  dbHost <- "dbserver"
+} else {
+  dbIndexPath <- "~/Desktop/dbIndex.rda"
+  dbHost <- "localhost"
+}
+
 dbFound <- FALSE
 
-if(DBI::dbCanConnect(MonetDB.R::MonetDB(), host="dbserver", dbname="bioticexplorer", user="monetdb", password="monetdb")) {
-  con_db <- DBI::dbConnect(MonetDB.R::MonetDB(), host="dbserver", dbname="bioticexplorer", user="monetdb", password="monetdb")
+if(DBI::dbCanConnect(MonetDB.R::MonetDB(), host=dbHost, dbname="bioticexplorer", user="monetdb", password="monetdb")) {
+  con_db <- DBI::dbConnect(MonetDB.R::MonetDB(), host=dbHost, dbname="bioticexplorer", user="monetdb", password="monetdb")
   dbFound <- TRUE
 }
 
