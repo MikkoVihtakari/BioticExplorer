@@ -2,7 +2,7 @@
 # Biotic Explorer
 
 **A Shiny app to explore Biotic data within the Institute of Marine
-Research Norway (IMR) database. Version 0.6.63 (alpha), 2021-05-31.**
+Research Norway (IMR) database. Version 0.6.66 (alpha), 2021-08-18.**
 
 This is the developmental version of the **Biotic Explorer**
 [Shiny](https://shiny.rstudio.com/) app intended for examination and
