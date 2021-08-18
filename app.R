@@ -40,6 +40,7 @@ source("R/install_requirements.R")
 source("R/other_functions.R", encoding = "utf-8")
 source("R/processBiotic_functions.R", encoding = "utf-8")
 source("R/figure_functions.R", encoding = "utf-8")
+if(!interactive()) pdf(NULL) # To fix a crash with fishmethods::growth() on the server
 
 ##____________________
 ## User interface ####

@@ -885,9 +885,9 @@ laPlot <- function(data, laPlotSexSwitch, growthModelSwitch, forceZeroGroupLengt
       laDat <- bind_rows(laDat, tibble(age = rep(0, ceiling(nrow(laDat)*(forceZeroGroupStrength/100))), length = rep(forceZeroGroupLength, ceiling(nrow(laDat)*(forceZeroGroupStrength/100)))))
     } 
     
-    laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
+    if(length(laDat$age) < 30) {
     
-    if(eval(parse(text = paste0("laMod$", growthModelSwitch))) == "Fit failed") {
+    #if(eval(parse(text = paste0("laMod$", growthModelSwitch))) == "Fit failed") {
       
       Plot <- ggplot() +
         geom_blank() +
@@ -903,6 +903,8 @@ laPlot <- function(data, laPlotSexSwitch, growthModelSwitch, forceZeroGroupLengt
       )
       
     } else {
+      
+      laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
       
       laModpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laMod$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
       
@@ -1000,14 +1002,17 @@ l50Plot <- function(data) {
 ## Sex ratio map ####
 
 sexRatioMap <- function(data) {
+  x <- data$srDat %>% 
+    filter(!is.na(longitudestart), !is.na(latitudestart))
+  
   leaflet::leaflet() %>% 
     addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
              attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
     addMinicharts(
-      data$srDat$longitudestart, data$srDat$latitudestart,
-      type = "pie", chartdata = data$srDat[,c("Female", "Male")],
+      x$longitudestart, x$latitudestart,
+      type = "pie", chartdata = x[,c("Female", "Male")],
       colorPalette = c(ColorPalette[4], ColorPalette[1]),
-      width = 40 * log10(data$srDat$Total) / log10(max(data$srDat$Total)), 
+      width = 40 * log10(x$Total) / log10(max(x$Total)), 
       transitionTime = 0
     )
 }
@@ -1015,7 +1020,9 @@ sexRatioMap <- function(data) {
 ## Size distribution map ####
 
 sizeDistributionMap <- function(data) {
-  sdDatW <- tidyr::spread(data$sdDat, interval, count, fill = 0)
+  sdDatW <- data$sdDat %>% 
+    filter(!is.na(longitudestart), !is.na(latitudestart)) %>% 
+    tidyr::spread(., interval, count, fill = 0)
   sdDatW$total <- rowSums(sdDatW[,levels(data$sdDat$interval)])
   
   leaflet::leaflet() %>% 
