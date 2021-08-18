@@ -256,7 +256,7 @@ body <-
                            column(6, 
                                   selectizeInput(inputId = "subYear", label = "Year:",
                                                  choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
-                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
+                                  %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subCruise", label = "Cruise number:",
                                                  choices = NULL, multiple = TRUE),
                                   selectizeInput(inputId = "subPlatform", label = "Platform name:",
@@ -271,10 +271,10 @@ body <-
                                   selectizeInput(inputId = "subSerialnumber", 
                                                  label = "Serial number:",
                                                  choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
-                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
+                                  %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subGear", label = "Gear code:",
                                                  choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
-                                                 %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
+                                  %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
                                   selectizeInput(inputId = "subMissionType", label = "Mission type:",
                                                  choices = NULL, multiple = TRUE)
                            )),
@@ -293,7 +293,7 @@ body <-
                            id = "ex_collapse2",
                            content = tags$div(textOutput("activeFilter2"))
                          )
-
+                         
                          
                          #, verbatimTextOutput("test") # For debugging
                          
@@ -371,7 +371,7 @@ body <-
                                     selectizeInput(inputId = "selYearDb", 
                                                    label = "Year:",
                                                    choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
-                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
+                                    %>% bs_embed_tooltip(title = "Range is supported (e.g., 1990:1995). Write manually and click \"Add ...\".", trigger="focus"),
                                     selectizeInput(inputId = "selSpeciesDb", 
                                                    label = "Species:", 
                                                    choices = NULL, multiple = TRUE),
@@ -383,12 +383,12 @@ body <-
                                     selectizeInput(inputId = "selSerialnumberDb", 
                                                    label = "Serial number:",
                                                    choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
-                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
+                                    %>% bs_embed_tooltip(title = "Range is supported (e.g., 10000:10010). Write manually and click \"Add ...\".", trigger="focus"),
                                     
                                     selectizeInput(inputId = "selGearDb", 
                                                    label = "Gear code:",
                                                    choices = NULL, multiple = TRUE, options = list(create = TRUE, createFilter = "^\\d+$|^\\d+:\\d+$"))
-                                                   %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
+                                    %>% bs_embed_tooltip(title = "Range is supported (e.g., 3700:3710). Write manually and click \"Add ...\".", trigger="focus"),
                                     
                                     selectizeInput(inputId = "selGearCategoryDb", 
                                                    label = "Gear category:",
@@ -865,7 +865,7 @@ ui <- dashboardPage(header, sidebar, body)
 ## Server ####
 
 server <- shinyServer(function(input, output, session) {
-
+  
   ## Options ####
   
   options(shiny.maxRequestSize = 1000*1024^2) ## This sets the maximum file size for upload. 1000 = 1 Gb. 
@@ -925,12 +925,13 @@ server <- shinyServer(function(input, output, session) {
         rv$inputData$stnall <- dplyr::tbl(con_db, "stnall")
         rv$inputData$indall <- dplyr::tbl(con_db, "indall")
         rv$inputData$mission <- dplyr::tbl(con_db, "mission")
+        
         if(DBI::dbExistsTable(con_db, "meta")) {
-	  rv$inputData$meta <- dplyr::tbl(con_db, "meta")
+          rv$inputData$meta <- dplyr::tbl(con_db, "meta")
         } else {
           rv$inputData$meta <- NULL
         }
- 
+        
         # Copy the indexing script from BioticExplorerServer::indexDatabase. 
         if(!exists("index")) {
           index <- list()
@@ -951,7 +952,7 @@ server <- shinyServer(function(input, output, session) {
             index$downloadstart <- NA
             index$downloadend <- NA
           }
-
+          
           # Make index as global
           index <<- index
         }
@@ -1032,18 +1033,18 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$doFetchDB, {
     
     tmp <- makeFilterChain(db = TRUE)
-
+    
     if(length(tmp$filterChain) > 0) {
       output$fetchedDb <- reactive(TRUE)
       rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
       output$activeFilter <- renderText({rv$filterChain})
-
+      
       rv$sub <- tmp$sub
-    
+      
       rv$stnall <- rv$inputData$stnall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
       rv$indall <- rv$inputData$indall %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
       rv$mission <- rv$inputData$mission %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
-    
+      
       obsPopulatePanel(db = TRUE)
     }
   })
@@ -1110,16 +1111,16 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$SubsetDB, {
     
     tmp <- makeFilterChain(db = TRUE)
-
+    
     if(length(tmp$filterChain) > 0) {
       rv$filterChain <- paste(tmp$filterChain, collapse = "; ")
       output$activeFilter <- renderText({rv$filterChain})
       rv$sub <- tmp$sub
-    
+      
       rv$stnall <- rv$stnall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
       rv$indall <- rv$indall %>% lazy_dt() %>% filter(!!!rlang::parse_exprs(rv$filterChain)) %>% collect() %>% as.data.table()
       rv$mission <- rv$mission %>% lazy_dt() %>% filter(missionid %in% !!unique(rv$stnall$missionid)) %>% collect() %>% as.data.table()
-    
+      
       obsPopulatePanel(db = TRUE)
     }
   })
@@ -1358,7 +1359,8 @@ server <- shinyServer(function(input, output, session) {
                          Sex = {if("sex" %in% names(.)) sum(!is.na(sex)) else 0}, 
                          Maturationstage = {if("maturationstage" %in% names(.)) sum(!is.na(maturationstage)) else 0}, 
                          Specialstage = {if("specialstage" %in% names(.)) sum(!is.na(specialstage)) else 0}, 
-                         Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0}
+                         Age = {if("age" %in% names(.)) sum(!is.na(age)) else 0},
+                         Read = {if("readability" %in% names(.)) sum(!is.na(readability)) else 0}
         ) %>% arrange(-Total) %>% collect() 
       
       output$individualSummaryTable <- DT::renderDataTable({

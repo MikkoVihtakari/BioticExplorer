@@ -1,7 +1,3 @@
-##############################
-# File version 2020-05-25 ####
-# Author and contact: mikko.vihtakari@hi.no
-
 #' @title Station overview map using leaflet
 #' @param data data required by the map. See \code{updateMap}
 
@@ -808,7 +804,7 @@ lwPlot <- function(data, lwPlotLogSwitch = input$lwPlotLogSwitch) {
 
 ## laPlot ####
 
-# data = indOverviewDat; laPlotSexSwitch = input$laPlotSexSwitch; growthModelSwitch = input$growthModelSwitch; forceZeroGroupLength = 0.1; forceZeroGroupStrength = 10
+# data = indOverviewDat = individualFigureData(indall = rv$indall, indSpecies = input$selSpeciesDb); laPlotSexSwitch = FALSE; growthModelSwitch = "vout"; forceZeroGroupLength = NA; forceZeroGroupStrength = 10
 laPlot <- function(data, laPlotSexSwitch, growthModelSwitch, forceZeroGroupLength = NA, forceZeroGroupStrength = 10) {
   
   modName <- c("von Bertalanffy" = "vout", "Gompertz" = "gout", "Logistic" = "lout")
@@ -891,35 +887,53 @@ laPlot <- function(data, laPlotSexSwitch, growthModelSwitch, forceZeroGroupLengt
     
     laMod <- fishmethods::growth(age = laDat$age, size = laDat$length, Sinf = max(laDat$length), K = 0.1, t0 = 0, graph = FALSE)
     
-    laModpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laMod$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
-    
-    laModpars <- coef(eval(parse(text = paste0("laMod$", growthModelSwitch))))
-    
-    ## Plot
-    
-    Plot <- suppressWarnings({
-      ggplot() +
-        geom_point(data = laDat, aes(x = age, y = length, text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
-        expand_limits(x = c(0, round_any(max(laDat$age), 10, ceiling)), y = c(0, max(pretty(c(0, max(laDat$length)))))) +
-        geom_hline(yintercept = laModpars[1], linetype = 2, color = "blue", alpha = 0.5) +
-        geom_path(data = laModpred, aes(x = age, y = length), color = "blue") + 
+    if(eval(parse(text = paste0("laMod$", growthModelSwitch))) == "Fit failed") {
+      
+      Plot <- ggplot() +
+        geom_blank() +
+        annotate("text", x = 1, y = 1, label = "Not enough age data to\ncalculate a growth model", size = 6) +
         ylab(paste0("Total length (", data$units$length, ")")) +
         xlab("Age (years)") +
         coord_cartesian(expand = FALSE, clip = "off") +
         theme_classic(base_size = 14)
-    })
-    
-    ## Text
-    
-    Text <- paste0(
-      modName, " growth function coefficients: \n Linf (asymptotic average length) = ", round(laModpars[1], 3), " ", data$units$length, 
-      "\n K (growth rate coefficient) = ", round(laModpars[2], 3), 
-      "\n t0 (length at age 0) = ", round(laModpars[3], 3), " ", data$units$length, 
-      "\n tmax (life span; t0 + 3/K) = ", round(laModpars[3] + 3 / laModpars[2], 1), " years", 
-      "\n Number of included specimens = ", nrow(data$laDat), 
-      "\n Total number of measured = ", nrow(data$tmpBase), 
-      "\n Excluded (length or age missing): \n Length = ", sum(is.na(data$tmpBase$length)), "; age = ", sum(is.na(data$tmpBase$age))
-    )
+      
+      Text <- paste0(
+        "Not enough age data:",
+        "\n Number of included specimens = ", nrow(laDat)
+      )
+      
+    } else {
+      
+      laModpred <- data.frame(age = 0:max(laDat$age), length = predict(eval(parse(text = paste0("laMod$", growthModelSwitch))), newdata = data.frame(age = 0:max(laDat$age))))
+      
+      laModpars <- coef(eval(parse(text = paste0("laMod$", growthModelSwitch))))
+      
+      ## Plot
+      
+      Plot <- suppressWarnings({
+        ggplot() +
+          geom_point(data = laDat, aes(x = age, y = length, text = paste0("cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) +
+          expand_limits(x = c(0, round_any(max(laDat$age), 10, ceiling)), y = c(0, max(pretty(c(0, max(laDat$length)))))) +
+          geom_hline(yintercept = laModpars[1], linetype = 2, color = "blue", alpha = 0.5) +
+          geom_path(data = laModpred, aes(x = age, y = length), color = "blue") + 
+          ylab(paste0("Total length (", data$units$length, ")")) +
+          xlab("Age (years)") +
+          coord_cartesian(expand = FALSE, clip = "off") +
+          theme_classic(base_size = 14)
+      })
+      
+      ## Text
+      
+      Text <- paste0(
+        modName, " growth function coefficients: \n Linf (asymptotic average length) = ", round(laModpars[1], 3), " ", data$units$length, 
+        "\n K (growth rate coefficient) = ", round(laModpars[2], 3), 
+        "\n t0 (length at age 0) = ", round(laModpars[3], 3), " ", data$units$length, 
+        "\n tmax (life span; t0 + 3/K) = ", round(laModpars[3] + 3 / laModpars[2], 1), " years", 
+        "\n Number of included specimens = ", nrow(data$laDat), 
+        "\n Total number of measured = ", nrow(data$tmpBase), 
+        "\n Excluded (length or age missing): \n Length = ", sum(is.na(data$tmpBase$length)), "; age = ", sum(is.na(data$tmpBase$age))
+      )
+    }
   }
   
   ## Return
@@ -957,7 +971,7 @@ l50Plot <- function(data) {
                     color = sex), size = 3) +
       stat_smooth(aes(color = sex), method = "glm", formula = y ~ x,
                   method.args = list(family = "binomial")) +
-      ylab(paste0("Total length (", data$units$length, ")")) +
+      xlab(paste0("Total length (", data$units$length, ")")) +
       ylab("Maturity") + 
       scale_color_manual("Sex", values = c(ColorPalette[4], ColorPalette[1])) +
       scale_shape("Sex", solid = FALSE) + 

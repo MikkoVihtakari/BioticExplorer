@@ -4,7 +4,7 @@ processRangeInput <- function(inp, idx) {
   # Sanitize input
   if(is.null(inp))
     return(NULL)
-  spl <- trimws(unlist(strsplit(inp, "[,]")))
+  spl <- trimws(unlist(strsplit(as.character(inp), "[,]")))
   toEval <- grep("^\\d+$|^\\d+:\\d+$", spl, perl = TRUE, value = TRUE)
   gearRange <- try(eval(parse(text = paste0("c(", paste(toEval, collapse = ","), ")"))))
   if(class(gearRange ) != "try-error")
