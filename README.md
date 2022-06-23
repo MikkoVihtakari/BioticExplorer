@@ -2,7 +2,7 @@
 # Biotic Explorer
 
 **A Shiny app to explore Biotic data within the Institute of Marine
-Research Norway (IMR) database. Version 0.6.66 (alpha), 2021-08-18.**
+Research Norway (IMR) database. Version 0.6.67 (alpha), 2021-08-20.**
 
 This is the developmental version of the **Biotic Explorer**
 [Shiny](https://shiny.rstudio.com/) app intended for examination and
@@ -14,16 +14,15 @@ at the IMR.
 <!-- The official, stable, version of the app can be found from their [GitHub site](https://github.com/StoXProject).  -->
 
 The app can be run on a desktop (i.e. your computer) for local files and
-on a [server](http://eucleia.hi.no:8080/bioticexplorer/) for both local
-files and the entire IMR Biotic database.
+on a [server](http://njord:8080/bioticexplorer/) for both local files
+and the entire IMR Biotic database.
 
 ## The server version
 
 A server version of [Biotic Explorer is located on IMR
-servers](http://eucleia.hi.no:8080/bioticexplorer/) and can be run
-through any modern web browser given that **you access it inside the
-firewall of the institute** (i.e. in the institute intranet or through a
-VPN).
+servers](http://njord:8080/bioticexplorer/) and can be run through any
+modern web browser given that **you access it inside the firewall of the
+institute** (i.e. in the institute intranet or through a VPN).
 
 ## Installation of the desktop version
 
@@ -45,7 +44,7 @@ maintainer.
 
 ### Running the app from your hard drive
 
-Click “Clone or download” -&gt; “Download ZIP”. Find the zip file
+Click “Clone or download” -\> “Download ZIP”. Find the zip file
 (typically in your Downloads folder) and extract it to a desired
 location. Open the app.R file in RStudio and [click “Run
 app”](https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/).
@@ -69,18 +68,12 @@ tabs. The main panel consists of different elements depending on tab
 selection. The data interface consists of data selection fields, data
 overview, and subset buttons.
 
-<div class="figure">
-
-<img src="man/figures/README-interface.png" alt="Figure 1. The Biotic Explorer interface consists of the sidebar (1), main panel (2), process symbol (3), and help button (4). The sidebar consists of tabs (1a). The main panel consists of different elements depending on tab selection. The data interface consists of data selection fields (2a), data overview (2b), and subset buttons (2c)." width="2127" />
-<p class="caption">
-Figure 1. The Biotic Explorer interface consists of the sidebar (1),
+![Figure 1. The Biotic Explorer interface consists of the sidebar (1),
 main panel (2), process symbol (3), and help button (4). The sidebar
 consists of tabs (1a). The main panel consists of different elements
 depending on tab selection. The data interface consists of data
-selection fields (2a), data overview (2b), and subset buttons (2c).
-</p>
-
-</div>
+selection fields (2a), data overview (2b), and subset buttons
+(2c).](man/figures/README-interface.png)
 
 The process symbol has two states: IMR logo and *BUSY* icon (Figure 2).
 The *BUSY* icon indicates that the app is processing information and you
@@ -92,22 +85,13 @@ app becomes responsive after the *BUSY* symbol has disappeared. Please
 be patient while using the app. There may be large amounts of data
 behind each processing step.
 
-<div class="figure">
-
-<img src="www/logo.png" alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" /><img src="www/logo_bw.png" alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" />
-<p class="caption">
-Figure 2. Process symbol states. The app is ready to receive orders when
-the IMR logo is shown (left). The app is busy when the BUSY icon is
-shown (right). Avoid clicking anything while the app is busy.
-</p>
-
-</div>
+<img src="www/logo.png" title="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" /><img src="www/logo_bw.png" title="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" />
 
 ### Read data
 
 #### Download data from the database
 
-Click ‘Load data & filter -&gt; From the database’. Select the desired
+Click ‘Load data & filter -\> From the database’. Select the desired
 data and click ‘Send inquiry’. The ‘BUSY’ symbol on the left top corner
 will disappear when the operation is done. This may take time depending
 on the size of the selected dataset. You will get an overview of
@@ -117,18 +101,18 @@ dataset using the ‘Subset’ button and reset the data selection using the
 
 #### Read NMD Biotic xml files
 
-Click ‘Load data & filter -&gt; From files -&gt; Browse..’ and select
-one or multiple .xml files from your computer. An overview of data and
-sampling station locations will be shown below. Use the ‘Filter data by’
-options to select data you want to keep. Click the ‘Subset’ button once
-you are ready and see how the overview will change based on the
-information you selected. The ‘Reset’ button will reset the selection
+Click ‘Load data & filter -\> From files -\> Browse..’ and select one or
+multiple .xml files from your computer. An overview of data and sampling
+station locations will be shown below. Use the ‘Filter data by’ options
+to select data you want to keep. Click the ‘Subset’ button once you are
+ready and see how the overview will change based on the information you
+selected. The ‘Reset’ button will reset the selection
 
 #### Resume a previous session
 
-Click ‘Load data & filter -&gt; From files -&gt; Browse..’ and open an
-.rds file saved using the app (see ‘Download’). You can now continue
-working on data from an earlier Biotic Explorer session.
+Click ‘Load data & filter -\> From files -\> Browse..’ and open an .rds
+file saved using the app (see ‘Download’). You can now continue working
+on data from an earlier Biotic Explorer session.
 
 ### Examine data
 
@@ -157,7 +141,7 @@ data in a tabular form.
 #### Export data
 
 Data from a Biotic Explorer session can be downloaded using the
-‘Download -&gt; Data’ tab. If you want to reopen the data in Biotic
+‘Download -\> Data’ tab. If you want to reopen the data in Biotic
 Explorer or open the data in R, use the ‘R’ option without changing
 ‘Data to download’ options. This will save the data as an .rds file,
 which can be opened using the
@@ -169,10 +153,10 @@ are automatically placed to tabs in Excel files.
 #### Export figures
 
 You can select which Biotic Explorer figures to download and in which
-format using the ‘Download -&gt; Figures’ tab. If you want to modify the
+format using the ‘Download -\> Figures’ tab. If you want to modify the
 figures beyond the options given in the app, you may download Biotic
 Explorernd modify the figure functions listed under
-‘R/figure\_functions.R’.
+‘R/figure_functions.R’.
 
 ## Contributions and contact information
 
