@@ -730,7 +730,10 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
     srDat <- tmpBase %>% lazy_dt() %>% 
       dplyr::filter(!is.na(sex)) %>% 
       dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart) %>% 
-      dplyr::summarise(Female = sum(sex == "Female"), Male = sum(sex == "Male")) %>% 
+      dplyr::summarise(
+        Female = sum(sex == "Female"), 
+                       Male = sum(sex == "Male"),
+        .groups = "drop") %>% 
       dplyr::mutate(Total = Female + Male) %>% 
       dplyr::filter(Total > 0) %>% 
       dplyr::collect()
@@ -746,7 +749,7 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
       dplyr::select(cruise, startyear, serialnumber, longitudestart, latitudestart, length) %>% 
       dplyr::mutate(interval = ggplot2::cut_interval(length, n = 5)) %>% 
       dplyr::group_by(cruise, startyear, serialnumber, longitudestart, latitudestart, interval, .drop = FALSE) %>% 
-      dplyr::summarise(count = n()) %>% 
+      dplyr::summarise(count = n(), .groups = "drop") %>% 
       dplyr::collect()
   } else {
     sdDat <- NULL
@@ -774,8 +777,8 @@ individualFigureData <- function(indall, indSpecies = input$indSpecies, lengthUn
 lwPlot <- function(data, lwPlotLogSwitch = input$lwPlotLogSwitch) {
   
   p <- suppressWarnings({
-    ggplot() +
-      geom_point(data = data$lwDat, aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) + 
+    ggplot(data = data$lwDat) +
+      geom_point(aes(x = length, y = individualweight, text = paste0(  "cruise: ", cruise, "\nserialnumber: ", serialnumber, "\ncatchpartnumber: ", catchpartnumber, "\nspecimenid: ", specimenid))) + 
       theme_classic(base_size = 12)
   })
   
@@ -784,18 +787,24 @@ lwPlot <- function(data, lwPlotLogSwitch = input$lwPlotLogSwitch) {
       p + 
         scale_x_log10(paste0("Length [log10(", data$units$length, ")]")) +
         scale_y_log10(paste0("Weight [log10(", data$units$weight, ")]")) + 
-        geom_smooth(data = data$lwDat, aes(x = length, y = individualweight), method = "lm", formula = y ~ x, se = TRUE) 
+        geom_smooth(aes(x = length, y = individualweight), method = "lm", formula = y ~ x, se = TRUE) 
     })
     
   } else {
+    tmp <- data.frame(x = seq(min(data$lwDat$length), max(data$lwDat$length), length.out = 50))
+    tmp$y <- data$lwMod$aTrans*tmp$x^data$lwMod$b
+    
     p <- suppressWarnings({
       p + 
         scale_x_continuous(paste0("Length (", data$units$length, ")")) +
-        scale_y_continuous(paste0("Weight (", data$units$weight, ")")) + 
-        stat_function(data = data.frame(x = range(data$lwDat$length)), aes(x),
-                      fun = function(a, b, x) {a*x^b},
-                      args = list(a = data$lwMod$aTrans, b = data$lwMod$b),
-                      color = "blue", size = 1)
+        scale_y_continuous(paste0("Weight (", data$units$weight, ")")) +
+        geom_path(data = tmp, aes(x = x, y = y), color = "blue", size = 1)
+        
+        # stat_function(data = data.frame(x = range(data$lwDat$length)), 
+        #               aes(x = .data$x),
+        #               fun = function(a, b, x) {a*x^b},
+        #               args = list(a = data$lwMod$aTrans, b = data$lwMod$b),
+        #               color = "blue", size = 1)
     })
   }
   
@@ -1026,7 +1035,7 @@ sizeDistributionMap <- function(data) {
   sdDatW$total <- rowSums(sdDatW[,levels(data$sdDat$interval)])
   
   leaflet::leaflet() %>% 
-    addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}",
+    addTiles(urlTemplate = "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}",
              attribution = "Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri") %>% 
     addMinicharts(
       sdDatW$longitudestart, sdDatW$latitudestart,

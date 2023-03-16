@@ -2,7 +2,7 @@
 # Biotic Explorer
 
 **A Shiny app to explore Biotic data within the Institute of Marine
-Research Norway (IMR) database. Version 0.6.67 (alpha), 2021-08-20.**
+Research Norway (IMR) database. Version 0.6.69 (alpha), 2023-03-16.**
 
 This is the developmental version of the **Biotic Explorer**
 [Shiny](https://shiny.rstudio.com/) app intended for examination and
@@ -68,12 +68,18 @@ tabs. The main panel consists of different elements depending on tab
 selection. The data interface consists of data selection fields, data
 overview, and subset buttons.
 
-![Figure 1. The Biotic Explorer interface consists of the sidebar (1),
+<div class="figure">
+
+<img src="man/figures/README-interface.png" alt="Figure 1. The Biotic Explorer interface consists of the sidebar (1), main panel (2), process symbol (3), and help button (4). The sidebar consists of tabs (1a). The main panel consists of different elements depending on tab selection. The data interface consists of data selection fields (2a), data overview (2b), and subset buttons (2c)." width="2127" />
+<p class="caption">
+Figure 1. The Biotic Explorer interface consists of the sidebar (1),
 main panel (2), process symbol (3), and help button (4). The sidebar
 consists of tabs (1a). The main panel consists of different elements
 depending on tab selection. The data interface consists of data
-selection fields (2a), data overview (2b), and subset buttons
-(2c).](man/figures/README-interface.png)
+selection fields (2a), data overview (2b), and subset buttons (2c).
+</p>
+
+</div>
 
 The process symbol has two states: IMR logo and *BUSY* icon (Figure 2).
 The *BUSY* icon indicates that the app is processing information and you
@@ -85,7 +91,16 @@ app becomes responsive after the *BUSY* symbol has disappeared. Please
 be patient while using the app. There may be large amounts of data
 behind each processing step.
 
-<img src="www/logo.png" title="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" /><img src="www/logo_bw.png" title="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" />
+<div class="figure">
+
+<img src="www/logo.png" alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" /><img src="www/logo_bw.png" alt="Figure 2. Process symbol states. The app is ready to receive orders when the IMR logo is shown (left). The app is busy when the BUSY icon is shown (right). Avoid clicking anything while the app is busy." width="20%" />
+<p class="caption">
+Figure 2. Process symbol states. The app is ready to receive orders when
+the IMR logo is shown (left). The app is busy when the BUSY icon is
+shown (right). Avoid clicking anything while the app is busy.
+</p>
+
+</div>
 
 ### Read data
 
@@ -168,45 +183,45 @@ ideas on improving the app.
 
 Running the app automatically installs following packages:
 
--   [shiny](https://cran.r-project.org/web/packages/shiny/index.html):
-    The app has been written om Shiny.
--   [shinyFiles](https://cran.r-project.org/web/packages/shinyFiles/index.html):
-    Used to up- and download files.  
--   [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html):
-    Used for the dashboard.
--   [DT](https://cran.r-project.org/web/packages/%20DT/index.html): Used
-    for data tables.
--   [data.table](https://cran.r-project.org/web/packages/data.table/index.html):
-    Used to make data processing quicker.
--   [dtplyr](https://cran.r-project.org/web/packages/dtplyr/index.html):
-    Used for dplyr syntax applied to data.tables as well as quick
-    database management.
--   [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html):
-    Used for data manipulation and plots.
--   [RstoxData](https://github.com/StoXProject/RstoxData): Used to read
-    NMD .xml files.
--   [devtools](https://cran.r-project.org/web/packages/devtools/index.html):
-    Used to download the dependencies only available on GitHub.
--   [leaflet](https://cran.r-project.org/web/packages/leaflet/index.html):
-    Used for interactive maps.
--   [leaflet.minicharts](https://cran.r-project.org/web/packages/leaflet.minicharts/index.html):
-    Used for interactive maps.
--   [mapview](https://cran.r-project.org/web/packages/mapview/index.html):
-    Used for interactive maps.
--   [plotly](https://cran.r-project.org/web/packages/plotly/index.html):
-    Used for interactive plots.
--   [openxlsx](https://cran.r-project.org/web/packages/openxlsx/index.html):
-    Used to write MS Excel files.
--   [scales](https://cran.r-project.org/web/packages/scales/index.html):
-    Used to scale ggplot axes.
--   [fishmethods](https://cran.r-project.org/web/packages/fishmethods/index.html):
-    Used to fit growth models
--   [viridis](https://cran.r-project.org/web/packages/viridis/index.html):
-    Provides viridis color scale for Leaflet maps.
--   [DBI](https://cran.r-project.org/web/packages/DBI/index.html): Used
-    for database operations
--   [MonetDB.R](https://cran.r-project.org/web/packages/MonetDB.R/index.html):
-    The database interface package for the BioticExplorer database
+- [shiny](https://cran.r-project.org/web/packages/shiny/index.html): The
+  app has been written om Shiny.
+- [shinyFiles](https://cran.r-project.org/web/packages/shinyFiles/index.html):
+  Used to up- and download files.  
+- [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html):
+  Used for the dashboard.
+- [DT](https://cran.r-project.org/web/packages/%20DT/index.html): Used
+  for data tables.
+- [data.table](https://cran.r-project.org/web/packages/data.table/index.html):
+  Used to make data processing quicker.
+- [dtplyr](https://cran.r-project.org/web/packages/dtplyr/index.html):
+  Used for dplyr syntax applied to data.tables as well as quick database
+  management.
+- [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html):
+  Used for data manipulation and plots.
+- [RstoxData](https://github.com/StoXProject/RstoxData): Used to read
+  NMD .xml files.
+- [devtools](https://cran.r-project.org/web/packages/devtools/index.html):
+  Used to download the dependencies only available on GitHub.
+- [leaflet](https://cran.r-project.org/web/packages/leaflet/index.html):
+  Used for interactive maps.
+- [leaflet.minicharts](https://cran.r-project.org/web/packages/leaflet.minicharts/index.html):
+  Used for interactive maps.
+- [mapview](https://cran.r-project.org/web/packages/mapview/index.html):
+  Used for interactive maps.
+- [plotly](https://cran.r-project.org/web/packages/plotly/index.html):
+  Used for interactive plots.
+- [openxlsx](https://cran.r-project.org/web/packages/openxlsx/index.html):
+  Used to write MS Excel files.
+- [scales](https://cran.r-project.org/web/packages/scales/index.html):
+  Used to scale ggplot axes.
+- [fishmethods](https://cran.r-project.org/web/packages/fishmethods/index.html):
+  Used to fit growth models
+- [viridis](https://cran.r-project.org/web/packages/viridis/index.html):
+  Provides viridis color scale for Leaflet maps.
+- [DBI](https://cran.r-project.org/web/packages/DBI/index.html): Used
+  for database operations
+- [MonetDB.R](https://cran.r-project.org/web/packages/MonetDB.R/index.html):
+  The database interface package for the BioticExplorer database
 
 ## News
 
